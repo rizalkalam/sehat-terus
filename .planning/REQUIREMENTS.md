@@ -47,22 +47,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MAP-01 | Phase TBD | Pending |
-| MAP-02 | Phase TBD | Pending |
-| MAP-03 | Phase TBD | Pending |
-| API-01 | Phase TBD | Pending |
-| API-02 | Phase TBD | Pending |
-| API-03 | Phase TBD | Pending |
-| SEED-01 | Phase TBD | Pending |
-| SEED-02 | Phase TBD | Pending |
-| ANL-01 | Phase TBD | Pending |
-| ANL-02 | Phase TBD | Pending |
-| ANL-03 | Phase TBD | Pending |
+| MAP-01 | Phase 3 | Pending |
+| MAP-02 | Phase 3 | Pending |
+| MAP-03 | Phase 3 | Pending |
+| API-01 | Phase 1 | Pending |
+| API-02 | Phase 1 | Pending |
+| API-03 | Phase 3 | Pending |
+| SEED-01 | Phase 2 | Pending |
+| SEED-02 | Phase 2 | Pending |
+| ANL-01 | Phase 4 | Pending |
+| ANL-02 | Phase 4 | Pending |
+| ANL-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11 ⚠️
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-17*
