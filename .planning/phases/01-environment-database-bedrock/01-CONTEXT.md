@@ -1,12 +1,12 @@
 # Phase 1: Environment & Database Bedrock - Context
 
-**Gathered:** 2026-06-17
+**Gathered:** 2026-06-21
 **Status:** Ready for planning
 
 <domain>
 ## Phase Boundary
 
-Establishing a containerized development environment with PostgreSQL and Next.js, setting up Prisma ORM, and configuring the base database schema with B-Tree indexes.
+Establishing a containerized development environment containing PostgreSQL, Next.js App Router (Frontend), and Express.js (Backend) services. Configuring Sequelize ORM in the backend and writing migration scripts for the RekamMedis table containing B-Tree indexes.
 
 </domain>
 
@@ -14,71 +14,54 @@ Establishing a containerized development environment with PostgreSQL and Next.js
 ## Implementation Decisions
 
 ### Package Manager
-- **D-01:** Use **npm** as the package manager for the project (handles dependency locks and matches default script templates).
+- **D-01:** Use **npm** as the package manager for both `frontend/` and `backend/` directories.
 
-### PostgreSQL Container Configuration
-- **D-02:** Expose PostgreSQL port **5432** directly to the host machine to allow external database clients and Prisma Studio to connect easily.
+### PostgreSQL Port Exposure
+- **D-02:** Expose PostgreSQL port **5432** to the host machine to allow external tools and Sequelize migrations to run locally easily.
 
-### TypeScript and Linter Configuration
-- **D-03:** Enable full strict TypeScript compiler checks (`strict: true`) in tsconfig.json to catch type issues early.
-- **D-04:** Use standard Next.js ESLint linting configuration without custom strict rules to prevent build blocks for minor warnings during development.
+### TypeScript Config
+- **D-03:** Enable strict compiler checks (`strict: true`) in both the Next.js frontend and Express.js backend configurations.
 
-### the agent's Discretion
-- Downstream planning/executing agents have flexibility over specific multi-stage Dockerfile configurations and the precise Next.js App Router folders structure, provided standard conventions and requirements are followed.
+### Directory Structure
+- **D-04:** Use a monorepo folder layout:
+  - `frontend/` -> Next.js application
+  - `backend/` -> Express.js API backend
+  - Root `docker-compose.yml` and `.env` file to orchestrate everything.
 
 </decisions>
 
 <canonical_refs>
 ## Canonical References
 
-**Downstream agents MUST read these before planning or implementing.**
-
 ### Project Definitions
 - `.planning/PROJECT.md` — Core value, constraints, active requirements, and key decisions.
 - `.planning/REQUIREMENTS.md` — All v1 and v2 requirements, exclusions, and traceability mappings.
 - `.planning/ROADMAP.md` — Decomposes requirements into 4 phases and sets phase-specific success criteria.
-
-### Specs & Requirements
-- `.planning/research/PRD.md` — The original project Product Requirement Document (PRD).
-
-### Domain Research
-- `.planning/research/SUMMARY.md` — Informs tech choices, expected features, component boundaries, and phase ordering.
-- `.planning/research/STACK.md` — Detailed research on stable 2026 stack choices (Next.js 15.2.x, React 19, react-leaflet 5, Recharts 3.8.1).
-- `.planning/research/FEATURES.md` — Detailed features matrix (table stakes, differentiators, out-of-scope).
-- `.planning/research/ARCHITECTURE.md` — Component boundaries, data flow pipelines, and build order.
-- `.planning/research/PITFALLS.md` — Critical pitfalls (Leaflet SSR dynamic import, population density mapping normalization, subdistrict name mismatches).
 
 </canonical_refs>
 
 <code_context>
 ## Existing Code Insights
 
-### Reusable Assets
-- None (Greenfield project starting from scratch).
-
-### Established Patterns
-- None (Greenfield project starting from scratch).
-
-### Integration Points
-- None (Greenfield project starting from scratch).
+- Greenfield project. We are starting with an empty workspace.
 
 </code_context>
 
 <specifics>
 ## Specific Ideas
 
-- No specific requirements – open to standard approaches.
+- Basic route structure in Express.js will be set up in `backend/src/` (e.g. index.ts/app.ts).
+- Next.js frontend will communicate with the Express.js API via server actions or client-side fetch.
 
 </specifics>
 
 <deferred>
 ## Deferred Ideas
 
-- None – discussion stayed within phase scope.
+- None.
 
 </deferred>
 
 ---
-
 *Phase: 1-Environment & Database Bedrock*
-*Context gathered: 2026-06-17*
+*Context gathered: 2026-06-21*
