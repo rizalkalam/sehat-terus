@@ -166,7 +166,7 @@ export default function Dashboard() {
           </div>
 
           {/* Disease Table */}
-          <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-lg overflow-hidden h-[294px]">
+          <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-lg overflow-y-auto h-[294px]">
             <table className="w-full text-left border-collapse font-montserrat">
               <thead>
                 <tr className="bg-white border-b border-zinc-200">

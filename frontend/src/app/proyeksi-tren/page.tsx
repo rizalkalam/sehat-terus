@@ -156,7 +156,7 @@ export default function TrendPage() {
 
           <div className="flex-1 w-full h-[350px] mt-4 font-montserrat text-xs">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <ComposedChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(12, 129, 138, 0.1)" />
                 <XAxis dataKey="date" stroke="#0c818a" />
                 <YAxis stroke="#0c818a" />
@@ -217,32 +217,32 @@ export default function TrendPage() {
               </div>
 
               <div className="space-y-3 font-josefin text-zinc-800">
-                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between">
+                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between gap-2">
                   <div>
                     <p className="text-[12px] text-zinc-500 font-semibold uppercase leading-none">Rata-rata Kasus</p>
                     <p className="text-[20px] font-bold text-teal-brand mt-1">45.2 <span className="text-[12px] font-normal text-zinc-500">/ minggu</span></p>
                   </div>
-                  <span className="p-2 bg-teal-500/10 text-teal-brand rounded-full">
+                  <span className="p-2 bg-teal-500/10 text-teal-brand rounded-full shrink-0">
                     <TrendingUp className="size-5" />
                   </span>
                 </div>
 
-                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between">
+                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between gap-2">
                   <div>
                     <p className="text-[12px] text-zinc-500 font-semibold uppercase leading-none">Laju Pertumbuhan</p>
                     <p className="text-[20px] font-bold text-teal-brand mt-1">+4.2% <span className="text-[12px] font-normal text-zinc-500">mingguan</span></p>
                   </div>
-                  <span className="p-2 bg-emerald-500/10 text-emerald-600 rounded-full">
+                  <span className="p-2 bg-emerald-500/10 text-emerald-600 rounded-full shrink-0">
                     <TrendingUp className="size-5" />
                   </span>
                 </div>
 
-                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between">
+                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between gap-2">
                   <div>
                     <p className="text-[12px] text-zinc-500 font-semibold uppercase leading-none">Status Wilayah</p>
                     <p className="text-[20px] font-bold text-amber-500 mt-1">SIAGA OUTBREAK</p>
                   </div>
-                  <span className="p-2 bg-amber-500/10 text-amber-500 rounded-full animate-pulse">
+                  <span className="p-2 bg-amber-500/10 text-amber-500 rounded-full animate-pulse shrink-0">
                     <Info className="size-5" />
                   </span>
                 </div>

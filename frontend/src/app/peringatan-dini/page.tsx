@@ -138,7 +138,7 @@ export default function EarlyWarningPage() {
 
           <div className="flex flex-col gap-4 mt-2">
             {/* Card 1: High Risk */}
-            <div className="bg-rose-100/70 border border-rose-200 rounded-[16px] p-5 flex justify-between items-center gap-4 hover:bg-rose-100/90 transition-colors duration-200">
+            <div className="bg-rose-100/70 border border-rose-200 rounded-[16px] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-rose-100/90 transition-colors duration-200">
               <div className="flex items-start gap-4">
                 <div className="flex flex-col items-center gap-1.5 shrink-0 bg-rose-500 text-white rounded-[12px] p-3 w-[75px] shadow-sm">
                   <AlertOctagon className="size-5" />
@@ -159,7 +159,7 @@ export default function EarlyWarningPage() {
               <button
                 onClick={() => handleSendAlert("dbd")}
                 disabled={sentAlerts["dbd"]}
-                className={`px-4 py-2 text-xs font-semibold rounded-[8px] flex items-center gap-2 cursor-pointer shadow-md transition-all duration-300 ${
+                className={`px-4 py-2 text-xs font-semibold rounded-[8px] flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all duration-300 w-full sm:w-auto shrink-0 ${
                   sentAlerts["dbd"]
                     ? "bg-emerald-600 text-white"
                     : "bg-teal-brand text-white hover:bg-teal-brand-hover"
@@ -171,7 +171,7 @@ export default function EarlyWarningPage() {
             </div>
 
             {/* Card 2: Medium Risk */}
-            <div className="bg-amber-100/70 border border-amber-200 rounded-[16px] p-5 flex justify-between items-center gap-4 hover:bg-amber-100/90 transition-colors duration-200">
+            <div className="bg-amber-100/70 border border-amber-200 rounded-[16px] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-amber-100/90 transition-colors duration-200">
               <div className="flex items-start gap-4">
                 <div className="flex flex-col items-center gap-1.5 shrink-0 bg-amber-400 text-amber-950 rounded-[12px] p-3 w-[84px] shadow-sm">
                   <AlertTriangle className="size-5" />
@@ -192,7 +192,7 @@ export default function EarlyWarningPage() {
               <button
                 onClick={() => handleSendAlert("ispa")}
                 disabled={sentAlerts["ispa"]}
-                className={`px-4 py-2 text-xs font-semibold rounded-[8px] flex items-center gap-2 cursor-pointer shadow-md transition-all duration-300 ${
+                className={`px-4 py-2 text-xs font-semibold rounded-[8px] flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all duration-300 w-full sm:w-auto shrink-0 ${
                   sentAlerts["ispa"]
                     ? "bg-emerald-600 text-white"
                     : "bg-teal-brand text-white hover:bg-teal-brand-hover"
@@ -204,7 +204,7 @@ export default function EarlyWarningPage() {
             </div>
 
             {/* Card 3: Normal Risk */}
-            <div className="bg-emerald-100/70 border border-emerald-200 rounded-[16px] p-5 flex justify-between items-center gap-4 hover:bg-emerald-100/90 transition-colors duration-200">
+            <div className="bg-emerald-100/70 border border-emerald-200 rounded-[16px] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-emerald-100/90 transition-colors duration-200">
               <div className="flex items-start gap-4">
                 <div className="flex flex-col items-center gap-1.5 shrink-0 bg-emerald-500 text-white rounded-[12px] p-3 w-[84px] shadow-sm">
                   <CheckCircle className="size-5" />
@@ -225,7 +225,7 @@ export default function EarlyWarningPage() {
               <button
                 onClick={() => handleSendAlert("normal")}
                 disabled={sentAlerts["normal"]}
-                className={`px-4 py-2 text-xs font-semibold rounded-[8px] flex items-center gap-2 cursor-pointer shadow-md transition-all duration-300 ${
+                className={`px-4 py-2 text-xs font-semibold rounded-[8px] flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all duration-300 w-full sm:w-auto shrink-0 ${
                   sentAlerts["normal"]
                     ? "bg-emerald-600 text-white"
                     : "bg-teal-brand text-white hover:bg-teal-brand-hover"

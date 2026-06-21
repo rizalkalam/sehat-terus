@@ -43,9 +43,9 @@ export default function ActivePatientsCard({
       </div>
 
       {/* Sparkline Chart */}
-      <div className="h-[110px] w-full z-10 mt-1 flex flex-col justify-between shrink-0">
-        <ResponsiveContainer width="100%" height="90%">
-          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+      <div className="h-[120px] w-full z-10 mt-1 flex flex-col justify-between shrink-0">
+        <ResponsiveContainer width="100%" height="80%">
+          <LineChart data={data} margin={{ top: 8, right: 10, bottom: 0, left: 10 }}>
             <Line
               type="monotone"
               dataKey="value"
@@ -64,8 +64,12 @@ export default function ActivePatientsCard({
       </div>
 
       {/* Trend Percentage Badge */}
-      <div className="bg-[#3f9cab] rounded-[11px] py-2 px-3 text-center text-[13px] font-semibold font-josefin z-10 shadow-inner truncate w-full" title={`Naik ${percentageChange} dari ${timeframeLabel}`}>
-        Naik {percentageChange} dari {timeframeLabel}
+      <div 
+        className="bg-[#3f9cab]/80 hover:bg-[#3f9cab] transition-colors duration-200 rounded-[12px] py-2 px-3 text-center z-10 shadow-inner w-full flex flex-col justify-center gap-0.5 select-none" 
+        title={`Naik ${percentageChange} dari ${timeframeLabel}`}
+      >
+        <span className="text-[13px] font-bold font-josefin leading-tight text-white">Naik {percentageChange}</span>
+        <span className="text-[10px] font-medium font-josefin leading-none text-white/80">dari {timeframeLabel}</span>
       </div>
     </div>
   );
