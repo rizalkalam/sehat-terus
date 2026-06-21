@@ -21,6 +21,8 @@ out/
 .DS_Store
 .vscode/
 .idea/
+.obsidian/
+**/.obsidian/
 Thumbs.db
 
 # Logs
