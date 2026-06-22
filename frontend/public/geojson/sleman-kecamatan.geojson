@@ -1,0 +1,311 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Turi"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.33, -7.63],
+            [110.38, -7.63],
+            [110.38, -7.57],
+            [110.33, -7.57],
+            [110.33, -7.63]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Pakem"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.38, -7.64],
+            [110.42, -7.64],
+            [110.42, -7.56],
+            [110.38, -7.56],
+            [110.38, -7.64]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Cangkringan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.42, -7.65],
+            [110.48, -7.65],
+            [110.48, -7.55],
+            [110.42, -7.55],
+            [110.42, -7.65]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Tempel"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.27, -7.67],
+            [110.33, -7.67],
+            [110.33, -7.61],
+            [110.27, -7.61],
+            [110.27, -7.67]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Sleman"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.32, -7.70],
+            [110.36, -7.70],
+            [110.36, -7.64],
+            [110.32, -7.64],
+            [110.32, -7.70]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ngaglik"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.36, -7.73],
+            [110.40, -7.73],
+            [110.40, -7.65],
+            [110.36, -7.65],
+            [110.36, -7.73]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ngemplak"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.40, -7.73],
+            [110.46, -7.73],
+            [110.46, -7.65],
+            [110.40, -7.65],
+            [110.40, -7.73]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Minggir"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.20, -7.76],
+            [110.25, -7.76],
+            [110.25, -7.68],
+            [110.20, -7.68],
+            [110.20, -7.76]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Seyegan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.25, -7.75],
+            [110.30, -7.75],
+            [110.30, -7.69],
+            [110.25, -7.69],
+            [110.25, -7.75]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mlati"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.30, -7.76],
+            [110.35, -7.76],
+            [110.35, -7.70],
+            [110.30, -7.70],
+            [110.30, -7.76]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Moyudan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.20, -7.82],
+            [110.25, -7.82],
+            [110.25, -7.76],
+            [110.20, -7.76],
+            [110.20, -7.82]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Godean"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.25, -7.81],
+            [110.30, -7.81],
+            [110.30, -7.75],
+            [110.25, -7.75],
+            [110.25, -7.81]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Gamping"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.30, -7.82],
+            [110.35, -7.82],
+            [110.35, -7.76],
+            [110.30, -7.76],
+            [110.30, -7.82]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Depok"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.35, -7.79],
+            [110.41, -7.79],
+            [110.41, -7.73],
+            [110.35, -7.73],
+            [110.35, -7.79]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kalasan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.41, -7.80],
+            [110.47, -7.80],
+            [110.47, -7.73],
+            [110.41, -7.73],
+            [110.41, -7.80]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Berbah"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.40, -7.84],
+            [110.45, -7.84],
+            [110.45, -7.79],
+            [110.40, -7.79],
+            [110.40, -7.84]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Prambanan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [110.45, -7.83],
+            [110.50, -7.83],
+            [110.50, -7.73],
+            [110.45, -7.73],
+            [110.45, -7.83]
+          ]
+        ]
+      }
+    }
+  ]
+}
