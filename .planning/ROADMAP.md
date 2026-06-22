@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sehat Terus is structured as a decoupled monorepo containing a Next.js (Frontend) service and an Express.js (Backend) service. The implementation roadmap is structured as follows: establishing the containerized development environment for both services along with the base Sequelize setup (Phase 1); creating the backend database seeding script and validating regional sub-district mappings (Phase 2); implementing high-performance aggregation APIs on the backend and building the core interactive map and trend line dashboards on the frontend (Phase 3); and finally, adding predictive forecasting models and statistical Z-score anomaly alarms to complete the early warning system (Phase 4).
+Sehat Terus is structured as a decoupled monorepo containing a Next.js (Frontend) service and an Express.js (Backend) service. The implementation roadmap is structured as follows: establishing the containerized development environment for both services along with the base Sequelize setup (Phase 1); creating the backend database seeding script and validating regional sub-district mappings (Phase 2); implementing high-performance aggregation APIs on the backend and building the core interactive map and trend line dashboards on the frontend (Phase 3); adding predictive forecasting models and statistical Z-score anomaly alarms to complete the early warning system (Phase 4); and securing the system with user authentication and introducing configurable administrative settings for managers/admins (Phase 5).
 
 ## Phases
 
@@ -10,6 +10,7 @@ Sehat Terus is structured as a decoupled monorepo containing a Next.js (Frontend
 - [ ] **Phase 2: Mock Ingestion & Geographic Mapping Validation** - Seed realistic clinical records using Sequelize + Faker.js in the backend, and validate GeoJSON sub-district names.
 - [ ] **Phase 3: Core Surveillance & GIS Visualizations** - Build backend aggregation endpoints, Leaflet choropleth heatmap, and historical Recharts charts.
 - [ ] **Phase 4: Early Warning System & Forecasting Analytics** - Implement backend forecasting projections, Z-score anomaly logic, and the Early Warning dashboard UI.
+- [ ] **Phase 5: Authentication & Administrative Settings** - Implement login page, JWT/session authentication, database-persisted mitigation task toggles, and configurable threshold settings.
 
 ## Phase Details
 
@@ -72,14 +73,31 @@ Plans:
 - [ ] 04-02: Develop Z-score anomaly detection engine with absolute minimum baseline filtering in the backend.
 - [ ] 04-03: Create early warning dashboard UI with status cards and rare disease datatable in the frontend.
 
+### Phase 5: Authentication & Administrative Settings
+**Goal**: Secure the MIS application with user login/session verification and allow managers to persist mitigation tasks and adjust forecasting/anomaly configurations.
+**Depends on**: Phase 4
+**Requirements**: [AUTH-01, AUTH-02, AUTH-03, ADM-01, ADM-02]
+**Success Criteria** (what must be TRUE):
+  1. The login page `/login` restricts all dashboard routes to authenticated users.
+  2. The Express.js backend supports secure JWT or session token generation and verification.
+  3. Clicking quick mitigation tasks toggles their `completed` state and persists it to the database.
+  4. Managers can configure Z-score thresholds and minimum baselines, with updates saved and reflected in live anomaly flags.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01: Implement backend JWT/cookie authentication routes, user models, and seed credentials.
+- [ ] 05-02: Create frontend `/login` page and router middleware to protect dashboards.
+- [ ] 05-03: Implement database models, APIs, and UI controls for persisting mitigation tasks and customizing Z-score thresholds.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Environment & Database Bedrock | 0/3 | Not started | - |
-| 2. Mock Ingestion & Geographic Mapping Validation | 0/2 | Not started | - |
+| 1. Environment & Database Bedrock | 3/3 | Completed | 2026-06-21 |
+| 2. Mock Ingestion & Geographic Mapping Validation | 2/2 | Completed | 2026-06-22 |
 | 3. Core Surveillance & GIS Visualizations | 0/3 | Not started | - |
 | 4. Early Warning System & Forecasting Analytics | 0/3 | Not started | - |
+| 5. Authentication & Administrative Settings | 0/3 | Not started | - |
