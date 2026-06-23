@@ -1,32 +1,48 @@
-# Phase 1: Environment & Database Bedrock - Discussion Log
+# Phase 1: Environment & Database Bedrock - Log Diskusi
 
-> **Audit trail only.** Do not use as input to planning, research, or execution agents.
-> Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
+> **Hanya untuk jejak audit (Audit Trail).** Jangan gunakan sebagai masukan langsung untuk agen perencana atau eksekutor berikutnya.
+> Semua keputusan resmi dicatat di CONTEXT.md — log ini menyimpan alternatif yang sempat dipertimbangkan.
 
-**Date:** 2026-06-21
-**Phase:** 1-Environment & Database Bedrock
-**Areas discussed:** Monorepo vs separate repos, Backend framework selection (Express.js vs others), ORM selection (Sequelize vs Prisma)
-
----
-
-## Monorepo vs Polyrepo
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Monorepo | Frontend and Backend in subfolders within a single repository, managed by a root Docker Compose | ✅ |
-| Polyrepo | Frontend and Backend in completely separate repositories | |
-
-**User's choice:** Monorepo (Struktur Monorepo dengan subfolder 'frontend/' dan 'backend/')
-**Notes:** Helps in keeping all changes atomic, makes git history straightforward, and allows standard container coordination.
+**Tanggal:** 2026-06-23 (Diskusi Ulang - Fokus Frontend)
+**Fase:** 1-Environment & Database Bedrock
+**Topik Diskusi:** Pilihan ORM, Skema RekamMedis, Hot-Reloading Docker, dan Fokus Penyelarasan Frontend.
 
 ---
 
-## Backend Framework & ORM
+## 1. ORM Pilihan & Database
 
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Express.js + Sequelize | Classic, lightweight Express REST API with Sequelize ORM for PostgreSQL mapping | ✅ |
-| Next.js standalone API | Built-in Next.js endpoints (monolithic/RSC direct connections) | |
+| Opsi | Deskripsi | Dipilih |
+|------|-----------|:-------:|
+| Sequelize ORM | ORM klasik yang sudah terpasang di modul backend Express.js saat ini. | ✅ |
+| Prisma ORM | Rekomendasi di GEMINI.md, memerlukan migrasi ulang dari Sequelize ke Prisma. | |
 
-**User's choice:** Express.js + Sequelize + PostgreSQL
-**Notes:** Decouples API services from the Next.js UI, allowing independent scaling and traditional database model structures in PostgreSQL.
+**Keputusan:** Tetap menggunakan **Sequelize ORM** karena menyesuaikan dengan implementasi kode backend yang sudah berjalan di kontainer.
+
+---
+
+## 2. Skema Kolom Tabel RekamMedis
+
+| Opsi | Deskripsi | Dipilih |
+|------|-----------|:-------:|
+| Kolom Lengkap | Menyimpan data granular: id, id_pasien, tanggal_kunjungan, kecamatan_domisili, nama_penyakit (diagnosa), gejala, usia, jenis_kelamin. | ✅ |
+| Kolom Minimal | Hanya menyimpan kolom inti pelacakan wilayah: id, tanggal_kunjungan, kecamatan_domisili, nama_penyakit. | |
+
+**Keputusan:** Menggunakan **Kolom Lengkap**. Hal ini penting agar visualisasi anomali dan segmentasi tren penyakit dapat dikelompokkan berdasarkan rentang usia atau jenis kelamin untuk analisis epidemiologi yang lebih kaya.
+
+---
+
+## 3. Hot-Reloading pada Docker Compose
+
+| Opsi | Deskripsi | Dipilih |
+|------|-----------|:-------:|
+| Volume Mounting Lokal | Menggunakan Docker Volumes untuk memetakan direktori lokal ke dalam kontainer, mendukung hot-reload Next.js dev server secara langsung. | ✅ |
+| Kontainer Statis | Build image sekali dan jalankan tanpa volume mounting. Harus rebuild image jika kode diubah. | |
+
+**Keputusan:** Menggunakan **Volume Mounting Lokal** untuk mengoptimalkan efisiensi pengembangan lokal.
+
+---
+
+## 4. Penyelarasan Fokus Diskusi Ulang
+
+**Catatan Diskusi:**
+User menginstruksikan diskusi ulang Fase 1 difokuskan pada aspek **Frontend**. Kami mendokumentasikan keputusan antarmuka pengguna, tipografi (`Josefin Sans` dan `Montserrat`), skema warna utama (Teal Brand `#0c818a`), serta integrasi library visualisasi (`react-leaflet` dan `recharts`) untuk memastikan antarmuka terasa premium dan interaktif sesuai spesifikasi.

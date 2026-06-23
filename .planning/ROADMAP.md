@@ -6,9 +6,9 @@ Sehat Terus is structured as a decoupled monorepo containing a Next.js (Frontend
 
 ## Phases
 
-- [ ] **Phase 1: Environment & Database Bedrock** - Set up Next.js frontend scaffolding, Express.js backend scaffolding with Sequelize configuration, and root Docker Compose orchestration.
-- [ ] **Phase 2: Mock Ingestion & Geographic Mapping Validation** - Seed realistic clinical records using Sequelize + Faker.js in the backend, and validate GeoJSON sub-district names.
-- [ ] **Phase 3: Core Surveillance & GIS Visualizations** - Build backend aggregation endpoints, Leaflet choropleth heatmap, and historical Recharts charts.
+- [x] **Phase 1: Environment & Database Bedrock** - Set up Next.js frontend scaffolding, Express.js backend scaffolding with Sequelize configuration, and root Docker Compose orchestration.
+- [x] **Phase 2: Mock Ingestion & Geographic Mapping Validation** - Seed realistic clinical records using Sequelize + Faker.js in the backend, and validate GeoJSON sub-district names.
+- [x] **Phase 3: Core Surveillance & GIS Visualizations** - Build backend aggregation endpoints, Leaflet choropleth heatmap, and historical Recharts charts.
 - [ ] **Phase 4: Early Warning System & Forecasting Analytics** - Implement backend forecasting projections, Z-score anomaly logic, and the Early Warning dashboard UI.
 - [ ] **Phase 5: Authentication & Administrative Settings** - Implement login page, JWT/session authentication, database-persisted mitigation task toggles, and configurable threshold settings.
 
@@ -54,9 +54,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Implement database-level aggregation API endpoints in the Express.js backend.
-- [ ] 03-02: Develop interactive Choropleth Map Component in the Next.js frontend using react-leaflet.
-- [ ] 03-03: Implement the dynamic Region Detail Panel and historical time-series Recharts chart with filters in the frontend.
+- [x] 03-01: Implement database-level aggregation API endpoints in the Express.js backend.
+- [x] 03-02: Develop interactive Choropleth Map Component in the Next.js frontend using react-leaflet.
+- [x] 03-03: Implement the dynamic Region Detail Panel and historical time-series Recharts chart with filters in the frontend.
 
 ### Phase 4: Early Warning System & Forecasting Analytics
 **Goal**: Build predictive forecasting trendlines and Z-score anomaly alarm calculations in the backend, and render alerts on the frontend.
@@ -98,6 +98,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Environment & Database Bedrock | 3/3 | Completed | 2026-06-21 |
 | 2. Mock Ingestion & Geographic Mapping Validation | 2/2 | Completed | 2026-06-22 |
-| 3. Core Surveillance & GIS Visualizations | 0/3 | Not started | - |
+| 3. Core Surveillance & GIS Visualizations | 3/3 | Completed | 2026-06-24 |
 | 4. Early Warning System & Forecasting Analytics | 0/3 | Not started | - |
 | 5. Authentication & Administrative Settings | 0/3 | Not started | - |

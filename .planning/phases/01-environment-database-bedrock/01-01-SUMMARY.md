@@ -49,7 +49,7 @@ completed: 2026-06-21
 
 ## Accomplishments
 - **Next.js Scaffolding:** Initialized Next.js 15.2.9 inside the `frontend/` directory with strict mode compilation enabled.
-- **Branding & Layout Shell:** Created [Sidebar.tsx](file:///D:/projects/isd-project/sehat-terus/frontend/src/components/Sidebar.tsx) and [Navbar.tsx](file:///D:/projects/isd-project/sehat-terus/frontend/src/components/Navbar.tsx) to provide standard public surveillance routing menus and header details.
+- **Branding & Layout Shell:** Created [Sidebar.tsx](file:///D:/projects/isd-project/sehat-terus/frontend/src/components/Sidebar.tsx) and `Navbar.tsx` to provide standard public surveillance routing menus and header details.
 - **Home Grid:** Designed [page.tsx](file:///D:/projects/isd-project/sehat-terus/frontend/src/app/page.tsx) with a responsive three-column grid layout containing placeholders for the GIS map and regional panel.
 
 ## Task Commits

@@ -98,8 +98,8 @@ export const getTemporalCases = async (req: Request, res: Response): Promise<voi
 
     const finalResults = results.map((item: any) => ({
       visit_date: item.get('visit_date'),
-      kode_icd10: item.kode_icd10,
-      nama_penyakit: item.nama_penyakit,
+      kode_icd10: item.get('kode_icd10'),
+      nama_penyakit: item.get('nama_penyakit'),
       total_cases: parseInt(item.get('total_cases') as string, 10)
     }));
 

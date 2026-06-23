@@ -28,12 +28,23 @@
 - [ ] **ANL-02**: System automatically flags statistical anomalies (Z-score calculation) as "Siaga" or "Aman" on the early warning dashboard, applying baseline absolute thresholds to prevent false alarms.
 - [ ] **ANL-03**: User can view a datatable listing rare and dangerous diseases to track single occurrences of severe infections.
 
+### User Authentication (AUTH)
+
+- [ ] **AUTH-01**: Access to the entire dashboard is secured behind a login page `/login`. Unauthenticated users are redirected to the login page.
+- [ ] **AUTH-02**: Express.js backend provides authentication endpoints (`/api/auth/login`, `/api/auth/logout`, `/api/auth/session`) using JWT or session cookies.
+- [ ] **AUTH-03**: Securely verify user credentials against a seeded `User` or admin configurations.
+
+### Admin Settings & Mitigation (ADM)
+
+- [ ] **ADM-01**: Admin/Manager can toggle the completion status of quick mitigation tasks on `/peringatan-dini` and persist the updated status in the database.
+- [ ] **ADM-02**: Admin/Manager can configure and save early warning Z-score thresholds and minimum baseline caseloads directly from the dashboard, affecting the anomaly detection alerts.
+
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| User Authentication | The surveillance dashboard is fully public-facing and read-only. |
 | CRUD Patient Records Data Entry Forms | The system assumes data is synced directly from external TPS databases. |
+| Patient-facing portals | The application is strictly an internal MIS dashboard for health managers and admins. |
 
 ## Traceability
 
@@ -52,10 +63,15 @@ Which phases cover which requirements.
 | ANL-01 | Phase 4 | Pending |
 | ANL-02 | Phase 4 | Pending |
 | ANL-03 | Phase 4 | Pending |
+| AUTH-01 | Phase 5 | Pending |
+| AUTH-02 | Phase 5 | Pending |
+| AUTH-03 | Phase 5 | Pending |
+| ADM-01 | Phase 5 | Pending |
+| ADM-02 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 11 total
-- Mapped to phases: 11
+- v1 requirements: 16 total
+- Mapped to phases: 16
 - Unmapped: 0
 
 ---

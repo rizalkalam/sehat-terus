@@ -1,7 +1,10 @@
 import { Sequelize } from 'sequelize';
 import dotenv from 'dotenv';
+import path from 'path';
 
+// Load from execution root, fallback to monorepo root
 dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const databaseUrl = process.env.DATABASE_URL;
 

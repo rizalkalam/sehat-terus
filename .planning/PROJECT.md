@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A public-facing Management Information System (MIS) designed to visualize disease spread, forecast future health trends, and detect medical anomalies based on raw clinical data in Indonesian regions. The system is read-only for public users and relies heavily on data aggregation, GIS (Geospatial) mapping, and time-series forecasting.
+A Management Information System (MIS) designed for health managers, pharmacy admins, and hospital admins to visualize disease spread, forecast future health trends, and detect medical anomalies based on raw clinical data in Indonesian regions. The system provides secure administrative access, GIS (Geospatial) mapping, time-series forecasting, and early warning threshold configurations.
 
 The project is structured as a monorepo consisting of:
 1. **Frontend (`frontend/`):** Next.js App Router, TypeScript, Tailwind CSS, react-leaflet, Recharts.
@@ -26,14 +26,15 @@ To provide clear, automated spatial and temporal early warnings for disease outb
 - [ ] Configure root Docker Compose to run PostgreSQL, Backend, and Frontend.
 - [ ] Database Schema: Set up Sequelize models for the `RekamMedis` table with optimized indexes on `tanggal_kunjungan` and `kecamatan_domisili`.
 - [ ] Seed script: Implement a CLI seeder in the backend using Sequelize and Faker.js to inject at least 5,000 realistic dummy medical records.
+- [ ] User Authentication: Implement login and session/JWT authentication to secure the dashboard for health managers/admins.
 - [ ] Geospatial Surveillance Page (`/`): Render interactive Choropleth Heatmaps using react-leaflet and local Indonesian region GeoJSON, connecting to the Express.js API.
 - [ ] Trend Forecasting Page (`/proyeksi-tren`): Render Recharts Line Chart illustrating historical data and predicted trend lines.
-- [ ] Early Warning Page (`/peringatan-dini`): Render anomaly detection status cards and a datatable for rare disease tracking.
+- [ ] Early Warning Page (`/peringatan-dini`): Render anomaly detection status cards, a datatable for rare disease tracking, persistable/togglaeable mitigation tasks, and configurable Z-score thresholds.
 
 ### Out of Scope
 
-- User authentication (Login/Register) – The dashboard is public-facing and read-only for all users.
-- CRUD forms for data entry – The system assumes raw data is synced from an external Transaction Processing System (TPS).
+- CRUD Patient Records Data Entry Forms – The system assumes patient-level raw medical data is ingested/synced directly from external transactional systems.
+- Patient-facing portals – The application is strictly an internal MIS dashboard for health managers and admins.
 
 ## Context
 

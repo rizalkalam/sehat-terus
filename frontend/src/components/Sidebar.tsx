@@ -28,7 +28,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-[349px] h-screen bg-gradient-to-b from-white/25 to-[#3f9cab]/20 border-r border-white/20 backdrop-blur-md px-[43px] py-[68px] flex flex-col justify-between shrink-0 z-10 select-none">
+    <aside className="w-[349px] h-screen bg-gradient-to-b from-white/25 to-[#3f9cab]/20 border-r border-white/20 backdrop-blur-md px-[43px] py-[68px] flex flex-col justify-between shrink-0 z-[1001] select-none">
       <div className="flex flex-col gap-[40px] items-start w-full">
         {/* Brand Logo */}
         <div className="text-[38px] leading-none text-teal-brand tracking-tight w-full font-josefin">

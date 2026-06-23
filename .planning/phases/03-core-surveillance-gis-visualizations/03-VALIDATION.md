@@ -1,9 +1,9 @@
 ---
 phase: 3
 slug: core-surveillance-gis-visualizations
-status: draft
+status: approved
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-06-24
 ---
 
@@ -19,9 +19,9 @@ created: 2026-06-24
 |----------|-------|
 | **Framework** | tsx (TS execution runner for verification scripts) |
 | **Config file** | none |
-| **Quick run command** | `npx tsx scripts/validate-geojson.ts` |
+| **Quick run command** | `npx tsx scripts/test-endpoints.ts` |
 | **Full suite command** | `cd backend && npx tsc --noEmit && cd ../frontend && npx tsc --noEmit` |
-| **Estimated runtime** | ~10 seconds |
+| **Estimated runtime** | ~5 seconds |
 
 ---
 
@@ -30,7 +30,7 @@ created: 2026-06-24
 - **After every task commit:** Run TypeScript type verification (`npx tsc --noEmit`)
 - **After every plan wave:** Run full type check and endpoint validation scripts
 - **Before `/gsd-verify-work`:** Full type verification must be green
-- **Max feedback latency:** 15 seconds
+- **Max feedback latency:** 10 seconds
 
 ---
 
@@ -38,20 +38,18 @@ created: 2026-06-24
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 01 | 1 | API-03 | - | N/A | integration | `npx tsx backend/src/index.ts --test` | pending | pending |
-| 03-02-01 | 02 | 2 | MAP-01 | - | N/A | compile | `cd frontend && npx tsc --noEmit` | pending | pending |
-| 03-03-01 | 03 | 2 | MAP-02, MAP-03 | - | N/A | compile | `cd frontend && npx tsc --noEmit` | pending | pending |
+| 03-01-01 | 01 | 1 | API-03 | - | N/A | integration | `npx tsx scripts/test-endpoints.ts` | exists | green |
+| 03-02-01 | 02 | 2 | MAP-01 | - | N/A | compile | `cd frontend && npx tsc --noEmit` | exists | green |
+| 03-03-01 | 03 | 2 | MAP-02, MAP-03 | - | N/A | compile | `cd frontend && npx tsc --noEmit` | exists | green |
 
-*Status: pending, green, red, flaky*
+*Status: green*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `backend/tests/api.test.ts` — API endpoint tests (will create test framework setup if needed)
-- [ ] `scripts/test-endpoints.ts` — script to trigger curl checks against running local containers
-
-*If none: "Existing infrastructure covers all phase requirements."*
+- [x] `scripts/test-endpoints.ts` — script to trigger REST API requests against running local containers
+- [x] `scripts/test-db-connection.ts` — verification script for database indexes and connections
 
 ---
 
@@ -71,7 +69,7 @@ created: 2026-06-24
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
-- [x] Feedback latency < 15s
+- [x] Feedback latency < 10s
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-24

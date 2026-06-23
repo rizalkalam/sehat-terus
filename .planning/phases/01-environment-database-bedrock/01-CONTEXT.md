@@ -1,67 +1,78 @@
-# Phase 1: Environment & Database Bedrock - Context
+# Phase 1: Environment & Database Bedrock - Konteks
 
-**Gathered:** 2026-06-21
-**Status:** Ready for planning
+**Diperbarui:** 2026-06-23 (Diskusi Ulang - Fokus Frontend)
+**Status:** Siap untuk Perencanaan
 
 <domain>
-## Phase Boundary
+## Batasan Fase
 
-Establishing a containerized development environment containing PostgreSQL, Next.js App Router (Frontend), and Express.js (Backend) services. Configuring Sequelize ORM in the backend and writing migration scripts for the RekamMedis table containing B-Tree indexes.
+Membangun fondasi lingkungan pengembangan Next.js frontend, mengonfigurasi routing dasar, mengintegrasikan desain visual ambient (glassmorphism), dan mengonfigurasi hot-reloading melalui Docker Compose.
 
 </domain>
 
 <decisions>
-## Implementation Decisions
+## Keputusan Implementasi
 
-### Package Manager
-- **D-01:** Use **npm** as the package manager for both `frontend/` and `backend/` directories.
+### Manajer Paket & Node.js
+- **D-01:** Menggunakan **npm** sebagai manajer paket untuk direktori `frontend/` dan `backend/`.
+- **D-02:** Menggunakan Node.js v20 (Alpine LTS) sebagai base image di Dockerfile pengembangan.
 
-### PostgreSQL Port Exposure
-- **D-02:** Expose PostgreSQL port **5432** to the host machine to allow external tools and Sequelize migrations to run locally easily.
+### Kerangka Kerja & Dependensi Utama (Frontend)
+- **D-03:** Menggunakan **Next.js 15.2.9 (App Router)** dan **React 19** untuk mempercepat rendering dan mendukung arsitektur Server Components.
+- **D-04:** Menggunakan **Tailwind CSS v4** dengan konfigurasi `@theme inline` di global CSS untuk manajemen token desain secara modular.
+- **D-05:** Menggunakan **react-leaflet** untuk visualisasi peta choropleth wilayah DIY/Sleman pada halaman utama.
 
-### TypeScript Config
-- **D-03:** Enable strict compiler checks (`strict: true`) in both the Next.js frontend and Express.js backend configurations.
+### Desain Visual & Tipografi
+- **D-06:** Mengadopsi visual bertema premium glassmorphism dengan latar belakang blur transparan, ambient gradient, dan custom scrollbar.
+- **D-07:** Menggunakan font utama **Josefin Sans** (untuk heading dan antarmuka umum) dan font sekunder **Montserrat** (khusus untuk data tabular/ICD-10).
 
-### Directory Structure
-- **D-04:** Use a monorepo folder layout:
-  - `frontend/` -> Next.js application
-  - `backend/` -> Express.js API backend
-  - Root `docker-compose.yml` and `.env` file to orchestrate everything.
+### Struktur Halaman & Routing
+- **D-08:** Mendefinisikan rute antarmuka publik sebagai berikut:
+  - `/` -> Dashboard Utama (GIS Map & Region Detail Panel)
+  - `/proyeksi-tren` -> Halaman Prediksi & Line Chart (Recharts)
+  - `/peringatan-dini` -> Halaman Deteksi Anomali & Mitigasi Tugas
+
+### Pengembangan Lokal dengan Docker
+- **D-09:** Menggunakan volume mounting lokal pada container `frontend` agar perubahan kode secara langsung ter-reflect (hot-reload) di dalam kontainer pengembangan.
 
 </decisions>
 
 <canonical_refs>
-## Canonical References
+## Referensi Kanonik
 
-### Project Definitions
-- `.planning/PROJECT.md` — Core value, constraints, active requirements, and key decisions.
-- `.planning/REQUIREMENTS.md` — All v1 and v2 requirements, exclusions, and traceability mappings.
-- `.planning/ROADMAP.md` — Decomposes requirements into 4 phases and sets phase-specific success criteria.
+### Dokumen Definisi Proyek
+- `.planning/PROJECT.md` — Lingkup proyek, kendala teknologi, dan keputusan kunci.
+- `.planning/REQUIREMENTS.md` — Pemetaan persyaratan fungsional (UI dan API).
+- `.planning/ROADMAP.md` — Detail rencana per fase dan kriteria keberhasilan.
+- `.planning/INDEX.md` — Peta dokumen dan kesehatan referensi pengetahuan.
 
 </canonical_refs>
 
 <code_context>
-## Existing Code Insights
+## Wawasan Kode yang Ada
 
-- Greenfield project. We are starting with an empty workspace.
+- Direktori `frontend/` telah dibuat dengan konfigurasi Dockerfile multi-stage, `package.json`, dan file halaman awal.
+- Struktur tata letak (`layout.tsx`) dan sidebar (`Sidebar.tsx`) telah terpasang dengan visual gradien ambient teal.
+- Halaman dashboard (`page.tsx`) telah di-mock dengan representasi visual SVG dari peta Sleman/DIY untuk interaktivitas awal.
 
 </code_context>
 
 <specifics>
-## Specific Ideas
+## Ide Spesifik
 
-- Basic route structure in Express.js will be set up in `backend/src/` (e.g. index.ts/app.ts).
-- Next.js frontend will communicate with the Express.js API via server actions or client-side fetch.
+- Visualisasi peta Leaflet akan menggunakan GeoJSON lokal Sleman (DIY) yang dimuat secara dinamis.
+- Komponen `ActivePatientsCard` telah diekstrak agar dapat digunakan kembali (reusable).
 
 </specifics>
 
 <deferred>
-## Deferred Ideas
+## Ide yang Ditangguhkan
 
-- None.
+- Migrasi database / integrasi API backend riil (ditangguhkan ke Fase 3).
+- Implementasi sistem forecasting Z-score sisi klien (ditangguhkan ke Fase 4).
 
 </deferred>
 
 ---
-*Phase: 1-Environment & Database Bedrock*
-*Context gathered: 2026-06-21*
+*Fase: 1-Environment & Database Bedrock*
+*Konteks diperbarui: 2026-06-23 (Diskusi Ulang)*
