@@ -3,11 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, TrendingUp, AlertTriangle, Package, LogOut } from "lucide-react";
+import { LayoutDashboard, TrendingUp, AlertTriangle, Package, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const menuItems = [
     {
@@ -30,8 +32,14 @@ export default function Sidebar() {
     },
     {
       name: "Logistic",
-      path: "#",
+      path: "/logistik",
       icon: Package,
+      iconSize: "size-[25px]",
+    },
+    {
+      name: "Settings",
+      path: "/settings",
+      icon: Settings,
       iconSize: "size-[25px]",
     },
   ];
@@ -64,18 +72,6 @@ export default function Sidebar() {
               </>
             );
 
-            if (item.path === "#") {
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => alert("Fitur Logistik sedang dalam pengembangan.")}
-                  className="flex gap-[18px] items-center px-[17px] py-[15px] rounded-[16px] w-full transition-all duration-300 font-josefin text-[20px] font-normal group border border-transparent text-teal-brand hover:bg-white/10 hover:text-teal-brand-hover cursor-pointer text-left"
-                >
-                  {content}
-                </button>
-              );
-            }
-
             return (
               <Link
                 key={item.path}
@@ -103,8 +99,8 @@ export default function Sidebar() {
       </div>
 
       {/* Logout button at the bottom */}
-      <button 
-        onClick={() => alert("Sistem ini bersifat publik dan read-only.")}
+      <button
+        onClick={logout}
         className="flex gap-[23px] items-center p-[17px] rounded-[16px] w-full text-teal-brand hover:bg-white/10 hover:text-teal-brand-hover transition-all duration-300 text-[20px] font-josefin font-normal text-left cursor-pointer"
       >
         <LogOut className="size-[26px] shrink-0" />

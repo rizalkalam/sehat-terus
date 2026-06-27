@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Bell, TrendingUp, Activity } from "lucide-react";
+import { TrendingUp, Activity } from "lucide-react";
 import {
   AreaChart,
   Area,
@@ -10,6 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import PageHeader from "@/components/PageHeader";
 
 const chartData = [
   { month: "Jan", ispa: 40, dbd: 85 },
@@ -81,40 +82,7 @@ function CustomXTick({ x = 0, y = 0, payload }: CustomTickProps) {
 export default function TrendPage() {
   return (
     <div className="px-[41px] py-[29px] flex flex-col gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
-      {/* Header */}
-      <header className="flex justify-between items-start w-full">
-        <div>
-          <p className="text-[#0c818a] font-semibold text-[20px] font-josefin leading-normal">
-            Selamat datang, Carmen
-          </p>
-          <h1 className="text-black font-normal text-[40px] font-josefin leading-none mt-1">
-            Trend
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-[16px]">
-          <button
-            className="text-[#0c818a] hover:scale-110 transition-transform duration-300 relative cursor-pointer"
-            aria-label="Notifikasi"
-          >
-            <Bell className="size-[24px] fill-[#0c818a]" />
-            <span className="absolute top-0 right-0 size-2 bg-red-500 rounded-full animate-ping" />
-          </button>
-
-          <div className="flex items-center gap-[18px]">
-            <div className="border-3 border-[#0c818a] rounded-full size-[60px] overflow-hidden bg-white/50 shrink-0">
-              <img
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt="Carmenita"
-                className="size-full object-cover"
-              />
-            </div>
-            <span className="text-[20px] font-semibold font-josefin text-black whitespace-nowrap">
-              Carmenita
-            </span>
-          </div>
-        </div>
-      </header>
+      <PageHeader title="Trend" />
 
       {/* Stat Cards Row */}
       <div className="flex items-stretch gap-[24px]">
@@ -193,12 +161,7 @@ export default function TrendPage() {
           <div className="flex items-center gap-[15px]">
             <div
               className="flex items-center justify-center rounded-[10px]"
-              style={{
-                backgroundColor: "#F56B3E",
-                width: 87,
-                height: 27,
-                padding: "10px",
-              }}
+              style={{ backgroundColor: "#F56B3E", width: 87, height: 27, padding: "10px" }}
             >
               <span className="font-josefin font-semibold text-[16px] text-white leading-none">
                 Ispa
@@ -206,12 +169,7 @@ export default function TrendPage() {
             </div>
             <div
               className="flex items-center justify-center rounded-[10px]"
-              style={{
-                backgroundColor: "#A593FC",
-                width: 87,
-                height: 27,
-                padding: "10px",
-              }}
+              style={{ backgroundColor: "#A593FC", width: 87, height: 27, padding: "10px" }}
             >
               <span className="font-josefin font-semibold text-[16px] text-white leading-none">
                 DBD
@@ -294,10 +252,7 @@ export default function TrendPage() {
           <div
             key={i}
             className="flex flex-col gap-[11px] rounded-[30px] flex-1 min-w-0"
-            style={{
-              backgroundColor: "rgba(243,243,243,0.32)",
-              padding: "25px 24px",
-            }}
+            style={{ backgroundColor: "rgba(243,243,243,0.32)", padding: "25px 24px" }}
           >
             {/* Title + percentage */}
             <div className="flex items-center justify-between gap-[10px]">
@@ -332,11 +287,7 @@ export default function TrendPage() {
             {/* Recommendation box */}
             <div
               className="rounded-[4px] flex flex-col gap-[4px]"
-              style={{
-                backgroundColor: "rgba(0,82,96,0.24)",
-                padding: "12px",
-                minHeight: 67,
-              }}
+              style={{ backgroundColor: "rgba(0,82,96,0.24)", padding: "12px", minHeight: 67 }}
             >
               <span className="font-josefin font-bold text-[12px] text-white leading-none">
                 Rekomendasi
@@ -352,11 +303,7 @@ export default function TrendPage() {
                 <div
                   key={j}
                   className="flex items-center justify-center rounded-[8px]"
-                  style={{
-                    backgroundColor: "#0c818a",
-                    opacity: 0.8,
-                    padding: "6px 9px",
-                  }}
+                  style={{ backgroundColor: "#0c818a", opacity: 0.8, padding: "6px 9px" }}
                 >
                   <span className="font-josefin font-medium text-[12px] text-white leading-none">
                     {item}

@@ -7,6 +7,9 @@ import React, { useState, useEffect } from "react";
 import { Search, Bell, MapPin, ChevronDown, Activity, Heart } from "lucide-react";
 import ActivePatientsCard from "@/components/ActivePatientsCard";
 import dynamic from "next/dynamic";
+import { useAuth } from "@/contexts/AuthContext";
+import NotificationPanel from "@/components/NotificationPanel";
+import EditProfileModal from "@/components/EditProfileModal";
 
 // Dynamic import MapComponent with ssr: false to avoid window is not defined error on server side
 const MapComponent = dynamic(() => import("@/components/MapComponent"), {
@@ -51,13 +54,17 @@ const getIndonesianMonth = () => {
   return months[new Date().getMonth()];
 };
 
+const DEFAULT_AVATAR =
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80";
+
 export default function Dashboard() {
+  const { user } = useAuth();
   const [selectedKecamatan, setSelectedKecamatan] = useState({
     name: "Ngemplak",
     cases: 216,
     status: "Tinggi",
   });
-  
+
   const [spatialData, setSpatialData] = useState<SpatialCase[]>([]);
   const [dateRange, setDateRange] = useState<"30" | "90" | "365">("90");
   const [selectedDisease, setSelectedDisease] = useState<string>("all");
@@ -68,6 +75,9 @@ export default function Dashboard() {
     cases: number;
   } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
 
   // Fetch Spatial Data for the Map
   useEffect(() => {
@@ -163,7 +173,7 @@ export default function Dashboard() {
       <header className="flex justify-between items-start w-full">
         <div>
           <p className="text-[#0c818a] font-semibold text-[20px] font-josefin leading-normal">
-            Selamat datang, Carmen
+            Selamat datang, {user?.name ?? "Carmen"}
           </p>
           <h1 className="text-black font-normal text-[40px] font-josefin leading-none mt-1">
             Dashboard
@@ -182,24 +192,38 @@ export default function Dashboard() {
           </div>
 
           {/* Notification */}
-          <button className="text-[#0c818a] hover:scale-110 transition-transform duration-300 relative cursor-pointer" aria-label="Notifikasi">
+          <button
+            onClick={() => setShowNotifications((v) => !v)}
+            className="text-[#0c818a] hover:scale-110 transition-transform duration-300 relative cursor-pointer"
+            aria-label="Notifikasi"
+          >
             <Bell className="size-[24px] fill-[#0c818a]" />
-            <span className="absolute top-0 right-0 size-2 bg-red-500 rounded-full animate-ping" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-[5px] -right-[5px] min-w-[18px] h-[18px] rounded-full bg-[#F44444] flex items-center justify-center px-[3px]">
+                <span className="font-josefin font-bold text-[10px] text-white leading-none">
+                  {unreadCount}
+                </span>
+              </span>
+            )}
           </button>
 
           {/* Profile Avatar */}
-          <div className="flex items-center gap-[18px]">
+          <button
+            onClick={() => setShowEditProfile(true)}
+            className="flex items-center gap-[18px] hover:opacity-80 transition-opacity cursor-pointer"
+            aria-label="Edit profil"
+          >
             <div className="border-3 border-[#0c818a] rounded-full size-[60px] overflow-hidden bg-white/50 flex items-center justify-center relative shrink-0">
               <img
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                alt="Carmenita"
+                src={user?.avatarSrc ?? DEFAULT_AVATAR}
+                alt={user?.displayName ?? "Carmenita"}
                 className="size-full object-cover"
               />
             </div>
             <span className="text-[20px] font-semibold font-josefin text-black whitespace-nowrap">
-              Carmenita
+              {user?.displayName ?? "Carmenita"}
             </span>
-          </div>
+          </button>
         </div>
       </header>
 
@@ -207,7 +231,7 @@ export default function Dashboard() {
       <div className="flex flex-row gap-[25px] w-full items-start">
         {/* Left Column (holds Map and Table) */}
         <div className="flex-1 min-w-0 flex flex-col gap-[25px]">
-          
+
           {/* Map Card */}
           <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] h-[486px] relative overflow-hidden flex flex-col justify-between shrink-0">
             {/* Map component */}
@@ -384,56 +408,11 @@ export default function Dashboard() {
                 {/* Circumference C = 2 * PI * 52.5 = 329.87 */}
                 {/* 15px stroke width. Outer radius 60, Inner radius 45 */}
                 {/* Segments: Darah Tinggi(6.7%), DBD(25.2%), Diare(21%), Flu(13.5%), ISPA(33.6%) */}
-                <circle
-                  cx="82.5"
-                  cy="82.5"
-                  r="52.5"
-                  fill="transparent"
-                  stroke="#ef4444"
-                  strokeWidth="15"
-                  strokeDasharray="22.1 329.87"
-                  strokeDashoffset="0"
-                />
-                <circle
-                  cx="82.5"
-                  cy="82.5"
-                  r="52.5"
-                  fill="transparent"
-                  stroke="#38bdf8"
-                  strokeWidth="15"
-                  strokeDasharray="83.1 329.87"
-                  strokeDashoffset="-22.1"
-                />
-                <circle
-                  cx="82.5"
-                  cy="82.5"
-                  r="52.5"
-                  fill="transparent"
-                  stroke="#ec4899"
-                  strokeWidth="15"
-                  strokeDasharray="69.3 329.87"
-                  strokeDashoffset="-105.2"
-                />
-                <circle
-                  cx="82.5"
-                  cy="82.5"
-                  r="52.5"
-                  fill="transparent"
-                  stroke="#34d399"
-                  strokeWidth="15"
-                  strokeDasharray="44.5 329.87"
-                  strokeDashoffset="-174.5"
-                />
-                <circle
-                  cx="82.5"
-                  cy="82.5"
-                  r="52.5"
-                  fill="transparent"
-                  stroke="#fbbf24"
-                  strokeWidth="15"
-                  strokeDasharray="110.8 329.87"
-                  strokeDashoffset="-219.0"
-                />
+                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#ef4444" strokeWidth="15" strokeDasharray="22.1 329.87" strokeDashoffset="0" />
+                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#38bdf8" strokeWidth="15" strokeDasharray="83.1 329.87" strokeDashoffset="-22.1" />
+                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#ec4899" strokeWidth="15" strokeDasharray="69.3 329.87" strokeDashoffset="-105.2" />
+                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#34d399" strokeWidth="15" strokeDasharray="44.5 329.87" strokeDashoffset="-174.5" />
+                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#fbbf24" strokeWidth="15" strokeDasharray="110.8 329.87" strokeDashoffset="-219.0" />
               </svg>
               {/* Inner Circle content */}
               <div className="absolute text-center flex flex-col items-center justify-center inset-0">
@@ -478,6 +457,17 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <NotificationPanel
+        open={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        onUnreadChange={setUnreadCount}
+      />
+
+      <EditProfileModal
+        open={showEditProfile}
+        onClose={() => setShowEditProfile(false)}
+      />
     </div>
   );
 }
