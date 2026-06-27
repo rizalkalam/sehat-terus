@@ -1,31 +1,88 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Bell, ChevronDown, Activity, TrendingUp, Info } from "lucide-react";
-import { Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, ComposedChart } from "recharts";
+import React from "react";
+import { Bell, TrendingUp, Activity } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-// Mock historical + forecasted data
-const trendData = [
-  { date: "01 Jun", actual: 40, forecast: null, ciLower: null, ciUpper: null },
-  { date: "08 Jun", actual: 48, forecast: null, ciLower: null, ciUpper: null },
-  { date: "15 Jun", actual: 52, forecast: null, ciLower: null, ciUpper: null },
-  { date: "22 Jun", actual: 60, forecast: null, ciLower: null, ciUpper: null },
-  { date: "29 Jun", actual: 64, forecast: null, ciLower: null, ciUpper: null },
-  { date: "06 Jul", actual: 70, forecast: 70, ciLower: 70, ciUpper: 70 },
-  { date: "13 Jul", actual: null, forecast: 74, ciLower: 65, ciUpper: 83 },
-  { date: "20 Jul", actual: null, forecast: 79, ciLower: 68, ciUpper: 90 },
-  { date: "27 Jul", actual: null, forecast: 85, ciLower: 70, ciUpper: 100 },
+const chartData = [
+  { month: "Jan", ispa: 40, dbd: 85 },
+  { month: "Feb", ispa: 55, dbd: 70 },
+  { month: "Mar", ispa: 80, dbd: 58 },
+  { month: "Apr", ispa: 120, dbd: 50 },
+  { month: "May", ispa: 145, dbd: 45 },
+  { month: "Jun", ispa: 130, dbd: 52 },
+  { month: "Jul", ispa: 160, dbd: 48 },
 ];
 
-export default function TrendPage() {
-  const [selectedDisease, setSelectedDisease] = useState("Demam Berdarah Dengue (DBD)");
-  const [selectedKecamatan, setSelectedKecamatan] = useState("Semua Kecamatan");
-  const [timeframe, setTimeframe] = useState("3 Bulan Terakhir");
+const alertData = [
+  {
+    title: "Tren ISPA Menanjak",
+    change: "+45%",
+    description:
+      "Sistem memprediksi kenaikan kasus 45% dalam 2 minggu mendatang berdasarkan analisis pola musiman dan data historis.",
+    recommendation:
+      "Amankan stok Ibuprofen dan Masker Medis minimal 300 unit sebelum tanggal 15.",
+    items: ["Ibu Profen", "Masker Medis"],
+  },
+  {
+    title: "Tren DBD Meningkat",
+    change: "+32%",
+    description:
+      "Kasus DBD menunjukkan pola kenaikan di wilayah Sleman bagian utara sejalan dengan peningkatan curah hujan.",
+    recommendation:
+      "Tingkatkan fogging dan distribusi abate di Kecamatan Ngemplak dan Pakem minimal 500 titik.",
+    items: ["Abate", "Fogging Kit"],
+  },
+  {
+    title: "Puncak Diare Musiman",
+    change: "+28%",
+    description:
+      "Pola historis menunjukkan lonjakan kasus diare setiap pergantian musim. Wilayah Depok paling rentan.",
+    recommendation:
+      "Pastikan ketersediaan oralit dan zinc tablet di puskesmas Depok dan Gamping sebelum tanggal 20.",
+    items: ["Oralit", "Zinc Tablet"],
+  },
+];
 
+interface CustomTickProps {
+  x?: string | number;
+  y?: string | number;
+  payload?: { value: string };
+  [key: string]: unknown;
+}
+
+function CustomXTick({ x = 0, y = 0, payload }: CustomTickProps) {
+  const xNum = typeof x === "string" ? parseFloat(x) : x;
+  const yNum = typeof y === "string" ? parseFloat(y) : y;
+  const isCurrent = payload?.value === "Apr";
   return (
-    <div className="p-[40px] flex flex-col gap-[30px] h-full min-h-screen text-black select-none">
-      {/* Top Header */}
-      <header className="flex justify-between items-center w-full">
+    <text
+      x={xNum}
+      y={yNum + 10}
+      textAnchor="middle"
+      fill="#454459"
+      opacity={isCurrent ? 1 : 0.5}
+      fontFamily="sans-serif"
+      fontWeight={isCurrent ? 600 : 500}
+      fontSize={12}
+    >
+      {payload?.value}
+    </text>
+  );
+}
+
+export default function TrendPage() {
+  return (
+    <div className="px-[41px] py-[29px] flex flex-col gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
+      {/* Header */}
+      <header className="flex justify-between items-start w-full">
         <div>
           <p className="text-[#0c818a] font-semibold text-[20px] font-josefin leading-normal">
             Selamat datang, Carmen
@@ -35,234 +92,280 @@ export default function TrendPage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-[24px]">
-          {/* Search bar */}
-          <div className="flex items-center gap-2 bg-black/10 hover:bg-black/15 text-[12px] font-josefin text-white border border-transparent rounded-[16px] px-4 py-2 w-[195px] transition-all duration-300">
-            <Search className="size-[18px] text-teal-brand" />
-            <input
-              type="text"
-              placeholder="Cari wilayah lain"
-              className="bg-transparent border-none outline-none placeholder-zinc-500 text-black w-full"
-            />
-          </div>
-
-          {/* Notification */}
-          <button className="text-teal-brand hover:scale-110 transition-transform duration-300 relative cursor-pointer">
-            <Bell className="size-[24px]" />
+        <div className="flex items-center gap-[16px]">
+          <button
+            className="text-[#0c818a] hover:scale-110 transition-transform duration-300 relative cursor-pointer"
+            aria-label="Notifikasi"
+          >
+            <Bell className="size-[24px] fill-[#0c818a]" />
             <span className="absolute top-0 right-0 size-2 bg-red-500 rounded-full animate-ping" />
           </button>
 
-          {/* Profile Avatar */}
           <div className="flex items-center gap-[18px]">
-            <div className="border-3 border-teal-brand rounded-full size-[60px] overflow-hidden bg-white/50 flex items-center justify-center">
-              <div className="bg-gradient-to-tr from-teal-500 to-[#3f9cab] size-full flex items-center justify-center text-white font-bold text-lg">
-                C
-              </div>
+            <div className="border-3 border-[#0c818a] rounded-full size-[60px] overflow-hidden bg-white/50 shrink-0">
+              <img
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                alt="Carmenita"
+                className="size-full object-cover"
+              />
             </div>
-            <span className="text-[20px] font-semibold font-josefin text-black">
+            <span className="text-[20px] font-semibold font-josefin text-black whitespace-nowrap">
               Carmenita
             </span>
           </div>
         </div>
       </header>
 
-      {/* Control Filters Bar */}
-      <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] p-5 shadow-md flex flex-wrap gap-4 items-center justify-between">
-        <div className="flex flex-wrap gap-4">
-          {/* Disease Selector */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-teal-brand/80 font-bold uppercase tracking-wider font-montserrat">Penyakit</span>
-            <div className="relative w-[260px]">
-              <select
-                value={selectedDisease}
-                onChange={(e) => setSelectedDisease(e.target.value)}
-                className="bg-white/80 border border-teal-brand/10 text-teal-brand text-[14px] font-josefin rounded-[8px] pl-4 pr-10 py-2 w-full hover:bg-white transition-colors duration-200 cursor-pointer shadow-sm outline-none appearance-none"
-              >
-                <option value="Demam Berdarah Dengue (DBD)">Demam Berdarah Dengue (DBD)</option>
-                <option value="Infeksi Saluran Pernafasan (ISPA)">Infeksi Saluran Pernafasan (ISPA)</option>
-                <option value="Diare">Diare</option>
-                <option value="Flu">Flu</option>
-                <option value="Darah Tinggi">Darah Tinggi</option>
-              </select>
-              <ChevronDown className="size-[16px] text-teal-brand absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Kecamatan Selector */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-teal-brand/80 font-bold uppercase tracking-wider font-montserrat">Kecamatan</span>
-            <div className="relative w-[180px]">
-              <select
-                value={selectedKecamatan}
-                onChange={(e) => setSelectedKecamatan(e.target.value)}
-                className="bg-white/80 border border-teal-brand/10 text-teal-brand text-[14px] font-josefin rounded-[8px] pl-4 pr-10 py-2 w-full hover:bg-white transition-colors duration-200 cursor-pointer shadow-sm outline-none appearance-none"
-              >
-                <option value="Semua Kecamatan">Semua Kecamatan</option>
-                <option value="Ngemplak">Ngemplak</option>
-                <option value="Depok">Depok</option>
-                <option value="Gamping">Gamping</option>
-                <option value="Mlati">Mlati</option>
-              </select>
-              <ChevronDown className="size-[16px] text-teal-brand absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Timeframe Selector */}
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs text-teal-brand/80 font-bold uppercase tracking-wider font-montserrat">Rentang Waktu</span>
-            <div className="relative w-[160px]">
-              <select
-                value={timeframe}
-                onChange={(e) => setTimeframe(e.target.value)}
-                className="bg-white/80 border border-teal-brand/10 text-teal-brand text-[14px] font-josefin rounded-[8px] pl-4 pr-10 py-2 w-full hover:bg-white transition-colors duration-200 cursor-pointer shadow-sm outline-none appearance-none"
-              >
-                <option value="3 Bulan Terakhir">3 Bulan Terakhir</option>
-                <option value="6 Bulan Terakhir">6 Bulan Terakhir</option>
-                <option value="1 Tahun Terakhir">1 Tahun Terakhir</option>
-              </select>
-              <ChevronDown className="size-[16px] text-teal-brand absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+      {/* Stat Cards Row */}
+      <div className="flex items-stretch gap-[24px]">
+        {/* Peningkatan Tertinggi */}
+        <div
+          className="flex flex-1 items-center gap-[22px] px-[22px] rounded-[18px] shadow-[0px_0px_11px_0px_rgba(0,0,0,0.16)] min-w-0"
+          style={{ backgroundColor: "#0c818a", height: 93 }}
+        >
+          <TrendingUp className="size-[52px] text-white shrink-0" />
+          <div className="flex flex-col gap-[4px] min-w-0">
+            <span className="font-josefin font-bold text-[16px] text-white leading-none truncate">
+              Peningkatan Tertinggi
+            </span>
+            <span className="font-josefin font-bold text-[22px] text-white leading-none">
+              DBD (+18%)
+            </span>
+            <span className="font-josefin font-normal text-[13px] text-white leading-none truncate">
+              Terbanyak di Sleman
+            </span>
           </div>
         </div>
 
-        {/* Legend Indicator */}
-        <div className="flex items-center gap-4 text-xs font-montserrat font-semibold text-teal-brand mt-4 xl:mt-0">
-          <div className="flex items-center gap-1.5">
-            <span className="w-4 h-0.5 bg-teal-brand inline-block border-t-2 border-teal-brand" />
-            <span>Kasus Riwayat</span>
+        {/* Penurunan Terbesar */}
+        <div
+          className="flex flex-1 items-center gap-[22px] px-[22px] rounded-[18px] shadow-[0px_0px_11px_0px_rgba(0,0,0,0.16)] min-w-0"
+          style={{ backgroundColor: "#F44444", height: 93 }}
+        >
+          <TrendingUp className="size-[52px] text-white shrink-0 rotate-180" />
+          <div className="flex flex-col gap-[4px] min-w-0">
+            <span className="font-josefin font-bold text-[16px] text-white leading-none truncate">
+              Penurunan Terbesar
+            </span>
+            <span className="font-josefin font-bold text-[22px] text-white leading-none">
+              DBD (-18%)
+            </span>
+            <span className="font-josefin font-normal text-[13px] text-white leading-none truncate">
+              Kampanye Sanitasi Berhasil
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-4 h-0.5 border-t-2 border-dashed border-purple-500 inline-block" />
-            <span>Proyeksi Tren</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-4 h-2 bg-purple-500/10 border border-purple-500/20 inline-block rounded-sm" />
-            <span>Interval Kepercayaan</span>
+        </div>
+
+        {/* Total Kasus Aktif */}
+        <div
+          className="flex flex-1 items-center gap-[12px] px-[22px] rounded-[18px] shadow-[0px_0px_11px_0px_rgba(0,0,0,0.16)] bg-white min-w-0"
+          style={{ height: 93 }}
+        >
+          <Activity className="size-[42px] text-[#0c818a] shrink-0" />
+          <div className="flex flex-col gap-[4px] min-w-0">
+            <span className="font-josefin font-bold text-[16px] text-[#0c818a] leading-none truncate">
+              Total Kasus Aktif
+            </span>
+            <span className="font-josefin font-bold text-[22px] text-[#0c818a] leading-none">
+              605 Jiwa
+            </span>
+            <span className="font-josefin font-normal text-[13px] text-[#0c818a] leading-none truncate">
+              Total D.I. Yogyakarta
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Main Charts & Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-[30px] w-full">
-        {/* Chart Card */}
-        <div className="lg:col-span-8 bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] p-6 shadow-lg h-[480px] flex flex-col justify-between">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h3 className="font-bold text-teal-brand text-[16px] flex items-center gap-2">
-              <TrendingUp className="size-[18px]" />
-              Grafik Deret Waktu & Estimasi Masa Depan
-            </h3>
-            <span className="text-xs text-teal-brand/60 font-medium">Model: Double Exponential Smoothing</span>
-          </div>
-
-          <div className="flex-1 w-full h-[350px] mt-4 font-montserrat text-xs">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={trendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(12, 129, 138, 0.1)" />
-                <XAxis dataKey="date" stroke="#0c818a" />
-                <YAxis stroke="#0c818a" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "rgba(255, 255, 255, 0.8)",
-                    border: "1px solid rgba(12, 129, 138, 0.2)",
-                    borderRadius: "12px",
-                    color: "#0c818a",
-                    backdropFilter: "blur(4px)",
-                  }}
-                />
-                {/* Confidence Interval Shading */}
-                <Area
-                  type="monotone"
-                  dataKey="ciUpper"
-                  stroke="none"
-                  fill="rgba(168, 85, 247, 0.05)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="ciLower"
-                  stroke="none"
-                  fill="rgba(168, 85, 247, 0.05)"
-                />
-                {/* Actual Line */}
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  stroke="#0c818a"
-                  strokeWidth={3}
-                  dot={{ r: 4, stroke: "#ffffff", strokeWidth: 1.5, fill: "#0c818a" }}
-                  name="Jumlah Kasus"
-                />
-                {/* Forecast Line */}
-                <Line
-                  type="monotone"
-                  dataKey="forecast"
-                  stroke="#a855f7"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={{ r: 4, stroke: "#ffffff", strokeWidth: 1.5, fill: "#a855f7" }}
-                  name="Proyeksi Kasus"
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+      {/* Chart Card */}
+      <div
+        className="rounded-[24px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.16)] py-[18px] overflow-hidden"
+        style={{
+          background: "rgba(195,247,255,0.2)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid rgba(255,255,255,0.2)",
+        }}
+      >
+        {/* Chart Header */}
+        <div className="flex items-center justify-between px-[20px] mb-[8px]">
+          <h2 className="font-josefin font-semibold text-[24px] text-[#0c818a]">
+            Grafik Perbandingan Penyakit
+          </h2>
+          <div className="flex items-center gap-[15px]">
+            <div
+              className="flex items-center justify-center rounded-[10px]"
+              style={{
+                backgroundColor: "#F56B3E",
+                width: 87,
+                height: 27,
+                padding: "10px",
+              }}
+            >
+              <span className="font-josefin font-semibold text-[16px] text-white leading-none">
+                Ispa
+              </span>
+            </div>
+            <div
+              className="flex items-center justify-center rounded-[10px]"
+              style={{
+                backgroundColor: "#A593FC",
+                width: 87,
+                height: 27,
+                padding: "10px",
+              }}
+            >
+              <span className="font-josefin font-semibold text-[16px] text-white leading-none">
+                DBD
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Analytics Insight Card */}
-        <div className="lg:col-span-4 flex flex-col gap-[30px]">
-          {/* Analysis Card */}
-          <div className="bg-white rounded-[24px] p-6 shadow-lg flex-1 flex flex-col justify-between border border-teal-500/5">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-teal-brand">
-                <Activity className="size-[20px]" />
-                <span className="font-bold text-[16px]">Informasi Analitis</span>
-              </div>
+        {/* Recharts AreaChart */}
+        <div className="h-[368px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 20, right: 30, left: 10, bottom: 10 }}
+            >
+              <defs>
+                <linearGradient id="ispFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,147,100,0.3)" />
+                  <stop offset="100%" stopColor="rgba(242,95,51,0)" />
+                </linearGradient>
+              </defs>
 
-              <div className="space-y-3 font-josefin text-zinc-800">
-                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[12px] text-zinc-500 font-semibold uppercase leading-none">Rata-rata Kasus</p>
-                    <p className="text-[20px] font-bold text-teal-brand mt-1">45.2 <span className="text-[12px] font-normal text-zinc-500">/ minggu</span></p>
-                  </div>
-                  <span className="p-2 bg-teal-500/10 text-teal-brand rounded-full shrink-0">
-                    <TrendingUp className="size-5" />
-                  </span>
-                </div>
+              <CartesianGrid
+                vertical={true}
+                horizontal={false}
+                strokeDasharray="5 14"
+                stroke="rgba(23,23,36,0.3)"
+              />
 
-                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[12px] text-zinc-500 font-semibold uppercase leading-none">Laju Pertumbuhan</p>
-                    <p className="text-[20px] font-bold text-teal-brand mt-1">+4.2% <span className="text-[12px] font-normal text-zinc-500">mingguan</span></p>
-                  </div>
-                  <span className="p-2 bg-emerald-500/10 text-emerald-600 rounded-full shrink-0">
-                    <TrendingUp className="size-5" />
-                  </span>
-                </div>
+              <XAxis
+                dataKey="month"
+                axisLine={false}
+                tickLine={false}
+                tick={(props) => <CustomXTick {...props} />}
+              />
 
-                <div className="bg-zinc-50 p-3.5 rounded-[12px] border border-zinc-100 flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[12px] text-zinc-500 font-semibold uppercase leading-none">Status Wilayah</p>
-                    <p className="text-[20px] font-bold text-amber-500 mt-1">SIAGA OUTBREAK</p>
-                  </div>
-                  <span className="p-2 bg-amber-500/10 text-amber-500 rounded-full animate-pulse shrink-0">
-                    <Info className="size-5" />
-                  </span>
-                </div>
-              </div>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(255,255,255,0.92)",
+                  border: "1px solid rgba(12,129,138,0.2)",
+                  borderRadius: "12px",
+                  fontFamily: "Josefin Sans, sans-serif",
+                  color: "#0c818a",
+                  fontSize: 13,
+                }}
+                itemStyle={{ color: "#0c818a" }}
+              />
+
+              {/* ISPA — gradient area fill + orange stroke */}
+              <Area
+                type="monotone"
+                dataKey="ispa"
+                stroke="#FF9364"
+                strokeWidth={5}
+                fill="url(#ispFill)"
+                dot={false}
+                activeDot={{ r: 6, fill: "#F56B3E", stroke: "#fff", strokeWidth: 2 }}
+                name="ISPA"
+              />
+
+              {/* DBD — purple stroke, no fill */}
+              <Area
+                type="monotone"
+                dataKey="dbd"
+                stroke="#A593FC"
+                strokeWidth={5}
+                fillOpacity={0}
+                dot={false}
+                activeDot={{ r: 6, fill: "#A593FC", stroke: "#fff", strokeWidth: 2 }}
+                name="DBD"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Alert Cards */}
+      <div className="bg-white rounded-[14px] px-[19px] py-[16px] flex items-stretch gap-[32px]">
+        {alertData.map((card, i) => (
+          <div
+            key={i}
+            className="flex flex-col gap-[11px] rounded-[30px] flex-1 min-w-0"
+            style={{
+              backgroundColor: "rgba(243,243,243,0.32)",
+              padding: "25px 24px",
+            }}
+          >
+            {/* Title + percentage */}
+            <div className="flex items-center justify-between gap-[10px]">
+              <span className="font-josefin font-bold text-[18px] text-[#0c818a] leading-none">
+                {card.title}
+              </span>
+              <span className="font-josefin font-bold text-[18px] text-[#F44444] leading-none shrink-0">
+                {card.change}
+              </span>
             </div>
 
-            <div className="mt-4 text-[11px] text-zinc-400 font-medium leading-relaxed">
-              *Prediksi dihitung otomatis menggunakan data time-series historis 3 bulan terakhir. Margin error proyeksi model ±8.5%.
+            {/* Urgency badge */}
+            <div
+              className="self-start flex items-center rounded-[8px]"
+              style={{
+                backgroundColor: "rgba(244,68,68,0.3)",
+                border: "1px solid #F44444",
+                opacity: 0.8,
+                padding: "6px 9px",
+              }}
+            >
+              <span className="font-josefin font-bold text-[12px] text-[#F44444] leading-none">
+                Urgensi Tinggi
+              </span>
             </div>
-          </div>
 
-          {/* Bottom Card Greeting */}
-          <div className="bg-[#0c818a] h-[59px] rounded-[14px] flex items-center justify-center text-white shadow-md">
-            <p className="font-josefin text-[22px] whitespace-nowrap">
-              <span className="font-normal">Salam </span>
-              <span className="font-bold">Sehat</span>
-              <span className="font-light opacity-80">Terus</span>
+            {/* Description */}
+            <p className="font-josefin font-medium text-[12px] text-[#0c818a] leading-normal">
+              {card.description}
             </p>
+
+            {/* Recommendation box */}
+            <div
+              className="rounded-[4px] flex flex-col gap-[4px]"
+              style={{
+                backgroundColor: "rgba(0,82,96,0.24)",
+                padding: "12px",
+                minHeight: 67,
+              }}
+            >
+              <span className="font-josefin font-bold text-[12px] text-white leading-none">
+                Rekomendasi
+              </span>
+              <p className="font-josefin font-medium text-[12px] text-white leading-normal">
+                {card.recommendation}
+              </p>
+            </div>
+
+            {/* Item badges */}
+            <div className="flex items-center gap-[11px] flex-wrap">
+              {card.items.map((item, j) => (
+                <div
+                  key={j}
+                  className="flex items-center justify-center rounded-[8px]"
+                  style={{
+                    backgroundColor: "#0c818a",
+                    opacity: 0.8,
+                    padding: "6px 9px",
+                  }}
+                >
+                  <span className="font-josefin font-medium text-[12px] text-white leading-none">
+                    {item}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );

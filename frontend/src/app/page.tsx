@@ -7,8 +7,6 @@ import React, { useState, useEffect } from "react";
 import { Search, Bell, MapPin, ChevronDown, Activity, Heart } from "lucide-react";
 import ActivePatientsCard from "@/components/ActivePatientsCard";
 import dynamic from "next/dynamic";
-import RegionDetailPanel from "@/components/RegionDetailPanel";
-import TrendsChart from "@/components/TrendsChart";
 
 // Dynamic import MapComponent with ssr: false to avoid window is not defined error on server side
 const MapComponent = dynamic(() => import("@/components/MapComponent"), {
@@ -25,41 +23,55 @@ const MapComponent = dynamic(() => import("@/components/MapComponent"), {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const DISEASE_TO_CODE: Record<string, string> = {
-  "Ispa": "J06.9",
-  "Flu": "J11",
-  "Diare": "A09",
-  "DBD": "A90",
-  "Darah Tinggi": "I10",
+interface SpatialCase {
+  kecamatan_domisili: string;
+  total_cases: number;
+  population: number;
+}
+
+// Helpers matching Figma design
+const HealthHeart = ({ className, fill = "currentColor" }: { className?: string; fill?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill={fill} xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    <path d="M12 7v6M9.5 10.5h5" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+const SortIcon = () => (
+  <svg className="size-[16px] text-[#0c818a] shrink-0 opacity-80 cursor-pointer" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3.5L6.5 9h11L12 3.5zm0 17l5.5-5.5h-11l5.5 5.5z" />
+  </svg>
+);
+
+const getIndonesianMonth = () => {
+  const months = [
+    "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+    "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  ];
+  return months[new Date().getMonth()];
 };
 
 export default function Dashboard() {
   const [selectedKecamatan, setSelectedKecamatan] = useState({
     name: "Ngemplak",
-    cases: 0,
-    status: "Rendah",
+    cases: 216,
+    status: "Tinggi",
   });
   
-  const [spatialData, setSpatialData] = useState<any[]>([]);
-  const [loadingMap, setLoadingMap] = useState<boolean>(true);
+  const [spatialData, setSpatialData] = useState<SpatialCase[]>([]);
   const [dateRange, setDateRange] = useState<"30" | "90" | "365">("90");
   const [selectedDisease, setSelectedDisease] = useState<string>("all");
 
-  const [temporalData, setTemporalData] = useState<any[]>([]);
-  const [loadingTrends, setLoadingTrends] = useState<boolean>(true);
-  const [activeDiseases, setActiveDiseases] = useState<string[]>([
-    "Ispa",
-    "DBD",
-    "Diare",
-    "Flu",
-    "Darah Tinggi",
-  ]);
-  const [trendsDateRange, setTrendsDateRange] = useState<"30" | "90" | "365">("90");
+  const [selectedDetail, setSelectedDetail] = useState<{
+    name: string;
+    population: number;
+    cases: number;
+  } | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Fetch Spatial Data for the Map
   useEffect(() => {
     const fetchSpatialData = async () => {
-      setLoadingMap(true);
       try {
         const endDate = new Date();
         const startDate = new Date();
@@ -98,46 +110,31 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.error("Error fetching spatial cases:", err);
-      } finally {
-        setLoadingMap(false);
       }
     };
 
     fetchSpatialData();
   }, [dateRange, selectedDisease]);
 
-  // Fetch Temporal Data for Trends Chart
+  // Fetch details for the popover panel
   useEffect(() => {
-    const fetchTemporalData = async () => {
-      setLoadingTrends(true);
+    if (!selectedKecamatan.name) return;
+    const fetchDetail = async () => {
+      setLoadingDetail(true);
       try {
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - parseInt(trendsDateRange, 10));
-
-        const activeCodes = activeDiseases
-          .map((d) => DISEASE_TO_CODE[d])
-          .filter(Boolean)
-          .join(",");
-
-        let url = `${API_BASE}/api/cases/temporal?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`;
-        if (activeCodes) {
-          url += `&diseases=${activeCodes}`;
+        const res = await fetch(`${API_BASE}/api/cases/region/${selectedKecamatan.name}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSelectedDetail(data);
         }
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch temporal data");
-        const data = await res.json();
-        setTemporalData(data);
       } catch (err) {
-        console.error("Error fetching temporal data:", err);
+        console.error("Error fetching region detail:", err);
       } finally {
-        setLoadingTrends(false);
+        setLoadingDetail(false);
       }
     };
-
-    fetchTemporalData();
-  }, [trendsDateRange, activeDiseases]);
+    fetchDetail();
+  }, [selectedKecamatan.name]);
 
   const handleSelectKecamatan = (name: string) => {
     const item = spatialData.find(
@@ -152,21 +149,18 @@ export default function Dashboard() {
     });
   };
 
-  const handleToggleDisease = (disease: string) => {
-    setActiveDiseases((prev) => {
-      if (prev.includes(disease)) {
-        if (prev.length === 1) return prev; // Keep at least one disease active
-        return prev.filter((d) => d !== disease);
-      } else {
-        return [...prev, disease];
-      }
-    });
-  };
+  // Math-scaled proportional cases based on Figma's proportions (Total 238)
+  const totalCases = spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0);
+  const ispaCases = totalCases > 0 ? Math.round(totalCases * (80 / 238)) : 80;
+  const dbdCases = totalCases > 0 ? Math.round(totalCases * (60 / 238)) : 60;
+  const diareCases = totalCases > 0 ? Math.round(totalCases * (50 / 238)) : 50;
+  const fluCases = totalCases > 0 ? Math.round(totalCases * (32 / 238)) : 32;
+  const darahTinggiCases = totalCases > 0 ? Math.round(totalCases * (16 / 238)) : 16;
 
   return (
-    <div className="p-[40px] flex flex-col gap-[30px] h-full min-h-screen text-black select-none">
+    <div className="px-[41px] py-[29px] flex flex-col gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
       {/* Top Header */}
-      <header className="flex justify-between items-center w-full">
+      <header className="flex justify-between items-start w-full">
         <div>
           <p className="text-[#0c818a] font-semibold text-[20px] font-josefin leading-normal">
             Selamat datang, Carmen
@@ -178,29 +172,31 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-[24px]">
           {/* Search bar */}
-          <div className="flex items-center gap-2 bg-black/10 hover:bg-black/15 text-[12px] font-josefin text-white border border-transparent rounded-[16px] px-4 py-2 w-[195px] transition-all duration-300">
-            <Search className="size-[18px] text-teal-brand" />
+          <div className="flex items-center gap-2 bg-[rgba(105,126,128,0.2)] hover:bg-[rgba(105,126,128,0.3)] text-[12px] font-josefin text-white border border-transparent rounded-[16px] px-[18px] py-[8px] w-[196px] transition-all duration-300">
+            <Search className="size-[18px] text-white" />
             <input
               type="text"
               placeholder="Cari wilayah lain"
-              className="bg-transparent border-none outline-none placeholder-zinc-500 text-black w-full"
+              className="bg-transparent border-none outline-none placeholder-white/70 text-white font-light text-[12px] w-full"
             />
           </div>
 
           {/* Notification */}
-          <button className="text-teal-brand hover:scale-110 transition-transform duration-300 relative cursor-pointer" aria-label="Notifikasi">
-            <Bell className="size-[24px]" />
+          <button className="text-[#0c818a] hover:scale-110 transition-transform duration-300 relative cursor-pointer" aria-label="Notifikasi">
+            <Bell className="size-[24px] fill-[#0c818a]" />
             <span className="absolute top-0 right-0 size-2 bg-red-500 rounded-full animate-ping" />
           </button>
 
           {/* Profile Avatar */}
           <div className="flex items-center gap-[18px]">
-            <div className="border-3 border-teal-brand rounded-full size-[60px] overflow-hidden bg-white/50 flex items-center justify-center">
-              <div className="bg-gradient-to-tr from-teal-500 to-[#3f9cab] size-full flex items-center justify-center text-white font-bold text-lg">
-                C
-              </div>
+            <div className="border-3 border-[#0c818a] rounded-full size-[60px] overflow-hidden bg-white/50 flex items-center justify-center relative shrink-0">
+              <img
+                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
+                alt="Carmenita"
+                className="size-full object-cover"
+              />
             </div>
-            <span className="text-[20px] font-semibold font-josefin text-black">
+            <span className="text-[20px] font-semibold font-josefin text-black whitespace-nowrap">
               Carmenita
             </span>
           </div>
@@ -208,71 +204,12 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-[30px] w-full">
-        {/* Left Column (9 cols in xl, contains Map, Trends, & Table) */}
-        <div className="xl:col-span-9 flex flex-col gap-[30px]">
+      <div className="flex flex-row gap-[25px] w-full items-start">
+        {/* Left Column (holds Map and Table) */}
+        <div className="flex-1 min-w-0 flex flex-col gap-[25px]">
           
           {/* Map Card */}
-          <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] p-6 shadow-lg h-[486px] relative overflow-hidden flex flex-col justify-between">
-            {/* Top row actions on Map */}
-            <div className="flex justify-between items-start z-10">
-              {/* Location Badge */}
-              <div className="bg-[rgba(105,126,128,0.2)] backdrop-blur-sm rounded-[8px] px-4 py-2 flex items-center gap-2 text-white font-josefin">
-                <MapPin className="size-[18px] text-teal-300" />
-                <span className="text-[14px]">Kabupaten Sleman</span>
-              </div>
-
-              {/* Filters & Legend */}
-              <div className="flex flex-col gap-2 items-end">
-                <div className="flex gap-2">
-                  <div className="relative">
-                    <select
-                      value={dateRange}
-                      onChange={(e) => setDateRange(e.target.value as any)}
-                      className="appearance-none bg-teal-brand text-white text-[14px] font-josefin rounded-[8px] pl-4 pr-10 py-1.5 hover:bg-teal-brand-hover transition-colors duration-200 cursor-pointer shadow-md outline-none border-none"
-                    >
-                      <option value="30" className="bg-[#0c818a] text-white">30 Hari Terakhir</option>
-                      <option value="90" className="bg-[#0c818a] text-white">3 Bulan Terakhir</option>
-                      <option value="365" className="bg-[#0c818a] text-white">1 Tahun Terakhir</option>
-                    </select>
-                    <ChevronDown className="size-[16px] text-white absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-
-                  <div className="relative">
-                    <select
-                      value={selectedDisease}
-                      onChange={(e) => setSelectedDisease(e.target.value)}
-                      className="appearance-none bg-teal-brand text-white text-[14px] font-josefin rounded-[8px] pl-4 pr-10 py-1.5 hover:bg-teal-brand-hover transition-colors duration-200 cursor-pointer shadow-md outline-none border-none"
-                    >
-                      <option value="all" className="bg-[#0c818a] text-white">Semua Penyakit</option>
-                      <option value="J06.9" className="bg-[#0c818a] text-white">ISPA</option>
-                      <option value="J11" className="bg-[#0c818a] text-white">Flu / Influenza</option>
-                      <option value="A09" className="bg-[#0c818a] text-white">Diare</option>
-                      <option value="A90" className="bg-[#0c818a] text-white">DBD</option>
-                      <option value="I10" className="bg-[#0c818a] text-white">Darah Tinggi</option>
-                    </select>
-                    <ChevronDown className="size-[16px] text-white absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
-                
-                {/* Legend Card */}
-                <div className="bg-[rgba(105,126,128,0.2)] backdrop-blur-sm rounded-[8px] p-3 flex flex-col gap-1.5 text-white font-josefin text-[14px] w-[105px]">
-                  <div className="flex items-center gap-2">
-                    <span className="size-3 bg-emerald-400 rounded-full" />
-                    <span>Rendah</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="size-3 bg-amber-400 rounded-full" />
-                    <span>Sedang</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="size-3 bg-rose-500 rounded-full animate-pulse" />
-                    <span>Tinggi</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+          <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] h-[486px] relative overflow-hidden flex flex-col justify-between shrink-0">
             {/* Map component */}
             <div className="absolute inset-0 size-full z-0">
               <MapComponent
@@ -282,232 +219,259 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* Kecamatan Detail Popover (Bottom Left) */}
-            <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md rounded-[8px] p-4 text-white font-josefin w-[194px] z-10 shadow-lg border border-white/10">
-              <p className="text-[14px]">
-                <span className="font-bold">Kecamatan:</span> {selectedKecamatan.name}
-              </p>
-              <p className="text-[14px] mt-1">
-                <span className="font-bold">Total Kasus:</span> {selectedKecamatan.cases}
-              </p>
-              <p className="text-[14px] mt-1 flex items-center gap-1.5">
-                <span className="font-bold">Status:</span>
-                <span className={`size-2.5 rounded-full inline-block ${
-                  selectedKecamatan.status === "Tinggi" ? "bg-rose-500" :
-                  selectedKecamatan.status === "Sedang" ? "bg-amber-400" : "bg-emerald-400"
-                }`} />
-                <span>{selectedKecamatan.status}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Trends & Detail Panel Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-[30px] w-full">
-            {/* Trends Chart (8 cols in lg) */}
-            <div className="lg:col-span-8 bg-white border border-teal-500/5 rounded-[16px] p-6 shadow-lg flex flex-col justify-between relative min-h-[400px]">
-              {loadingTrends && (
-                <div className="absolute inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center z-20">
-                  <div className="size-6 border-2 border-teal-brand border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-
-              {/* Chart Header */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                <div>
-                  <h3 className="text-[#0c818a] font-bold text-[18px] font-josefin">Grafik Tren Penyakit</h3>
-                  <p className="text-zinc-500 text-[13px] font-josefin mt-0.5">Perbandingan jumlah kasus rekam medis historical</p>
-                </div>
-                
-                {/* Time filter */}
-                <div className="relative">
-                  <select
-                    value={trendsDateRange}
-                    onChange={(e) => setTrendsDateRange(e.target.value as any)}
-                    className="appearance-none bg-teal-brand text-white text-[14px] font-josefin rounded-[8px] pl-4 pr-10 py-1.5 hover:bg-teal-brand-hover transition-colors duration-200 cursor-pointer shadow-md outline-none border-none"
-                  >
-                    <option value="30" className="bg-[#0c818a] text-white">30 Hari Terakhir</option>
-                    <option value="90" className="bg-[#0c818a] text-white">3 Bulan Terakhir</option>
-                    <option value="365" className="bg-[#0c818a] text-white">1 Tahun Terakhir</option>
-                  </select>
-                  <ChevronDown className="size-[16px] text-white absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+            {/* Overlays inside Map Card */}
+            {/* Bottom Left: Location & Kecamatan Detail popover */}
+            <div className="absolute bottom-4 left-4 flex flex-col gap-2.5 z-10 items-start">
+              {/* Location Badge */}
+              <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[17px] py-[8px] flex items-center gap-3 text-white w-[194px] shadow-md">
+                <MapPin className="size-[18px] text-white fill-white/20" />
+                <span className="text-[14px] font-josefin font-normal">D.I. Yogyakarta</span>
               </div>
 
-              {/* Disease Filter Pills */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {Object.keys(DISEASE_TO_CODE).map((disease) => {
-                  const isActive = activeDiseases.includes(disease);
-                  const colors: Record<string, string> = {
-                    "Ispa": "bg-blue-500 text-white border-blue-500",
-                    "DBD": "bg-cyan-500 text-white border-cyan-500",
-                    "Diare": "bg-pink-500 text-white border-pink-500",
-                    "Flu": "bg-orange-500 text-white border-orange-500",
-                    "Darah Tinggi": "bg-emerald-500 text-white border-emerald-500",
-                  };
-                  const inactiveColors: Record<string, string> = {
-                    "Ispa": "border-blue-500/30 text-blue-500 bg-blue-500/5 hover:bg-blue-500/10",
-                    "DBD": "border-cyan-500/30 text-cyan-500 bg-cyan-500/5 hover:bg-cyan-500/10",
-                    "Diare": "border-pink-500/30 text-pink-500 bg-pink-500/5 hover:bg-pink-500/10",
-                    "Flu": "border-orange-500/30 text-orange-500 bg-orange-500/5 hover:bg-orange-500/10",
-                    "Darah Tinggi": "border-emerald-500/30 text-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10",
-                  };
-                  return (
-                    <button
-                      key={disease}
-                      onClick={() => handleToggleDisease(disease)}
-                      className={`text-[12px] font-semibold font-josefin rounded-full px-3 py-1 border transition-all duration-200 cursor-pointer ${
-                        isActive ? colors[disease] : inactiveColors[disease]
-                      }`}
-                    >
-                      {disease}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex-1 w-full h-[280px]">
-                {temporalData.length > 0 ? (
-                  <TrendsChart rawData={temporalData} activeDiseases={activeDiseases} />
-                ) : (
-                  <div className="size-full flex flex-col items-center justify-center py-10 font-josefin text-zinc-500 text-[14px]">
-                    <p className="font-bold text-zinc-700 text-[16px]">Tidak ada data penyakit</p>
-                    <p className="mt-1">Data rekam medis belum tersedia untuk wilayah dan filter waktu terpilih.</p>
+              {/* Kecamatan Detail Popover */}
+              <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[12px] py-[11px] text-white w-[173px] shadow-md flex flex-col gap-1 relative min-h-[64px]">
+                {loadingDetail && (
+                  <div className="absolute inset-0 bg-black/25 backdrop-blur-sm flex items-center justify-center rounded-[8px]">
+                    <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
+                <p className="text-[14px] font-josefin leading-normal">
+                  <span className="font-bold">Kecamatan:</span> {selectedKecamatan.name}
+                </p>
+                <p className="text-[14px] font-josefin leading-normal">
+                  <span className="font-bold">Total Kasus:</span> {selectedKecamatan.cases}
+                </p>
+                {selectedDetail && (
+                  <>
+                    <p className="text-[14px] font-josefin leading-normal">
+                      <span className="font-bold">Populasi:</span> {selectedDetail.population.toLocaleString("id-ID")}
+                    </p>
+                    <p className="text-[14px] font-josefin leading-normal">
+                      <span className="font-bold">Insidensi:</span> {((selectedDetail.cases / selectedDetail.population) * 10000).toFixed(1)} /10k
+                    </p>
+                  </>
+                )}
+                <p className="text-[14px] font-josefin leading-normal flex items-center gap-1.5">
+                  <span className="font-bold">Status:</span>
+                  <span className={`size-2.5 rounded-full inline-block ${
+                    selectedKecamatan.status === "Tinggi" ? "bg-rose-500" :
+                    selectedKecamatan.status === "Sedang" ? "bg-amber-400" : "bg-emerald-400"
+                  }`} />
+                  <span>{selectedKecamatan.status}</span>
+                </p>
               </div>
             </div>
 
-            {/* Region Detail Panel (4 cols in lg) */}
-            <div className="lg:col-span-4 h-full">
-              <RegionDetailPanel kecamatanName={selectedKecamatan.name} />
+            {/* Top Right: Filters & Legend */}
+            <div className="absolute top-4 right-4 flex flex-col gap-2 z-10 items-end">
+              {/* Date Range Selector */}
+              <div className="relative w-[152px]">
+                <select
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value as any)}
+                  className="appearance-none w-full bg-[#0c818a] hover:bg-[#0a6d75] transition-colors duration-200 text-white text-[14px] font-josefin rounded-[8px] pl-4 pr-8 py-1 cursor-pointer shadow-md border-none focus:outline-none"
+                >
+                  <option value="30" className="bg-[#0c818a] text-white">30 Hari Terakhir</option>
+                  <option value="90" className="bg-[#0c818a] text-white">3 Bulan Terakhir</option>
+                  <option value="365" className="bg-[#0c818a] text-white">1 Tahun Terakhir</option>
+                </select>
+                <ChevronDown className="size-4 text-white absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Disease Selector */}
+              <div className="relative w-[152px]">
+                <select
+                  value={selectedDisease}
+                  onChange={(e) => setSelectedDisease(e.target.value)}
+                  className="appearance-none w-full bg-[#0c818a] hover:bg-[#0a6d75] transition-colors duration-200 text-white text-[14px] font-josefin rounded-[8px] pl-4 pr-8 py-1 cursor-pointer shadow-md border-none focus:outline-none"
+                >
+                  <option value="all" className="bg-[#0c818a] text-white">Semua Penyakit</option>
+                  <option value="J06.9" className="bg-[#0c818a] text-white">ISPA</option>
+                  <option value="J11" className="bg-[#0c818a] text-white">Flu / Influenza</option>
+                  <option value="A09" className="bg-[#0c818a] text-white">Diare</option>
+                  <option value="A90" className="bg-[#0c818a] text-white">DBD</option>
+                  <option value="I10" className="bg-[#0c818a] text-white">Darah Tinggi</option>
+                </select>
+                <ChevronDown className="size-4 text-white absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Legend Card */}
+              <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] p-3 flex flex-col gap-1.5 text-white font-josefin text-[14px] w-[105px] shadow-md">
+                <div className="flex items-center gap-2">
+                  <span className="size-3 bg-[#34d399] rounded-full border border-white/20" />
+                  <span>Rendah</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="size-3 bg-[#fbbf24] rounded-full border border-white/20" />
+                  <span>Sedang</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="size-3 bg-[#f43f5e] rounded-full border border-white/20" />
+                  <span>Tinggi</span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Disease Table */}
-          <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-lg overflow-y-auto h-[294px]">
-            <table className="w-full text-left border-collapse font-montserrat">
+          <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] overflow-y-auto h-[294px] shrink-0">
+            <table className="w-full border-collapse font-montserrat">
               <thead>
-                <tr className="bg-white border-b border-zinc-200">
-                  <th className="px-6 py-4 text-teal-brand font-bold text-[14px] text-center w-1/3">
-                    Kode ICD-10
+                <tr className="bg-white">
+                  <th className="p-4 text-[#0c818a] font-bold text-[14px] text-center">
+                    Kode IDC-10
                   </th>
-                  <th className="px-6 py-4 text-teal-brand font-bold text-[14px] w-1/3">
-                    Nama Medis / Awam
+                  <th className="p-4 text-[#0c818a] font-bold text-[14px] text-left">
+                    <div className="flex items-center gap-1">
+                      <span>Nama Medis / Awam</span>
+                      <SortIcon />
+                    </div>
                   </th>
-                  <th className="px-6 py-4 text-teal-brand font-bold text-[14px] w-1/3">
-                    Jumlah Kasus (Sleman)
+                  <th className="p-4 text-[#0c818a] font-bold text-[14px] text-left">
+                    <div className="flex items-center gap-2">
+                      <span>Jumlah Kasus</span>
+                      <SortIcon />
+                    </div>
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/10 text-teal-brand">
-                <tr className="bg-[#f7f6fe]/60 hover:bg-[#f7f6fe]/85 transition-colors duration-150">
-                  <td className="px-6 py-3 font-medium text-[14px] text-center">J06.9</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">ISPA (Infeksi Saluran Pernafasan)</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">
-                    {spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) > 0 
-                      ? Math.round(spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) * 0.40)
-                      : 80}
-                  </td>
+              <tbody className="text-[#0c818a]">
+                <tr className="bg-[#f7f6fe]">
+                  <td className="p-4 font-medium text-[14px] text-center">#89094</td>
+                  <td className="p-4 font-medium text-[14px]">Infeksi Saluran Pernafasan</td>
+                  <td className="p-4 font-medium text-[14px]">{ispaCases}</td>
                 </tr>
-                <tr className="bg-white/40 hover:bg-white/60 transition-colors duration-150">
-                  <td className="px-6 py-3 font-medium text-[14px] text-center">A90</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">DBD</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">
-                    {spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) > 0 
-                      ? Math.round(spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) * 0.13)
-                      : 60}
-                  </td>
+                <tr className="bg-white">
+                  <td className="p-4 font-medium text-[14px] text-center">#85252</td>
+                  <td className="p-4 font-medium text-[14px]">DBD</td>
+                  <td className="p-4 font-medium text-[14px]">{dbdCases}</td>
                 </tr>
-                <tr className="bg-[#f7f6fe]/60 hover:bg-[#f7f6fe]/85 transition-colors duration-150">
-                  <td className="px-6 py-3 font-medium text-[14px] text-center">A09</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">Diare</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">
-                    {spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) > 0 
-                      ? Math.round(spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) * 0.15)
-                      : 50}
-                  </td>
+                <tr className="bg-[#f7f6fe]">
+                  <td className="p-4 font-medium text-[14px] text-center">#89094</td>
+                  <td className="p-4 font-medium text-[14px]">Diare</td>
+                  <td className="p-4 font-medium text-[14px]">{diareCases}</td>
                 </tr>
-                <tr className="bg-white/40 hover:bg-white/60 transition-colors duration-150">
-                  <td className="px-6 py-3 font-medium text-[14px] text-center">J11</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">Flu / Influenza</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">
-                    {spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) > 0 
-                      ? Math.round(spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) * 0.25)
-                      : 32}
-                  </td>
+                <tr className="bg-white">
+                  <td className="p-4 font-medium text-[14px] text-center">#85252</td>
+                  <td className="p-4 font-medium text-[14px]">Flu</td>
+                  <td className="p-4 font-medium text-[14px]">{fluCases}</td>
                 </tr>
-                <tr className="bg-[#f7f6fe]/60 hover:bg-[#f7f6fe]/85 transition-colors duration-150">
-                  <td className="px-6 py-3 font-medium text-[14px] text-center">I10</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">Hipertensi / Darah Tinggi</td>
-                  <td className="px-6 py-3 font-medium text-[14px]">
-                    {spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) > 0 
-                      ? Math.round(spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0) * 0.07)
-                      : 16}
-                  </td>
+                <tr className="bg-[#f7f6fe]">
+                  <td className="p-4 font-medium text-[14px] text-center">#89094</td>
+                  <td className="p-4 font-medium text-[14px]">Darah Tinggi</td>
+                  <td className="p-4 font-medium text-[14px]">{darahTinggiCases}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Right Column (3 cols in xl, contains widgets) */}
-        <div className="xl:col-span-3 flex flex-col gap-[30px] h-full justify-between">
+        {/* Right Column (holds widgets) */}
+        <div className="w-[226px] flex flex-col gap-[25px] shrink-0">
           {/* Active Patients Card */}
           <ActivePatientsCard />
 
           {/* Disease Composition Card */}
-          <div className="bg-white rounded-[24px] p-6 shadow-lg h-[389px] flex flex-col justify-between border border-teal-500/5">
-            <div className="flex items-center gap-2 text-teal-brand font-josefin">
-              <Activity className="size-[20px]" />
-              <span className="font-bold text-[16px]">Komposisi Penyakit</span>
+          <div className="bg-white rounded-[24px] px-[17px] py-[15px] shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] h-[389px] w-full flex flex-col justify-between border border-teal-500/5 select-none shrink-0">
+            <div className="flex items-center gap-2 text-[#0c818a] font-josefin justify-center">
+              <HealthHeart className="size-[20px] fill-[#0c818a]" />
+              <span className="font-bold text-[16px] leading-normal">Komposisi Penyakit</span>
             </div>
 
-            {/* Mini donut display */}
-            <div className="flex justify-center items-center relative py-4">
-              <svg className="size-[165px]" viewBox="0 0 165 165">
-                <circle cx="82.5" cy="82.5" r="60" fill="transparent" stroke="#3b82f6" strokeWidth="15" strokeDasharray="377" strokeDashoffset="100" />
-                <circle cx="82.5" cy="82.5" r="60" fill="transparent" stroke="#06b6d4" strokeWidth="15" strokeDasharray="377" strokeDashoffset="220" />
-                <circle cx="82.5" cy="82.5" r="60" fill="transparent" stroke="#ec4899" strokeWidth="15" strokeDasharray="377" strokeDashoffset="280" />
-                <circle cx="82.5" cy="82.5" r="60" fill="transparent" stroke="#f97316" strokeWidth="15" strokeDasharray="377" strokeDashoffset="320" />
-                <circle cx="82.5" cy="82.5" r="60" fill="transparent" stroke="#10b981" strokeWidth="15" strokeDasharray="377" strokeDashoffset="350" />
-                <circle cx="82.5" cy="82.5" r="44" fill="#ffffff" />
+            {/* Premium SVG donut display */}
+            <div className="flex justify-center items-center relative py-1 shrink-0">
+              <svg className="size-[165px] rotate-[-90deg]" viewBox="0 0 165 165">
+                {/* Circumference C = 2 * PI * 52.5 = 329.87 */}
+                {/* 15px stroke width. Outer radius 60, Inner radius 45 */}
+                {/* Segments: Darah Tinggi(6.7%), DBD(25.2%), Diare(21%), Flu(13.5%), ISPA(33.6%) */}
+                <circle
+                  cx="82.5"
+                  cy="82.5"
+                  r="52.5"
+                  fill="transparent"
+                  stroke="#ef4444"
+                  strokeWidth="15"
+                  strokeDasharray="22.1 329.87"
+                  strokeDashoffset="0"
+                />
+                <circle
+                  cx="82.5"
+                  cy="82.5"
+                  r="52.5"
+                  fill="transparent"
+                  stroke="#38bdf8"
+                  strokeWidth="15"
+                  strokeDasharray="83.1 329.87"
+                  strokeDashoffset="-22.1"
+                />
+                <circle
+                  cx="82.5"
+                  cy="82.5"
+                  r="52.5"
+                  fill="transparent"
+                  stroke="#ec4899"
+                  strokeWidth="15"
+                  strokeDasharray="69.3 329.87"
+                  strokeDashoffset="-105.2"
+                />
+                <circle
+                  cx="82.5"
+                  cy="82.5"
+                  r="52.5"
+                  fill="transparent"
+                  stroke="#34d399"
+                  strokeWidth="15"
+                  strokeDasharray="44.5 329.87"
+                  strokeDashoffset="-174.5"
+                />
+                <circle
+                  cx="82.5"
+                  cy="82.5"
+                  r="52.5"
+                  fill="transparent"
+                  stroke="#fbbf24"
+                  strokeWidth="15"
+                  strokeDasharray="110.8 329.87"
+                  strokeDashoffset="-219.0"
+                />
               </svg>
-              <div className="absolute text-center flex flex-col items-center">
-                <span className="text-[#454459] font-normal font-josefin text-[14px] opacity-75">
-                  September
+              {/* Inner Circle content */}
+              <div className="absolute text-center flex flex-col items-center justify-center inset-0">
+                <span className="text-[#454459]/70 font-josefin text-[14px] font-normal leading-normal">
+                  {getIndonesianMonth()}
                 </span>
               </div>
             </div>
 
-            {/* Colored Heart Legends */}
-            <div className="bg-zinc-100/60 rounded-[12px] p-3 flex flex-wrap gap-x-4 gap-y-2 justify-center font-josefin text-[13px] text-zinc-800">
-              <div className="flex items-center gap-1.5">
-                <Heart className="size-3.5 fill-blue-500 text-blue-500" />
+            {/* Colored HealthHeart Legends */}
+            <div className="bg-[rgba(196,196,196,0.2)] rounded-[12px] px-[16px] py-[12px] flex flex-col gap-2 font-josefin text-[14px] text-black w-full h-[144px] shrink-0 justify-center">
+              <div className="flex items-center gap-2.5">
+                <HealthHeart className="size-[16px] fill-[#fbbf24]" />
                 <span>Ispa</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Heart className="size-3.5 fill-cyan-500 text-cyan-500" />
+              <div className="flex items-center gap-2.5">
+                <HealthHeart className="size-[16px] fill-[#38bdf8]" />
                 <span>DBD</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Heart className="size-3.5 fill-pink-500 text-pink-500" />
+              <div className="flex items-center gap-2.5">
+                <HealthHeart className="size-[16px] fill-[#ec4899]" />
                 <span>Diare</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Heart className="size-3.5 fill-orange-500 text-orange-500" />
+              <div className="flex items-center gap-2.5">
+                <HealthHeart className="size-[16px] fill-[#34d399]" />
                 <span>Flu</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Heart className="size-3.5 fill-emerald-500 text-emerald-500" />
-                <span className="truncate max-w-[80px]">Darah Tinggi</span>
+              <div className="flex items-center gap-2.5">
+                <HealthHeart className="size-[16px] fill-[#ef4444]" />
+                <span>Darah Tinggi</span>
               </div>
             </div>
           </div>
 
           {/* Bottom Card Greeting */}
-          <div className="bg-[#0c818a] h-[59px] rounded-[14px] flex items-center justify-center text-white shadow-md">
-            <p className="font-josefin text-[22px] whitespace-nowrap">
-              <span className="font-normal">Salam </span>
+          <div className="bg-[#0c818a] h-[59px] w-full rounded-[14px] flex items-center justify-center text-white shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] shrink-0 select-none">
+            <p className="font-josefin text-[24px] whitespace-nowrap leading-none flex items-center justify-center">
+              <span className="font-normal">Salam&nbsp;</span>
               <span className="font-bold">Sehat</span>
               <span className="font-light opacity-80">Terus</span>
             </p>

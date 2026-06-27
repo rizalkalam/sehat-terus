@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, TrendingUp, AlertTriangle, LogOut } from "lucide-react";
+import { LayoutDashboard, TrendingUp, AlertTriangle, Package, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
@@ -14,16 +14,25 @@ export default function Sidebar() {
       name: "Dashboard",
       path: "/",
       icon: LayoutDashboard,
+      iconSize: "size-[30px]",
     },
     {
       name: "Trend",
       path: "/proyeksi-tren",
       icon: TrendingUp,
+      iconSize: "size-[24px]",
     },
     {
       name: "Early Warning",
       path: "/peringatan-dini",
       icon: AlertTriangle,
+      iconSize: "size-[25px]",
+    },
+    {
+      name: "Logistic",
+      path: "#",
+      icon: Package,
+      iconSize: "size-[25px]",
     },
   ];
 
@@ -42,15 +51,40 @@ export default function Sidebar() {
             const Icon = item.icon;
             const isActive = pathname === item.path;
 
+            const content = (
+              <>
+                <Icon
+                  className={cn(
+                    item.iconSize,
+                    "shrink-0 transition-transform duration-300 group-hover:scale-110",
+                    isActive ? "text-white" : "text-teal-brand group-hover:text-teal-brand-hover"
+                  )}
+                />
+                <span className="leading-none">{item.name}</span>
+              </>
+            );
+
+            if (item.path === "#") {
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => alert("Fitur Logistik sedang dalam pengembangan.")}
+                  className="flex gap-[18px] items-center px-[17px] py-[15px] rounded-[16px] w-full transition-all duration-300 font-josefin text-[20px] font-normal group border border-transparent text-teal-brand hover:bg-white/10 hover:text-teal-brand-hover cursor-pointer text-left"
+                >
+                  {content}
+                </button>
+              );
+            }
+
             return (
               <Link
                 key={item.path}
                 href={item.path}
                 className={cn(
-                  "flex gap-[18px] items-center px-[17px] py-[15px] rounded-[16px] w-full transition-all duration-300 font-josefin text-[20px] font-normal group border border-transparent",
+                  "flex gap-[18px] items-center rounded-[16px] w-full transition-all duration-300 font-josefin text-[20px] font-normal group border border-transparent",
                   isActive
-                    ? "text-white shadow-lg"
-                    : "text-teal-brand hover:bg-white/10 hover:text-teal-brand-hover"
+                    ? "px-[20px] py-[18px] text-white shadow-lg"
+                    : "px-[17px] py-[15px] text-teal-brand hover:bg-white/10 hover:text-teal-brand-hover"
                 )}
                 style={
                   isActive
@@ -61,13 +95,7 @@ export default function Sidebar() {
                     : undefined
                 }
               >
-                <Icon
-                  className={cn(
-                    "size-[24px] shrink-0 transition-transform duration-300 group-hover:scale-110",
-                    isActive ? "text-white" : "text-teal-brand group-hover:text-teal-brand-hover"
-                  )}
-                />
-                <span className="leading-none">{item.name}</span>
+                {content}
               </Link>
             );
           })}
@@ -85,3 +113,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+
