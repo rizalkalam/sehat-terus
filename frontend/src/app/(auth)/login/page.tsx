@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Activity, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { validateCredentials, setAuthCookies } from "@/lib/auth.client";
+import { loginWithApi } from "@/lib/auth.client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,18 +25,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    // Brief loading feedback
-    await new Promise((r) => setTimeout(r, 400));
-
-    const user = validateCredentials(email, password);
+    const result = await loginWithApi(email, password);
     setLoading(false);
 
-    if (!user) {
-      setError("Email atau kata sandi salah.");
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
-    setAuthCookies(user);
+    // Cookie st_auth & st_user sudah disetel oleh backend via Set-Cookie.
     const from = new URLSearchParams(window.location.search).get("from") || "/";
     router.replace(from);
   };

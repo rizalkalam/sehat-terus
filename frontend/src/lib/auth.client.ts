@@ -1,70 +1,54 @@
 import type { User } from "./auth";
-import { STATIC_USERS, AUTH_COOKIE, USER_COOKIE } from "./auth";
+import { AUTH_COOKIE, USER_COOKIE } from "./auth";
 
-const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 hari (detik)
 
-// ── Validation ──────────────────────────────────────────────────────────────
+// ── API Auth ──────────────────────────────────────────────────────────────────
 
-export function validateCredentials(email: string, password: string): User | null {
-  const found = STATIC_USERS.find(
-    (u) => u.email === email && u.password === password
-  );
-  if (found) {
-    return {
-      email: found.email,
-      name: found.name,
-      displayName: found.displayName,
-      avatarSrc: found.avatarSrc,
-    };
-  }
-
+export async function loginWithApi(
+  email: string,
+  password: string
+): Promise<{ ok: true; user: User } | { ok: false; error: string }> {
   try {
-    const raw = sessionStorage.getItem("st_registered");
-    if (raw) {
-      const users: (User & { password: string })[] = JSON.parse(raw);
-      const reg = users.find(
-        (u) => u.email === email && u.password === password
-      );
-      if (reg) {
-        return {
-          email: reg.email,
-          name: reg.name,
-          displayName: reg.displayName,
-          avatarSrc: reg.avatarSrc,
-        };
-      }
-    }
-  } catch {
-    // sessionStorage unavailable — skip
-  }
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // kirim & terima cookie lintas origin
+      body: JSON.stringify({ email, password }),
+    });
 
-  return null;
+    const data = await res.json();
+
+    if (!res.ok) {
+      return { ok: false, error: data.error || "Login gagal." };
+    }
+
+    // Backend sudah setel st_auth (HttpOnly) & st_user (readable).
+    // Kembalikan user untuk keperluan redirect/state langsung.
+    return {
+      ok: true,
+      user: {
+        email: data.user.email,
+        name: data.user.nama,
+        displayName: data.user.nama,
+      },
+    };
+  } catch {
+    return { ok: false, error: "Tidak dapat terhubung ke server." };
+  }
 }
 
-// ── Registration ─────────────────────────────────────────────────────────────
-
-export function registerUser(data: {
-  email: string;
-  password: string;
-  name: string;
-  displayName: string;
-}): { ok: boolean; error?: string } {
-  if (STATIC_USERS.some((u) => u.email === data.email)) {
-    return { ok: false, error: "Email sudah terdaftar." };
-  }
-
+export async function logoutFromApi(): Promise<void> {
   try {
-    const raw = sessionStorage.getItem("st_registered") ?? "[]";
-    const users: (User & { password: string })[] = JSON.parse(raw);
-    if (users.some((u) => u.email === data.email)) {
-      return { ok: false, error: "Email sudah terdaftar." };
-    }
-    users.push({ ...data, avatarSrc: undefined });
-    sessionStorage.setItem("st_registered", JSON.stringify(users));
-    return { ok: true };
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
   } catch {
-    return { ok: false, error: "Gagal menyimpan data. Coba lagi." };
+    // best-effort — lanjut hapus cookie lokal
   }
+  clearAuthCookies();
 }
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
