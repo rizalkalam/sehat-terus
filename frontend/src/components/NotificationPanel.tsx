@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   AlertTriangle,
@@ -113,14 +114,15 @@ export default function NotificationPanel({ open, onClose, onUnreadChange }: Not
 
   if (!open) return null;
 
-  return (
+  // Portaled to <body> — see ConfirmModal.tsx for why.
+  return createPortal(
     <>
       {/* Backdrop — click to close */}
-      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="fixed inset-0 z-[1100]" onClick={onClose} />
 
       {/* Slide-in panel */}
       <div
-        className="fixed top-0 right-0 h-full w-[400px] z-50 flex flex-col bg-white"
+        className="fixed top-0 right-0 h-full w-[400px] z-[1101] flex flex-col bg-white"
         style={{ boxShadow: "-6px 0 40px 0 rgba(0,0,0,0.14)" }}
       >
         {/* Header */}
@@ -181,7 +183,8 @@ export default function NotificationPanel({ open, onClose, onUnreadChange }: Not
           )}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

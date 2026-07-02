@@ -272,7 +272,7 @@ export default function LogisticPage() {
 
       {loaded && (activeTab === "pengadaan" ? (
         <>
-          <InfoStatCards items={statCards} />
+          <InfoStatCards items={statCards} wrap={false} />
           <AiBanner />
           <StockChart />
           <DefektaTable />

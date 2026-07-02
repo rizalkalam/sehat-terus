@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Camera } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -39,9 +40,10 @@ export default function EditProfileModal({ open, onClose }: EditProfileModalProp
     onClose();
   };
 
-  return (
+  // Portaled to <body> — see ConfirmModal.tsx for why.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[1100] flex items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
       onClick={onClose}
     >
@@ -140,6 +142,7 @@ export default function EditProfileModal({ open, onClose }: EditProfileModalProp
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

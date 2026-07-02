@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X, AlertTriangle, MapPin, Pill, TrendingUp, Clock } from "lucide-react";
 
 export interface AlertDetailData {
@@ -33,9 +34,12 @@ export default function AlertDetailModal({
 }: AlertDetailModalProps) {
   if (!open || !detail) return null;
 
-  return (
+  // Portaled to <body> — see ConfirmModal.tsx for why (page-level z-10 wrapper
+  // traps this modal's stacking order, so it must escape to actually sit above
+  // everything, sidebar included).
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[1100] flex items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
       onClick={onClose}
     >
@@ -153,7 +157,8 @@ export default function AlertDetailModal({
           Tutup
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

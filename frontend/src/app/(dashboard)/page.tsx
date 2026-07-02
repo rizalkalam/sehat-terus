@@ -32,6 +32,34 @@ interface SpatialCase {
   population: number;
 }
 
+interface TopDisease {
+  kode_icd10: string;
+  nama_penyakit: string;
+  jumlah: number;
+  persen: number;
+}
+
+interface CasesSummary {
+  total_kasus: number;
+  active_kecamatan: number;
+  active_patients: number;
+  periode_label: string;
+  top_diseases: TopDisease[];
+}
+
+const DONUT_COLORS = ["#fbbf24", "#38bdf8", "#ec4899", "#34d399", "#ef4444"];
+const DONUT_CIRCUMFERENCE = 2 * Math.PI * 52.5;
+
+// Legend space is tight — prefer a short alias (abbreviation in parens, or
+// the segment after "/") over the full clinical name from the API.
+const shortDiseaseLabel = (name: string) => {
+  const inParens = name.match(/\(([^)]+)\)/);
+  if (inParens) return inParens[1];
+  if (name.includes("/")) return name.split("/").pop()!.trim();
+  if (name.includes("&")) return name.split("&")[0].trim();
+  return name;
+};
+
 // Helpers matching Figma design
 const HealthHeart = ({ className, fill = "currentColor" }: { className?: string; fill?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill={fill} xmlns="http://www.w3.org/2000/svg">
@@ -68,6 +96,7 @@ export default function Dashboard() {
   const [spatialData, setSpatialData] = useState<SpatialCase[]>([]);
   const [dateRange, setDateRange] = useState<"30" | "90" | "365">("90");
   const [selectedDisease, setSelectedDisease] = useState<string>("all");
+  const [summary, setSummary] = useState<CasesSummary | null>(null);
 
   const [selectedDetail, setSelectedDetail] = useState<{
     name: string;
@@ -126,6 +155,27 @@ export default function Dashboard() {
     fetchSpatialData();
   }, [dateRange, selectedDisease]);
 
+  // Fetch dashboard summary (stat cards, disease table, donut chart)
+  useEffect(() => {
+    const fetchSummary = async () => {
+      try {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - parseInt(dateRange, 10));
+
+        const url = `${API_BASE}/api/cases/summary?start_date=${startDate.toISOString().slice(0, 10)}&end_date=${endDate.toISOString().slice(0, 10)}`;
+        const res = await fetch(url, { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to fetch cases summary");
+        const data = await res.json();
+        setSummary(data);
+      } catch (err) {
+        console.error("Error fetching cases summary:", err);
+      }
+    };
+
+    fetchSummary();
+  }, [dateRange]);
+
   // Fetch details for the popover panel
   useEffect(() => {
     if (!selectedKecamatan.name) return;
@@ -159,13 +209,20 @@ export default function Dashboard() {
     });
   };
 
-  // Math-scaled proportional cases based on Figma's proportions (Total 238)
-  const totalCases = spatialData.reduce((acc, curr) => acc + (curr.total_cases || 0), 0);
-  const ispaCases = totalCases > 0 ? Math.round(totalCases * (80 / 238)) : 80;
-  const dbdCases = totalCases > 0 ? Math.round(totalCases * (60 / 238)) : 60;
-  const diareCases = totalCases > 0 ? Math.round(totalCases * (50 / 238)) : 50;
-  const fluCases = totalCases > 0 ? Math.round(totalCases * (32 / 238)) : 32;
-  const darahTinggiCases = totalCases > 0 ? Math.round(totalCases * (16 / 238)) : 16;
+  const topDiseases = summary?.top_diseases ?? [];
+
+  // Build donut segments (cumulative stroke-dashoffset) from real persen values
+  let cumulativeOffset = 0;
+  const donutSegments = topDiseases.map((d, i) => {
+    const length = (d.persen / 100) * DONUT_CIRCUMFERENCE;
+    const segment = {
+      color: DONUT_COLORS[i % DONUT_COLORS.length],
+      dasharray: `${length.toFixed(2)} ${DONUT_CIRCUMFERENCE.toFixed(2)}`,
+      dashoffset: -cumulativeOffset,
+    };
+    cumulativeOffset += length;
+    return segment;
+  });
 
   return (
     <div className="px-[41px] py-[29px] flex flex-col gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
@@ -360,31 +417,21 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="text-[#0c818a]">
-                <tr className="bg-[#f7f6fe]">
-                  <td className="p-4 font-medium text-[14px] text-center">#89094</td>
-                  <td className="p-4 font-medium text-[14px]">Infeksi Saluran Pernafasan</td>
-                  <td className="p-4 font-medium text-[14px]">{ispaCases}</td>
-                </tr>
-                <tr className="bg-white">
-                  <td className="p-4 font-medium text-[14px] text-center">#85252</td>
-                  <td className="p-4 font-medium text-[14px]">DBD</td>
-                  <td className="p-4 font-medium text-[14px]">{dbdCases}</td>
-                </tr>
-                <tr className="bg-[#f7f6fe]">
-                  <td className="p-4 font-medium text-[14px] text-center">#89094</td>
-                  <td className="p-4 font-medium text-[14px]">Diare</td>
-                  <td className="p-4 font-medium text-[14px]">{diareCases}</td>
-                </tr>
-                <tr className="bg-white">
-                  <td className="p-4 font-medium text-[14px] text-center">#85252</td>
-                  <td className="p-4 font-medium text-[14px]">Flu</td>
-                  <td className="p-4 font-medium text-[14px]">{fluCases}</td>
-                </tr>
-                <tr className="bg-[#f7f6fe]">
-                  <td className="p-4 font-medium text-[14px] text-center">#89094</td>
-                  <td className="p-4 font-medium text-[14px]">Darah Tinggi</td>
-                  <td className="p-4 font-medium text-[14px]">{darahTinggiCases}</td>
-                </tr>
+                {topDiseases.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center text-[14px] font-medium">
+                      Tidak ada data penyakit pada periode ini
+                    </td>
+                  </tr>
+                ) : (
+                  topDiseases.map((d, i) => (
+                    <tr key={d.kode_icd10} className={i % 2 === 0 ? "bg-[#f7f6fe]" : "bg-white"}>
+                      <td className="p-4 font-medium text-[14px] text-center">{d.kode_icd10}</td>
+                      <td className="p-4 font-medium text-[14px]">{d.nama_penyakit}</td>
+                      <td className="p-4 font-medium text-[14px]">{d.jumlah}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -393,7 +440,7 @@ export default function Dashboard() {
         {/* Right Column (holds widgets) */}
         <div className="w-[226px] flex flex-col gap-[25px] shrink-0">
           {/* Active Patients Card */}
-          <ActivePatientsCard />
+          <ActivePatientsCard totalPatients={summary?.active_patients ?? 0} />
 
           {/* Disease Composition Card */}
           <div className="bg-white rounded-[24px] px-[17px] py-[15px] shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] h-[389px] w-full flex flex-col justify-between border border-teal-500/5 select-none shrink-0">
@@ -405,14 +452,24 @@ export default function Dashboard() {
             {/* Premium SVG donut display */}
             <div className="flex justify-center items-center relative py-1 shrink-0">
               <svg className="size-[165px] rotate-[-90deg]" viewBox="0 0 165 165">
-                {/* Circumference C = 2 * PI * 52.5 = 329.87 */}
                 {/* 15px stroke width. Outer radius 60, Inner radius 45 */}
-                {/* Segments: Darah Tinggi(6.7%), DBD(25.2%), Diare(21%), Flu(13.5%), ISPA(33.6%) */}
-                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#ef4444" strokeWidth="15" strokeDasharray="22.1 329.87" strokeDashoffset="0" />
-                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#38bdf8" strokeWidth="15" strokeDasharray="83.1 329.87" strokeDashoffset="-22.1" />
-                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#ec4899" strokeWidth="15" strokeDasharray="69.3 329.87" strokeDashoffset="-105.2" />
-                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#34d399" strokeWidth="15" strokeDasharray="44.5 329.87" strokeDashoffset="-174.5" />
-                <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#fbbf24" strokeWidth="15" strokeDasharray="110.8 329.87" strokeDashoffset="-219.0" />
+                {donutSegments.length === 0 ? (
+                  <circle cx="82.5" cy="82.5" r="52.5" fill="transparent" stroke="#e5e7eb" strokeWidth="15" />
+                ) : (
+                  donutSegments.map((seg, i) => (
+                    <circle
+                      key={i}
+                      cx="82.5"
+                      cy="82.5"
+                      r="52.5"
+                      fill="transparent"
+                      stroke={seg.color}
+                      strokeWidth="15"
+                      strokeDasharray={seg.dasharray}
+                      strokeDashoffset={seg.dashoffset}
+                    />
+                  ))
+                )}
               </svg>
               {/* Inner Circle content */}
               <div className="absolute text-center flex flex-col items-center justify-center inset-0">
@@ -424,26 +481,16 @@ export default function Dashboard() {
 
             {/* Colored HealthHeart Legends */}
             <div className="bg-[rgba(196,196,196,0.2)] rounded-[12px] px-[16px] py-[12px] flex flex-col gap-2 font-josefin text-[14px] text-black w-full h-[144px] shrink-0 justify-center">
-              <div className="flex items-center gap-2.5">
-                <HealthHeart className="size-[16px] fill-[#fbbf24]" />
-                <span>Ispa</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <HealthHeart className="size-[16px] fill-[#38bdf8]" />
-                <span>DBD</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <HealthHeart className="size-[16px] fill-[#ec4899]" />
-                <span>Diare</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <HealthHeart className="size-[16px] fill-[#34d399]" />
-                <span>Flu</span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <HealthHeart className="size-[16px] fill-[#ef4444]" />
-                <span>Darah Tinggi</span>
-              </div>
+              {topDiseases.length === 0 ? (
+                <span className="text-black/50 text-center">Belum ada data</span>
+              ) : (
+                topDiseases.map((d, i) => (
+                  <div key={d.kode_icd10} className="flex items-center gap-2.5" title={d.nama_penyakit}>
+                    <HealthHeart className="size-[16px] shrink-0" fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                    <span className="truncate">{shortDiseaseLabel(d.nama_penyakit)}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

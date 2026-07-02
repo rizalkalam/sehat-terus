@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 interface ConfirmModalProps {
   open: boolean;
   title: string;
@@ -19,9 +21,13 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
   if (!open) return null;
 
-  return (
+  // Portaled to <body> — a page-level wrapper div (`position:relative; z-index:10`)
+  // creates its own stacking context that trapped this modal's z-index, so it could
+  // never out-rank the Sidebar (z-[1001]) sitting outside that wrapper. Portaling
+  // escapes that entirely, regardless of any page's own z-index conventions.
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[1100] flex items-center justify-center"
       style={{ backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
       onClick={onCancel}
     >
@@ -53,6 +59,7 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

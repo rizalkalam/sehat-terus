@@ -12,7 +12,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className="h-full">
+    <html lang="id" className="h-full overflow-x-hidden">
       <body className="font-sans antialiased h-full bg-[#cccccc] relative overflow-hidden">
         {/* Figma Ambient Gradients */}
         <div

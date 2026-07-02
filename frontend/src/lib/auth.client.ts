@@ -39,6 +39,27 @@ export async function loginWithApi(
   }
 }
 
+export async function getMe(): Promise<{ ok: true; user: User } | { ok: false }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      credentials: "include",
+    });
+    if (!res.ok) return { ok: false };
+
+    const data = await res.json();
+    return {
+      ok: true,
+      user: {
+        email: data.user.email,
+        name: data.user.nama,
+        displayName: data.user.nama,
+      },
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function logoutFromApi(): Promise<void> {
   try {
     await fetch(`${API_BASE}/api/auth/logout`, {
@@ -76,4 +97,12 @@ export function getUserFromCookie(): User | null {
   } catch {
     return null;
   }
+}
+
+export function registerUser(data: Record<string, string>): { ok: false; error: string } {
+  console.log("Attempted registration for email:", data.email);
+  return {
+    ok: false,
+    error: "Pendaftaran mandiri dinonaktifkan. Silakan hubungi Administrator untuk pembuatan akun.",
+  };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, ArrowLeftRight, Package } from "lucide-react";
 import {
   LineChart,
@@ -13,58 +13,116 @@ import {
 } from "recharts";
 import PageHeader from "@/components/PageHeader";
 import AiBanner from "@/components/AiBanner";
-import InfoStatCards from "@/components/InfoStatCards";
+import InfoStatCards, { type StatCardItem } from "@/components/InfoStatCards";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertDetailModal, { type AlertDetailData } from "@/components/AlertDetailModal";
 import { ContentSkeleton } from "@/components/Skeleton";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// --- API response shapes ---
+
+interface AlertsStatsResponse {
+  stok_kritis: { jumlah: number; label: string; badges: string[] };
+  total_lonjakan: { jumlah: number; label: string; badges: string[] };
+  wilayah_terdampak: { jumlah: number; label: string; badges: string[] };
+}
+
+interface AlertsSummaryResponse {
+  teks: string;
+  generated_at: string;
+}
+
+interface AlertRecord {
+  id: string;
+  kecamatan: string;
+  jenis_penyakit: string;
+  kode_icd10: string;
+  persen_lonjakan: number;
+  laju_harian: number | null;
+  jumlah_kasus: number;
+  status: "aktif" | "ditangani" | "selesai";
+  level: "kritis" | "waspada";
+  ketahanan_stok_jam: number | null;
+  terdeteksi_pada: string;
+}
+
+interface AlertDetailResponse {
+  id: string;
+  kecamatan: string;
+  jenis_penyakit: string;
+  kode_icd10: string;
+  persen_lonjakan: number;
+  laju_harian: number | null;
+  jumlah_kasus: number;
+  status: string;
+  level: "kritis" | "waspada";
+  terdeteksi_pada: string;
+  estimasi_puncak: string;
+  obat_kritis: { obat_id: string; nama: string; stok_tersedia: number; ketahanan_jam: number | null }[];
+}
+
 // --- Data ---
 
-const statCards = [
-  { label: "Stok kritis darurat", value: "<48 jam", badges: ["Oralit", "Cabang Sleman"] },
-  { label: "Lonjakan tertinggi", value: "+247%", badges: ["Diare", "3 Hari"] },
-  { label: "Wilayah terdampak", value: "5 Kec.", badges: ["Dari 78 kecamatan"] },
-];
-
 interface AlertItem {
+  id: string;
   title: string;
   stats: string[];
   badge: string;
   badgeColor: string;
-  detail: AlertDetailData;
+  status: AlertRecord["status"];
 }
 
-const alertItems: AlertItem[] = [
-  {
-    title: "Diare - Kec. Depok",
-    stats: ["+247%", "3 hari", "stok < 48jam"],
-    badge: "Kritis",
-    badgeColor: "#F44444",
-    detail: {
-      kasusAktif: 143,
-      tren: "Meningkat 247% dalam 3 hari terakhir, melebihi threshold waspada puskesmas",
-      penyebab: "Perubahan musim dan sanitasi yang buruk di kelurahan padat penduduk",
-      wilayah: ["Kel. Maguwoharjo", "Kel. Condongcatur", "Kel. Caturtunggal"],
-      obatKritis: ["Oralit 500ml", "Zinc 20mg", "Kotrimoksazol"],
-      estimasiPuncak: "2–3 hari mendatang",
-    },
-  },
-  {
-    title: "ISPA - Kec. Mlati",
-    stats: ["+247%", "3 hari", "stok < 48jam"],
-    badge: "Waspada",
-    badgeColor: "#F59E0B",
-    detail: {
-      kasusAktif: 97,
-      tren: "Meningkat 247% dalam 3 hari terakhir, mendekati threshold kritis",
-      penyebab: "Musim kemarau menyebabkan kualitas udara menurun di wilayah padat",
-      wilayah: ["Kel. Sinduadi", "Kel. Sendangadi"],
-      obatKritis: ["Amoksisilin 500mg", "Masker Medis N95", "Paracetamol 500mg"],
-      estimasiPuncak: "4–5 hari mendatang",
-    },
-  },
-];
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "diperbarui baru saja";
+  if (minutes < 60) return `diperbarui ${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `diperbarui ${hours} jam lalu`;
+  return `diperbarui ${Math.floor(hours / 24)} hari lalu`;
+}
 
+function toAlertItem(a: AlertRecord): AlertItem {
+  const stats = [`+${Math.round(a.persen_lonjakan)}%`];
+  stats.push(`${a.jumlah_kasus} kasus`);
+  if (a.ketahanan_stok_jam !== null) stats.push(`stok <${a.ketahanan_stok_jam}jam`);
+
+  return {
+    id: a.id,
+    title: `${a.jenis_penyakit} - Kec. ${a.kecamatan}`,
+    stats,
+    badge: a.level === "kritis" ? "Kritis" : "Waspada",
+    badgeColor: a.level === "kritis" ? "#F44444" : "#F59E0B",
+    status: a.status,
+  };
+}
+
+function toDetailData(d: AlertDetailResponse): AlertDetailData {
+  return {
+    kasusAktif: d.jumlah_kasus,
+    tren:
+      d.laju_harian !== null
+        ? `Meningkat ${Math.round(d.persen_lonjakan)}% dibanding baseline, laju ${d.laju_harian.toFixed(1)}%/hari.`
+        : `Meningkat ${Math.round(d.persen_lonjakan)}% dibanding baseline.`,
+    // No cause-analysis data source exists yet — honest placeholder instead of a fabricated reason.
+    penyebab: "Belum dianalisis otomatis — perlu investigasi epidemiologi lanjutan di lapangan.",
+    // `wilayah` schema only tracks kecamatan-level granularity (see TPS-API-SPEC.md), not kelurahan.
+    wilayah: [d.kecamatan],
+    obatKritis:
+      d.obat_kritis.length > 0
+        ? d.obat_kritis.map((o) => `${o.nama} (${o.stok_tersedia} tersisa)`)
+        : ["Tidak ada obat kritis tercatat untuk alert ini"],
+    estimasiPuncak: d.estimasi_puncak,
+  };
+}
+
+// Line chart (sisa stok vs kebutuhan) and the relokasi/retur quick-action
+// suggestions below stay hardcoded — there's no endpoint yet to discover
+// *which* faskes has surplus stock to suggest a sensible source (that needs
+// GET /api/stok/* from Phase 9). POST /api/stok/realokasi and /retur
+// themselves are already live (Plan 07-02); wiring a real recommendation
+// engine here is future work, not guesswork we should fake now.
 const chartData = [
   { month: "Jan", sisaStock: 300, kebutuhan: 95 },
   { month: "Feb", sisaStock: 270, kebutuhan: 120 },
@@ -113,19 +171,37 @@ const closedModal: ModalState = {
 
 // --- Sub-components ---
 
-function AlertAndChart({ onAlertClick }: { onAlertClick: (item: AlertItem) => void }) {
+function AlertAndChart({
+  alerts,
+  onAlertClick,
+  onAction,
+}: {
+  alerts: AlertItem[];
+  onAlertClick: (item: AlertItem) => void;
+  onAction: (id: string, status: "ditangani" | "selesai") => void;
+}) {
   return (
     <div className="flex flex-col gap-[10px]">
       <h2 className="font-josefin font-bold text-[22px] text-black">
         Daftar Alert &amp; Lonjakan Kasus
       </h2>
-      <div className="flex gap-[16px]">
-        {/* Alert cards — left column */}
-        <div className="flex flex-col gap-[10px] flex-1">
-          {alertItems.map((item, i) => (
-            <button
-              key={i}
+      <div className="flex flex-col xl:flex-row gap-[16px]">
+        {/* Alert cards — left column. Height matches the chart card beside it
+            (240px chart + 24px*2 padding = 288px) so the two sections line up;
+            excess alerts scroll internally instead of stretching the row. */}
+        <div className="flex flex-col gap-[10px] flex-1 min-w-0 xl:h-[288px] xl:overflow-y-auto xl:pr-[6px]">
+          {alerts.length === 0 && (
+            <div className="rounded-[18px] px-[14px] py-[24px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md text-center text-black/50 font-josefin">
+              Tidak ada alert aktif saat ini.
+            </div>
+          )}
+          {alerts.map((item) => (
+            <div
+              key={item.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onAlertClick(item)}
+              onKeyDown={(e) => e.key === "Enter" && onAlertClick(item)}
               className="flex items-center justify-between rounded-[18px] px-[14px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)] text-left hover:bg-[rgba(195,247,255,0.35)] hover:border-[#0c818a]/30 transition-all duration-200 cursor-pointer w-full"
             >
               <div className="flex items-center gap-[12px] min-w-0">
@@ -144,18 +220,38 @@ function AlertAndChart({ onAlertClick }: { onAlertClick: (item: AlertItem) => vo
                   </div>
                 </div>
               </div>
-              <span
-                className="font-josefin font-medium text-[14px] text-white px-[12px] py-[8px] rounded-full shrink-0 ml-[12px]"
-                style={{ backgroundColor: item.badgeColor }}
-              >
-                {item.badge}
-              </span>
-            </button>
+              <div className="flex items-center gap-[8px] shrink-0 ml-[12px]" onClick={(e) => e.stopPropagation()}>
+                {item.status !== "selesai" && (
+                  <>
+                    {item.status === "aktif" && (
+                      <button
+                        onClick={() => onAction(item.id, "ditangani")}
+                        className="font-josefin text-[12px] text-[#0c818a] px-[10px] py-[6px] rounded-[8px] border border-[#0c818a] hover:bg-[#0c818a]/10 transition-colors cursor-pointer"
+                      >
+                        Tangani
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onAction(item.id, "selesai")}
+                      className="font-josefin text-[12px] text-white px-[10px] py-[6px] rounded-[8px] bg-[#0c818a] hover:opacity-80 transition-opacity cursor-pointer"
+                    >
+                      Selesai
+                    </button>
+                  </>
+                )}
+                <span
+                  className="font-josefin font-medium text-[14px] text-white px-[12px] py-[8px] rounded-full"
+                  style={{ backgroundColor: item.badgeColor }}
+                >
+                  {item.badge}
+                </span>
+              </div>
+            </div>
           ))}
         </div>
 
         {/* Line chart — right column */}
-        <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[18px] p-[24px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.08)] shrink-0 w-[460px]">
+        <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[18px] p-[24px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.08)] w-full xl:w-[460px] xl:shrink-0">
           <ResponsiveContainer width="100%" height={240}>
             <LineChart
               data={chartData}
@@ -214,18 +310,89 @@ export default function EarlyWarningPage() {
   const [loaded, setLoaded] = useState(false);
   const [modal, setModal] = useState<ModalState>(closedModal);
   const [detailItem, setDetailItem] = useState<AlertItem | null>(null);
+  const [detailData, setDetailData] = useState<AlertDetailData | null>(null);
+
+  const [statsData, setStatsData] = useState<AlertsStatsResponse | null>(null);
+  const [summaryData, setSummaryData] = useState<AlertsSummaryResponse | null>(null);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [statsRes, summaryRes, alertsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/alerts/stats`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/alerts/summary`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/alerts`, { credentials: "include" }),
+      ]);
+      if (statsRes.ok) setStatsData(await statsRes.json());
+      if (summaryRes.ok) setSummaryData(await summaryRes.json());
+      if (alertsRes.ok) {
+        const raw: AlertRecord[] = await alertsRes.json();
+        setAlerts(raw.map(toAlertItem));
+      }
+    } catch (err) {
+      console.error("Error fetching EWS data:", err);
+    } finally {
+      setLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 700);
-    return () => clearTimeout(t);
-  }, []);
+    fetchAll();
+  }, [fetchAll]);
 
   const openModal = (config: Omit<ModalState, "open">) =>
     setModal({ open: true, ...config });
   const closeModal = () => setModal(closedModal);
 
+  const handleAlertClick = async (item: AlertItem) => {
+    setDetailItem(item);
+    setDetailData(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/alerts/${item.id}`, { credentials: "include" });
+      if (res.ok) setDetailData(toDetailData(await res.json()));
+    } catch (err) {
+      console.error("Error fetching alert detail:", err);
+    }
+  };
+
+  const handleAction = (id: string, status: "ditangani" | "selesai") => {
+    openModal({
+      title: status === "ditangani" ? "Tandai Ditangani?" : "Tandai Selesai?",
+      description:
+        status === "ditangani"
+          ? "Alert ini akan ditandai sedang ditangani oleh tim Anda."
+          : "Alert ini akan ditandai selesai dan tidak lagi muncul di daftar aktif.",
+      confirmLabel: "Konfirmasi",
+      onConfirm: async () => {
+        try {
+          await fetch(`${API_BASE}/api/alerts/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ status }),
+          });
+        } catch (err) {
+          console.error("Error updating alert status:", err);
+        } finally {
+          closeModal();
+          fetchAll();
+        }
+      },
+    });
+  };
+
+  // Stat card labels/badges come straight from the API response — only the
+  // `value` field's unit suffix is chosen here for display purposes.
+  const statCards: StatCardItem[] = statsData
+    ? [
+        { label: statsData.stok_kritis.label, value: `${statsData.stok_kritis.jumlah} Obat`, badges: statsData.stok_kritis.badges },
+        { label: statsData.total_lonjakan.label, value: `${statsData.total_lonjakan.jumlah} Alert`, badges: statsData.total_lonjakan.badges },
+        { label: statsData.wilayah_terdampak.label, value: `${statsData.wilayah_terdampak.jumlah} Kec.`, badges: statsData.wilayah_terdampak.badges },
+      ]
+    : [];
+
   return (
-    <div className="px-[41px] py-[29px] flex flex-col gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
+    <div className="px-4 sm:px-6 xl:px-[41px] py-4 xl:py-[29px] flex flex-col gap-4 xl:gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
       <PageHeader title="Early Warning" />
 
       {!loaded ? (
@@ -233,8 +400,8 @@ export default function EarlyWarningPage() {
       ) : (
         <>
           <InfoStatCards items={statCards} />
-          <AiBanner />
-          <AlertAndChart onAlertClick={(item) => setDetailItem(item)} />
+          <AiBanner text={summaryData?.teks} updatedAt={summaryData ? timeAgo(summaryData.generated_at) : undefined} />
+          <AlertAndChart alerts={alerts} onAlertClick={handleAlertClick} onAction={handleAction} />
 
           {/* Tindakan Darurat */}
           <div className="flex flex-col gap-[10px]">
@@ -245,7 +412,7 @@ export default function EarlyWarningPage() {
               {tindakanItems.map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded-[18px] px-[14px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)]"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-[12px] rounded-[18px] px-[14px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)]"
                 >
                   <div className="flex items-center gap-[16px] min-w-0">
                     {item.type === "relokasi" ? (
@@ -256,7 +423,7 @@ export default function EarlyWarningPage() {
                     <div className="flex flex-col gap-[4px] min-w-0">
                       {item.type === "relokasi" ? (
                         <>
-                          <div className="flex items-center gap-[12px]">
+                          <div className="flex items-center gap-[12px] flex-wrap">
                             <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
                               {item.drug}
                             </span>
@@ -298,7 +465,7 @@ export default function EarlyWarningPage() {
                             }
                       )
                     }
-                    className="font-josefin font-medium text-[18px] text-white rounded-[8px] px-[14px] py-[10px] transition-opacity hover:opacity-80 cursor-pointer shrink-0 ml-[16px]"
+                    className="font-josefin font-medium text-[18px] text-white rounded-[8px] px-[14px] py-[10px] transition-opacity hover:opacity-80 cursor-pointer shrink-0 self-start sm:self-auto sm:ml-[16px]"
                     style={{ backgroundColor: "#0c818a" }}
                   >
                     {item.action}
@@ -325,8 +492,11 @@ export default function EarlyWarningPage() {
         badge={detailItem?.badge ?? ""}
         badgeColor={detailItem?.badgeColor ?? "#0c818a"}
         stats={detailItem?.stats ?? []}
-        detail={detailItem?.detail ?? null}
-        onClose={() => setDetailItem(null)}
+        detail={detailData}
+        onClose={() => {
+          setDetailItem(null);
+          setDetailData(null);
+        }}
       />
     </div>
   );
