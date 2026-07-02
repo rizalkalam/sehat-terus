@@ -12,9 +12,9 @@ Welcome to the **Sehat Terus** documentation index. This file compiles and maps 
 
 | Metric | Count |
 |--------|-------|
-| 📑 Total Doc Files | 39 |
-| 🔗 Total Links | 24 |
-| 🛡️ Internal References | 20 |
+| 📑 Total Doc Files | 59 |
+| 🔗 Total Links | 39 |
+| 🛡️ Internal References | 35 |
 | 🌐 External Resources | 4 |
 | 🚨 Broken References | 0 |
 
@@ -24,10 +24,16 @@ These files define the fundamental project requirements, state, and timeline.
 
 | Document | Title / Scope | Key Contents |
 |----------|---------------|--------------|
+| [API-SPEC.md](file:///D:/projects/isd-project/sehat-terus/.planning/API-SPEC.md) | **📡 API Specification — SehatTerus** | title: API Specification — SehatTerus Backend (MIS) |
+| [CHANGELOG.md](file:///D:/projects/isd-project/sehat-terus/.planning/CHANGELOG.md) | **📋 Changelog — SehatTerus** | title: Changelog — SehatTerus |
+| [DECISIONS.md](file:///D:/projects/isd-project/sehat-terus/.planning/DECISIONS.md) | **🏛️ Architecture Decisions — SehatTerus** | title: Architecture Decisions — SehatTerus |
+| [FEATURES-MAP.md](file:///D:/projects/isd-project/sehat-terus/.planning/FEATURES-MAP.md) | **🗺️ Feature Map — SehatTerus** | title: Feature Map — SehatTerus |
 | [PROJECT.md](file:///D:/projects/isd-project/sehat-terus/.planning/PROJECT.md) | **Sehat Terus (Public Health Radar)** | A Management Information System (MIS) designed for health managers, pharmacy admins, and hospital... |
 | [REQUIREMENTS.md](file:///D:/projects/isd-project/sehat-terus/.planning/REQUIREMENTS.md) | **Requirements: Sehat Terus (Public Health Radar)** | **Defined:** 2026-06-21 |
-| [ROADMAP.md](file:///D:/projects/isd-project/sehat-terus/.planning/ROADMAP.md) | **Roadmap: Sehat Terus (Public Health Radar)** | Sehat Terus is structured as a decoupled monorepo containing a Next.js (Frontend) service and an ... |
+| [ROADMAP.md](file:///D:/projects/isd-project/sehat-terus/.planning/ROADMAP.md) | **Roadmap: Sehat Terus (Public Health Radar)** | Sehat Terus adalah sistem dua lapis: **TPS** (Transaction Processing System) untuk staf klinik me... |
 | [STATE.md](file:///D:/projects/isd-project/sehat-terus/.planning/STATE.md) | **Project State** | gsd_state_version: 1.0 |
+| [TPS-API-SPEC.md](file:///D:/projects/isd-project/sehat-terus/.planning/TPS-API-SPEC.md) | **🏥 TPS API Specification — Pencatatan Kunjungan Pasien** | title: TPS API Specification — Pencatatan Kunjungan Pasien |
+| [TPS-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/TPS-PLAN.md) | **TPS-PLAN.md — Rencana Sistem TPS (Transaction Processing System)** | > **Untuk AI agent (Claude Code / GSD):** Dokumen ini merencanakan pembangunan lapisan TPS. |
 | [GEMINI.md](file:///D:/projects/isd-project/sehat-terus/GEMINI.md) | **Core** | <!-- GSD:project-start source:PROJECT.md --> |
 
 ## 🧪 Research & Architecture Studies
@@ -40,6 +46,7 @@ Deep-dive documentation covering our stack decisions, core features, pitfalls, a
 | [FEATURES.md](file:///D:/projects/isd-project/sehat-terus/.planning/research/FEATURES.md) | **Features Research: Public Health Radar (Sehat Terus)** | This research document defines the functional scope of **Sehat Terus**, a public-facing early war... |
 | [PITFALLS.md](file:///D:/projects/isd-project/sehat-terus/.planning/research/PITFALLS.md) | **Pitfalls Research** | **Domain:** Public Health Radar / Epidemiological Early Warning System |
 | [PRD.md](file:///D:/projects/isd-project/sehat-terus/.planning/research/PRD.md) | **PROJECT.md: Public Health Radar (Sistem Peringatan Dini Epidemiologi Wilayah)** | This project is a Public-Facing Management Information System (MIS) designed to visualize disease... |
+| [SCHEMA.md](file:///D:/projects/isd-project/sehat-terus/.planning/research/SCHEMA.md) | **Database Schema — Public Health Radar** | > **Konteks untuk AI agent (Claude Code):** |
 | [STACK.md](file:///D:/projects/isd-project/sehat-terus/.planning/research/STACK.md) | **Stack Research** | **Domain:** Public Health Radar / Epidemiological Early Warning System (Geospatial Surveillance &... |
 | [SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/research/SUMMARY.md) | **Project Research Summary** | **Project:** Sehat Terus (Public Health Radar) |
 
@@ -77,10 +84,23 @@ Plans and summaries for each implementation phase of the roadmap.
 | `03-core-surveillance-gis-visualizations` | [03-RESEARCH.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/03-core-surveillance-gis-visualizations/03-RESEARCH.md) | **Phase 3: Core Surveillance & GIS Visualizations - Research** - **Researched:** 2026-06-24 |
 | `03-core-surveillance-gis-visualizations` | [03-UI-SPEC.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/03-core-surveillance-gis-visualizations/03-UI-SPEC.md) | **Phase 3 - UI Design Contract** - phase: 3 |
 | `03-core-surveillance-gis-visualizations` | [03-VALIDATION.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/03-core-surveillance-gis-visualizations/03-VALIDATION.md) | **Phase 3 - Validation Strategy** - phase: 3 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-01-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-01-PLAN.md) | **Phase 5 - Plan 01: Database Schema Update & Seeder Update** - phase: 05-tps-pencatatan-kunjungan-pasien |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-01-SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-01-SUMMARY.md) | **Phase 5: Plan 01 Summary — Database Schema Update & Seeder Update** - **Completed:** 2026-07-02 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-02-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-02-PLAN.md) | **Phase 5 - Plan 02: Reference Endpoints (Dropdown Lookups)** - phase: 05-tps-pencatatan-kunjungan-pasien |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-02-SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-02-SUMMARY.md) | **Phase 5: Plan 02 Summary — Reference Endpoints** - **Completed:** 2026-07-02 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-03-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-03-PLAN.md) | **Phase 5 - Plan 03: Patient Visits CRUD Endpoints** - phase: 05-tps-pencatatan-kunjungan-pasien |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-03-SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-03-SUMMARY.md) | **Phase 5: Plan 03 Summary — Patient Visits CRUD Endpoints** - **Completed:** 2026-07-02 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-04-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-04-PLAN.md) | **Phase 5 - Plan 04: Prescription & Inventory Stock Deduction** - phase: 05-tps-pencatatan-kunjungan-pasien |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-04-SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-04-SUMMARY.md) | **Phase 5: Plan 04 Summary — Prescription & Inventory Stock Deduction** - **Completed:** 2026-07-02 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-05-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-05-PLAN.md) | **Phase 5 - Plan 05: Dashboard Aggregations (MIS Case Summary)** - phase: 05-tps-pencatatan-kunjungan-pasien |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-05-SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-05-SUMMARY.md) | **Phase 5: Plan 05 Summary — Dashboard Aggregations (MIS Case Summary)** - **Completed:** 2026-07-02 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-06-PLAN.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-06-PLAN.md) | **Phase 5 - Plan 06: End-to-End Verification Test Suite** - phase: 05-tps-pencatatan-kunjungan-pasien |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-06-SUMMARY.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-06-SUMMARY.md) | **Phase 5: Plan 06 Summary — End-to-End Verification Test Suite** - **Completed:** 2026-07-02 |
+| `05-tps-pencatatan-kunjungan-pasien` | [05-CONTEXT.md](file:///D:/projects/isd-project/sehat-terus/.planning/phases/05-tps-pencatatan-kunjungan-pasien/05-CONTEXT.md) | **Phase 5: TPS — Pencatatan Kunjungan Pasien - Context** - **Gathered:** 2026-07-02 |
 
 ## 🟢 Knowledge Base Health: Excellent
 
 All internal links and references are valid and verified! ✨
 
 ---
-*Last mapped on: 2026-06-23T18:18:30.242Z*
+*Last mapped on: 2026-07-02T09:54:37.555Z*
