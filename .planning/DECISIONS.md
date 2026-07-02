@@ -150,4 +150,84 @@ bukan di file `.yaml` terpisah atau di controller.
 
 ---
 
+## ADR-008 — Realokasi Stok: Satu Baris `pergerakan_stok` (bukan 2 baris keluar+masuk)
+
+**Tanggal:** 2026-07-02
+**Status:** Aktif
+
+**Keputusan:**
+`POST /api/stok/realokasi` (Phase 7, Plan 07-02) mencatat **satu** baris `pergerakan_stok`
+dengan `tipe='realokasi'`, `faskes_asal` DAN `faskes_tujuan` terisi sekaligus di baris yang sama.
+`API-SPEC.md` versi awal menyebut "Insert 2 baris pergerakan_stok (keluar + masuk)" — implementasi
+sengaja menyimpang dari deskripsi teks itu.
+
+**Alasan:**
+- Model `PergerakanStok` (dan `CREATE TYPE` di `SCHEMA.md`) sudah punya kolom `faskes_asal`
+  *dan* `faskes_tujuan` di baris yang sama, plus enum `tipe` sudah punya nilai `'realokasi'`
+  tersendiri (terpisah dari `'masuk'`/`'keluar'`) — desain skema jelas dimaksudkan untuk satu
+  baris gabungan, bukan sepasang baris `keluar`+`masuk` seperti pola di `resep.ts`.
+- Satu baris lebih auditable: satu event = satu baris, tidak perlu korelasikan 2 baris terpisah
+  lewat `referensi` untuk tahu itu 1 transaksi yang sama.
+- `pergerakan_stok` tidak punya kolom `batch`/`tanggal_kedaluwarsa` — jadi granularitas per-batch
+  tetap dijaga di level `stok` (FEFO deduct di asal, carry-over batch/expiry yang sama ke tujuan),
+  bukan di `pergerakan_stok`.
+
+**Alternatif yang ditolak:**
+- 2 baris terpisah (`keluar` di asal + `masuk` di tujuan) sesuai teks literal API-SPEC.md — ditolak
+  karena tidak memanfaatkan kolom `faskes_asal`+`faskes_tujuan` ganda yang sudah ada di skema, dan
+  menambah kompleksitas query untuk merekonstruksi "siapa pindah ke siapa" dari 2 baris terpisah.
+
+**Dampak dokumentasi:** `API-SPEC.md` bagian `POST /api/stok/realokasi` masih menyebut "2 baris" di
+teks aslinya — response API yang sebenarnya (dan perilaku DB) mengikuti keputusan ADR ini.
+
+---
+
+## ADR-009 — Modal/Popup Overlay WAJIB Portal ke `document.body`
+
+**Tanggal:** 2026-07-02
+**Status:** Aktif
+
+**Keputusan:**
+Semua komponen popup full-screen (`ConfirmModal`, `AlertDetailModal`, `EditProfileModal`,
+`NotificationPanel`) me-render kontennya lewat `createPortal(<Modal/>, document.body)`,
+bukan `return <div>...</div>` langsung di tempat komponen itu dipanggil dalam tree React.
+
+**Alasan:**
+Setiap halaman dashboard punya wrapper div root dengan `position: relative; z-index: 10`
+(dipakai supaya konten halaman tampil di atas 3 blob dekoratif blur di root layout). Div ini
+**membentuk stacking context CSS baru**. Modal manapun yang di-render sebagai descendant di
+dalam wrapper itu (biasanya lewat `PageHeader` atau langsung di JSX halaman) — walau punya
+`z-index` setinggi apapun secara internal (mis. `z-[1100]`) — **tidak bisa "bocor keluar"**
+untuk dibandingkan langsung dengan elemen di luar wrapper itu, seperti `Sidebar.tsx`
+(`z-[1001]`, di luar wrapper). Yang dibandingkan di level root cuma kontribusi z-index milik
+wrapper-nya sendiri (10), bukan z-index modal yang tertanam di dalamnya — jadi Sidebar (1001)
+selalu menang walau modal internalnya 1100.
+
+`createPortal` ke `document.body` membuat modal jadi **direct child dari `<body>`** di DOM,
+keluar total dari stacking context wrapper halaman manapun — perbandingan z-index-nya jadi
+langsung di level root, terlepas dari halaman mana yang memanggilnya atau berapa pun z-index
+wrapper halaman itu di masa depan.
+
+**Cara verifikasi yang benar (bukan screenshot):**
+`document.elementFromPoint(x, y)` di browser sungguhan pada titik yang tertutup elemen lain
+(mis. area Sidebar) untuk konfirmasi elemen mana yang benar-benar di render teratas. Screenshot
+visual **tidak cukup** untuk bug stacking-context — efek blur 4px itu halus dan gampang salah
+dinilai "sudah benar" dari mata telanjang, apalagi kalau elemen yang seharusnya ke-blur sudah
+punya tampilan semi-transparan sebagai default-nya (seperti `Sidebar.tsx` yang punya
+`backdrop-blur-md` sendiri).
+
+**Alternatif yang ditolak:**
+- Naikkan z-index modal lebih tinggi lagi tanpa portal — TIDAK akan pernah cukup selama modal
+  masih ter-nest di dalam wrapper halaman yang punya z-index sendiri; z-index modal internal
+  tidak pernah dibandingkan langsung ke elemen di luar wrapper-nya
+- Hapus/turunkan `z-10` dari wrapper tiap halaman — rapuh (harus konsisten diterapkan ke semua
+  halaman baru selamanya) dan berisiko merusak hubungan wrapper itu dengan blob dekoratif
+  (`z-0`) di root layout yang jadi alasan `z-10` itu ada
+
+**Dampak untuk komponen popup baru di masa depan:** kalau bikin komponen modal/overlay baru,
+WAJIB pakai pola `createPortal(..., document.body)` yang sama — jangan `return <div className="fixed inset-0">`
+langsung.
+
+---
+
 *Diperbarui oleh Claude Code setiap ada keputusan arsitektur baru*

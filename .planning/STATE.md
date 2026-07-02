@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 completed, Phase 6 pending
-last_updated: "2026-07-02T16:35:00.000Z"
-last_activity: 2026-07-02 -- Phase 5 completed
+stopped_at: Phase 7 completed in full (07-01, 07-02, 07-03), Phase 8 pending
+last_updated: "2026-07-02T20:15:00.000Z"
+last_activity: 2026-07-02 -- Phase 7 completed (Plan 07-03: Z-score engine + /peringatan-dini FE wiring)
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 7
   total_plans: 28
-  completed_plans: 18
-  percent: 64
+  completed_plans: 24
+  percent: 86
 ---
 
 # Project State
@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Menyediakan early warning spasial dan temporal untuk wabah penyakit berbasis data yang dapat dipertanggungjawabkan per faskes.
-**Current focus:** Phase 06 — MIS Dashboard Integration
+**Current focus:** Phase 08 — Forecasting & Proyeksi
 
 ---
 
 ## Current Position
 
-**Phase:** 06 (mis-dashboard-integration) — PENDING
+**Phase:** 08 (forecasting-proyeksi) — NOT STARTED
 **Plan:** 0 of 3
-**Status:** Phase 05 selesai pada 2026-07-02. Phase 6 siap dimulai.
+**Status:** Phase 7 (Early Warning System) selesai penuh pada 2026-07-02, semua 3 plan diverifikasi (curl, query Postgres langsung, Playwright end-to-end). Siap mulai Phase 8.
 
-Progress: `[████████████░░░░░░░░]` 64%
+Progress: `[██████████████████░░]` 86%
 
 ---
 
-## Apa yang Sudah Selesai (Phase 1–5)
+## Apa yang Sudah Selesai (Phase 1–7)
 
 | Phase | Yang Dibangun | Tanggal |
 |-------|--------------|---------|
@@ -44,20 +44,74 @@ Progress: `[████████████░░░░░░░░]` 64%
 | 3 | Endpoint `/api/cases/spatial`, `/temporal`, `/region/:name` — choropleth Leaflet + region detail panel + tren chart | 2026-06-24 |
 | 4 | JWT auth (login/logout/me), 16 Sequelize models, seedAll.ts idempotent, frontend auth integration, dashboard restructure + UI polish | 2026-06-30 |
 | 5 | Database schema update (`dicatat_oleh`), lookup reference endpoints, CRUD Kunjungan, Resep & Stock FEFO deduction in DB transaction, MIS summary endpoint, test suite | 2026-07-02 |
+| 6 | Dashboard (tabel/donut/stat card) → `/api/cases/summary`, chart `/proyeksi-tren` → `/api/cases/temporal`, AuthContext logout/profil real via `/api/auth/logout` & `/me` | 2026-07-02 |
+| 7 | Alert EWS API (7 endpoint) + Z-score detection engine + `/peringatan-dini` disambungkan penuh (stat cards, AI banner, list, modal, tangani/selesai) | 2026-07-02 |
 
 ---
 
-## Posisi Phase 6 Sekarang
+## Phase 7 — Selesai Penuh (3/3 Plan)
+
+**Goal:** Alert EWS bisa dibaca, dideteksi otomatis, ditindaklanjuti, dan ditampilkan di `/peringatan-dini` lewat API real.
+
+| Endpoint / Fitur | Deskripsi | Status |
+|----------|-------|--------|
+| `GET /api/alerts` | F13 — daftar alert (default status=aktif) | ✅ Selesai (07-01), FE tersambung (07-03) |
+| `GET /api/alerts/:id` | F14 — detail alert + obat kritis | ✅ Selesai (07-01), FE tersambung (07-03) |
+| `GET /api/alerts/stats` | F15 — 3 stat card EWS | ✅ Selesai (07-01), FE tersambung (07-03) |
+| `GET /api/alerts/summary` | F16 — teks ringkasan situasi (template, bukan LLM) | ✅ Selesai (07-01), FE tersambung (07-03) |
+| `PATCH /api/alerts/:id` | F18 — tandai alert "ditangani"/"selesai" | ✅ Selesai (07-02), FE tersambung (07-03) |
+| `POST /api/stok/realokasi` | F17/F29 — pindah stok antar faskes | ✅ Selesai (07-02) — FE "Tindakan Darurat" tetap hardcoded, butuh Phase 9 |
+| `POST /api/stok/retur` | F17/F30 — tarik stok dari peredaran | ✅ Selesai (07-02) — sama seperti realokasi |
+| `POST /api/alerts/detect` | F12 — Z-score anomaly detection engine | ✅ Selesai (07-03), tanpa UI by design |
+
+**File baru:** `backend/src/controllers/{alerts,stok}.ts`, `backend/src/routes/{alerts,stok}.ts`; frontend `app/(dashboard)/peringatan-dini/page.tsx` disambungkan penuh. **Docker backend di-rebuild 3x** (07-01, 07-02, 07-03) — semua endpoint live di container.
+
+> [!note] Keputusan implementasi (field/desain yang tidak persis sama dengan schema/spec awal)
+> - `level` (kritis/waspada): dihitung dari `persen_lonjakan >= 150%` ATAU `ketahanan_stok_jam <= 48` jam — bukan kolom tersimpan
+> - `estimasi_puncak`: heuristik dari `laju_harian` (bukan model prediksi, itu Phase 8)
+> - `wilayah_detail` (daftar kelurahan) **tidak diimplementasikan** di backend maupun modal FE — `wilayah` cuma granularitas kecamatan; modal tampilkan nama kecamatan saja
+> - `penyebab` (dugaan penyebab) di modal FE **tidak difabrikasi** — placeholder jujur, tidak ada sumber data analisis penyebab
+> - **Kolom baru `ditangani_oleh`** ditambah ke `alert_ews` via `sequelize.sync({ alter: true })` (ADR-002) — sama seperti `dicatat_oleh` di `RekamMedis` Phase 5
+> - **Realokasi = 1 baris `pergerakan_stok`** (`tipe='realokasi'`, `faskes_asal`+`faskes_tujuan` di baris yang sama), bukan "2 baris keluar+masuk" seperti disebut spec awal — lihat ADR-008
+> - **Z-score engine:** anomali = z-score ≥ 2 DAN kasus 7 hari ≥ 5 (batas absolut, cegah false alarm angka kecil — REQUIREMENTS.md ANL-02). Threshold **tidak configurable** dari UI (ADM-02 di luar scope MVP). Tidak mengisi `obat_terdampak_id`/`ketahanan_stok_jam`, tidak auto-resolve alert yang sudah tidak anomali.
+> - **"Tindakan Darurat"** (kartu saran relokasi/retur) di `/peringatan-dini` **sengaja tetap hardcoded** — tidak ada endpoint untuk menjawab "faskes mana yang surplus?", butuh `GET /api/stok/*` Phase 9. Chart stok-vs-kebutuhan (F19) sama, masih hardcoded.
+
+> [!success] Bug ditemukan & diperbaiki saat verifikasi Z-score engine
+> Versi awal `detectAnomalies()` memakai `now`-minus-N-hari untuk batas window (jam:menit ikut
+> terbawa dari `now`), sehingga loop day-walking **tidak pernah** menyentuh kalender hari ini —
+> kasus hari berjalan diam-diam hilang dari perhitungan. Diverifikasi dengan menyuntik 20 kasus
+> ISPA buatan di kecamatan Turi: sebelum fix cuma 8/20 terhitung, sesudah fix (normalisasi ke
+> tengah-malam UTC, selaras `DATE_TRUNC('day', ...)` Postgres) 20/20 + baseline terhitung benar.
+> Data uji dihapus lagi setelah verifikasi — state DB kembali ke 5 alert seed asli.
+
+**Verifikasi end-to-end:**
+- curl + query Postgres langsung: realokasi 10 Amoxicillin Klinik Sleman→Apotek Depok (74→64 asal,
+  baris baru 10 di tujuan batch sama), retur 5 unit alasan "rusak" (64→59), PATCH status +
+  `ditangani_oleh` terisi benar, validasi 400/401/404 semua dicek
+- Playwright: `/peringatan-dini` login → screenshot stat cards/AI banner/list real data cocok
+  dengan API → klik alert card → modal detail terisi data real → klik "Tangani" → `PATCH`
+  terpanggil → daftar refresh otomatis dari 3 → 2 kartu (alert yang ditangani hilang dari filter
+  default `status=aktif`) — tidak ada console error di semua langkah
+- `npm run test:tps` di-re-run tiap rebuild backend — 100% lulus, tidak ada regresi
+
+---
+
+## Phase 6 — Selesai (3/3 Plan)
 
 **Goal:** Menghubungkan dashboard manajer di frontend (tabel penyakit, donut chart, stat cards, login/logout, profil) ke endpoint API real yang sudah selesai dibangun di Phase 5.
 
-**3 Task Frontend (lihat task list):**
-
 | Task | Deskripsi | Status |
 |------|-----------|--------|
-| #1 | Sambungkan tabel penyakit + donut chart + stat cards → `GET /api/cases/summary` | 🔜 Pending |
-| #2 | Sambungkan `/proyeksi-tren` → `GET /api/cases/temporal` | 🔜 Pending |
-| #3 | Sambungkan AuthContext logout → `POST /api/auth/logout`, load profil → `GET /api/auth/me` | 🔜 Pending |
+| #1 | Sambungkan tabel penyakit + donut chart + stat cards → `GET /api/cases/summary` | ✅ Selesai |
+| #2 | Sambungkan `/proyeksi-tren` → `GET /api/cases/temporal` | ✅ Selesai |
+| #3 | Sambungkan AuthContext logout → `POST /api/auth/logout`, load profil → `GET /api/auth/me` | ✅ Selesai |
+
+> [!success] Bug ditemukan & diperbaiki di Plan 06-03
+> `AuthContext.logout()` sebelumnya cuma menghapus cookie di JS (`clearAuthCookies()`), yang
+> **tidak bisa** menghapus cookie httpOnly `st_auth` — artinya sesi backend tidak pernah benar-benar
+> berakhir walau UI sudah redirect ke `/login`. Sekarang `logout()` memanggil `logoutFromApi()` →
+> `POST /api/auth/logout` dulu, baru clear state. Diverifikasi: cookie `st_auth` benar-benar hilang
+> setelah logout, dan nav langsung ke `/` sesudahnya di-redirect balik ke `/login` oleh middleware.
 
 ---
 
@@ -77,18 +131,17 @@ Yang sebenarnya terjadi:
 
 ---
 
-## Pending Todos (setelah Phase 6)
+## Pending Todos (setelah Phase 7)
 
-- **Phase 7:** EWS — alert endpoints + Z-score engine + halaman /peringatan-dini dari data real
-- **Phase 8:** Forecasting — double exp. smoothing + endpoints + halaman /proyeksi-tren dari data real
-- **Phase 9:** Logistik — stok endpoints + surat pesanan + halaman /logistik dari data real
+- **Phase 8 (berikutnya):** Forecasting — double exp. smoothing + endpoints; sisa hardcoded di `/proyeksi-tren`: 3 stat cards (F22) + 3 alert cards rekomendasi (F23). Area chart ISPA/DBD sudah live sejak Plan 06-02.
+- **Phase 9:** Logistik — stok endpoints (`GET /api/stok/*`) + surat pesanan + halaman /logistik dari data real. Ini juga akan mengaktifkan "Tindakan Darurat" (F17) di `/peringatan-dini` yang masih hardcoded karena butuh endpoint stok lintas-faskes.
 - **Phase 10:** Settings — edit profil + halaman /settings dari data real
 
 ---
 
 ## Blockers / Concerns
 
-- Tidak ada blocker aktif. Seluruh 10 endpoint TPS baru telah teruji 100% lulus integrasi.
+- Tidak ada blocker aktif. Bug kompilasi frontend (`registerUser` import) telah diperbaiki melalui alur Quick Task, dan semua kontainer Docker berhasil dibangun ulang serta dijalankan dengan sukses.
 
 ---
 
@@ -101,11 +154,29 @@ Yang sebenarnya terjadi:
 | 3. Core GIS | 3/3 | 40 min | 13 min |
 | 4. Auth & Setup | 3/3 | ~90 min | 30 min |
 | 5. TPS | 6/6 | ~45 min | 7.5 min |
+| 6. MIS Dashboard Integration | 3/3 | ~40 min | ~13 min |
+| 7. Early Warning System | 3/3 | ~85 min | ~28 min |
+
+---
+
+## Quick Tasks Completed
+
+| Task | Deskripsi | Tanggal |
+|------|-----------|---------|
+| `20260702-fix-frontend-register-build` | Memperbaiki import registerUser di frontend dan melakukan rebuild docker compose | 2026-07-02 |
+| `20260702-responsive-trend-page` | Grid responsif untuk stat cards/chart/alert cards di `/proyeksi-tren` (breakpoint `md`/`xl`, dihitung ulang karena sidebar fixed 349px) — diverifikasi 4 lebar viewport via Playwright, lalu di-rebuild ulang ke Docker (build ke-2 yang sukses hari ini) | 2026-07-02 |
+
+> [!note] Observasi (bukan tindakan) — `alert_ews` dan `RekamMedis` sedikit lebih besar dari baseline
+> Saat verifikasi Quick Task di atas, `alert_ews` menunjukkan 7 baris (bukan 5) dan `RekamMedis`
+> 5530 baris (bukan ~5512) — 2 alert `aktif` baru (`Depok/A90`, `Turi/J06.9`) tidak berasal dari
+> pekerjaan sesi ini. Kemungkinan hasil pemanggilan `POST /api/alerts/detect` secara independen.
+> Tidak dihapus — tidak ada konfirmasi soal asal-usulnya, dan menghapus data tanpa konfirmasi
+> melanggar prinsip kehati-hatian terhadap tindakan destruktif.
 
 ---
 
 ## Session Continuity
 
 Last session: 2026-07-02
-Stopped at: Phase 5 completed, ready for Phase 6
-Resume: Mulai Phase 6 (MIS Dashboard Integration)
+Stopped at: Phase 7 completed in full (07-01, 07-02, 07-03) — Z-score engine + /peringatan-dini FE wiring, all verified (curl, Postgres, Playwright). Plus: Trend page made responsive (Quick Task), and Docker frontend image successfully rebuilt for the first time since Phase 6 (registerUser blocker resolved) — all FE work this session is now genuinely live in the container, not just local-dev-verified.
+Resume: Mulai Phase 8 (Forecasting & Proyeksi) — endpoint `GET /api/forecasting/projection`, `/stats`, `/alerts` (Plan 08-01)

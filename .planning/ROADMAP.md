@@ -21,8 +21,8 @@ Stack: Next.js 15 (frontend) · Express.js + Sequelize (backend) · PostgreSQL �
 - [x] **Phase 3: Core GIS Visualizations** — Endpoint agregasi spasial/temporal, choropleth Leaflet, region detail panel.
 - [x] **Phase 4: Authentication & Multi-user Setup** — JWT login/logout, requireAuth middleware, semua Sequelize models, seeder lengkap, dashboard restructure + polish.
 - [x] **Phase 5: TPS — Pencatatan Kunjungan Pasien** — Backend TPS API agar staf klinik bisa input data kunjungan yang terlacak ke faskes + pengguna.
-- [ ] **Phase 6: MIS Dashboard Integration** — Sambungkan komponen dashboard yang masih hardcoded ke endpoint API real.
-- [ ] **Phase 7: Early Warning System (EWS)** — Endpoint alert, Z-score detection engine, halaman /peringatan-dini dari data real.
+- [x] **Phase 6: MIS Dashboard Integration** — Sambungkan komponen dashboard yang masih hardcoded ke endpoint API real.
+- [x] **Phase 7: Early Warning System (EWS)** — Endpoint alert, Z-score detection engine, halaman /peringatan-dini dari data real.
 - [ ] **Phase 8: Forecasting & Proyeksi** — Double exponential smoothing, endpoint forecasting, halaman /proyeksi-tren dari data real.
 - [ ] **Phase 9: Logistik & Pengadaan** — Endpoint stok, near-expiry, slow-moving, surat pesanan, halaman /logistik dari data real.
 - [ ] **Phase 10: Profile & Settings** — Edit profil pengguna, PUT /api/pengguna/profile, halaman /settings dari data real.
@@ -92,25 +92,25 @@ Plans:
 
 ---
 
-### 🔜 Phase 6: MIS Dashboard Integration
-**Status:** Pending
+### ✅ Phase 6: MIS Dashboard Integration
+**Selesai:** 2026-07-02
 **Goal:** Semua komponen dashboard yang masih hardcoded/mock diganti ke data API real.
 
 Plans:
-- [ ] 06-01: Sambungkan tabel penyakit + donut chart + stat cards → `GET /api/cases/summary`
-- [ ] 06-02: Sambungkan `/proyeksi-tren` → `GET /api/cases/temporal` (F08 integrasi pending)
-- [ ] 06-03: Sambungkan AuthContext logout → `POST /api/auth/logout` (F02), load profil → `GET /api/auth/me` (F03)
+- [x] 06-01: Sambungkan tabel penyakit + donut chart + stat cards → `GET /api/cases/summary`
+- [x] 06-02: Sambungkan `/proyeksi-tren` → `GET /api/cases/temporal` (chart saja; stat cards & alert cards proyeksi tetap pending, butuh Phase 8)
+- [x] 06-03: Sambungkan AuthContext logout → `POST /api/auth/logout` (F02), load profil → `GET /api/auth/me` (F03) — sekaligus perbaiki bug logout yang gagal hapus cookie httpOnly `st_auth`
 
 ---
 
-### 🔜 Phase 7: Early Warning System (EWS)
-**Status:** Pending
+### ✅ Phase 7: Early Warning System (EWS)
+**Selesai:** 2026-07-02
 **Goal:** Alert aktif bisa dibaca dari DB, Z-score detection engine berjalan, halaman /peringatan-dini dari data real.
 
 Plans:
-- [ ] 07-01: Endpoint `GET /api/alerts`, `GET /api/alerts/:id`, `GET /api/alerts/stats`, `GET /api/alerts/summary`
-- [ ] 07-02: Endpoint `PATCH /api/alerts/:id` (tangani/selesai) + `POST /api/stok/realokasi` + `POST /api/stok/retur`
-- [ ] 07-03: Z-score detection engine (`POST /api/alerts/detect`) + sambungkan halaman /peringatan-dini ke API
+- [x] 07-01: Endpoint `GET /api/alerts`, `GET /api/alerts/:id`, `GET /api/alerts/stats`, `GET /api/alerts/summary`
+- [x] 07-02: Endpoint `PATCH /api/alerts/:id` (tangani/selesai) + `POST /api/stok/realokasi` + `POST /api/stok/retur`
+- [x] 07-03: Z-score detection engine (`POST /api/alerts/detect`) + sambungkan halaman /peringatan-dini ke API (stat cards, AI banner, list, modal, tangani/selesai — "Tindakan Darurat" & chart tetap hardcoded, butuh Phase 9)
 
 ---
 
@@ -157,18 +157,17 @@ Plans:
 | 3. Core GIS Visualizations | 3/3 | ✅ Selesai | 2026-06-24 |
 | 4. Authentication & Multi-user Setup | 3/3 | ✅ Selesai | 2026-06-30 |
 | 5. TPS — Pencatatan Kunjungan | 6/6 | ✅ Selesai | 2026-07-02 |
-| 6. MIS Dashboard Integration | 0/3 | 🔄 In Progress | — |
-| 7. Early Warning System | 0/3 | 🔜 Pending | — |
+| 6. MIS Dashboard Integration | 3/3 | ✅ Selesai | 2026-07-02 |
+| 7. Early Warning System | 3/3 | ✅ Selesai | 2026-07-02 |
 | 8. Forecasting & Proyeksi | 0/3 | 🔜 Pending | — |
 | 9. Logistik & Pengadaan | 0/3 | 🔜 Pending | — |
 | 10. Profile & Settings | 0/2 | 🔜 Pending | — |
-| **Total** | **18/28** | **64%** | |
+| **Total** | **24/28** | **86%** | |
 
 ```
 Progress keseluruhan:
-Phase 1-5 (selesai)  ████████████░░░░░░░░  64%
-Phase 6   (jalan)    ░░░░░░░░░░░░░░░░░░░░   0%  ← posisi sekarang
-Phase 7-10 (pending) ░░░░░░░░░░░░░░░░░░░░  36%
+Phase 1-7 (selesai)  █████████████████░░░  86%  ← posisi sekarang
+Phase 8-10 (pending) ░░░░░░░░░░░░░░░░░░░░  14%
 ```
 
 ---

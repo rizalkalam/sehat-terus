@@ -261,7 +261,8 @@ CREATE TABLE alert_ews (
   ketahanan_stok_jam  integer,                  -- sisa jam ketahanan stok terdampak
   status              status_alert NOT NULL DEFAULT 'aktif',
   terdeteksi_pada     timestamptz DEFAULT now(),
-  ditangani_pada      timestamptz
+  ditangani_pada      timestamptz,
+  ditangani_oleh      uuid REFERENCES pengguna(id)   -- ditambah Phase 7 Plan 07-02, akuntabilitas siapa yang menangani/menyelesaikan alert
 );
 CREATE INDEX idx_alert_status ON alert_ews(status);
 ```

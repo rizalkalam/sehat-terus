@@ -20,6 +20,17 @@ tags:
 > - **TPS** = staf faskes input data kunjungan → menulis ke DB
 > - **MIS** = manajer baca dashboard → membaca agregasi dari DB yang sama
 
+> [!success] Status: Semua 10 Endpoint Selesai (Phase 5, 2026-07-02)
+> Seluruh endpoint di dokumen ini sudah diimplementasikan di `backend/src/routes/tps.ts` +
+> `backend/src/controllers/tps/{kunjungan,resep,referensi}.ts`, sesuai spesifikasi di bawah
+> (termasuk validasi kecamatan, lock update/delete setelah resep dibuat, transaksi DB FEFO untuk
+> potong stok, dan role check apoteker/admin untuk resep). Lulus 100% di `npm run test:tps`.
+>
+> **Tidak ada UI/frontend untuk TPS — ini keputusan desain, bukan yang belum dikerjakan.**
+> Lihat [[TPS-PLAN]] bagian 1: "TPS = API + Swagger saja, TANPA UI." Untuk MVP, staf klinik
+> dianggap sudah punya SIMKlinik/RME sendiri (wajib PMK 24/2022); sistem ini adalah lapisan
+> analitik (MIS) di atas data yang masuk lewat seeder yang meniru alur TPS nyata.
+
 ---
 
 ## Status Legend
@@ -61,7 +72,7 @@ pergerakan_stok INSERT tipe=keluar  ← audit trail
 
 ## 📋 Domain Kunjungan — `/api/tps/kunjungan`
 
-### 🆕 POST `/api/tps/kunjungan`
+### ✅ POST `/api/tps/kunjungan`
 
 **Controller:** `src/controllers/tps/kunjungan.ts → createKunjungan()`
 **Middleware:** `requireAuth`
@@ -114,7 +125,7 @@ pengisian data surveilans.
 
 ---
 
-### 🆕 GET `/api/tps/kunjungan`
+### ✅ GET `/api/tps/kunjungan`
 
 **Controller:** `src/controllers/tps/kunjungan.ts → listKunjungan()`
 **Middleware:** `requireAuth`
@@ -158,7 +169,7 @@ pengisian data surveilans.
 
 ---
 
-### 🆕 GET `/api/tps/kunjungan/:id`
+### ✅ GET `/api/tps/kunjungan/:id`
 
 **Controller:** `src/controllers/tps/kunjungan.ts → getKunjunganById()`
 **Middleware:** `requireAuth`
@@ -205,7 +216,7 @@ pengisian data surveilans.
 
 ---
 
-### 🆕 PUT `/api/tps/kunjungan/:id`
+### ✅ PUT `/api/tps/kunjungan/:id`
 
 **Controller:** `src/controllers/tps/kunjungan.ts → updateKunjungan()`
 **Middleware:** `requireAuth`
@@ -235,7 +246,7 @@ Hanya bisa diupdate jika **belum ada resep** yang terhubung (karena resep sudah 
 
 ---
 
-### 🆕 DELETE `/api/tps/kunjungan/:id`
+### ✅ DELETE `/api/tps/kunjungan/:id`
 
 **Controller:** `src/controllers/tps/kunjungan.ts → deleteKunjungan()`
 **Middleware:** `requireAuth`
@@ -259,7 +270,7 @@ Hanya bisa diupdate jika **belum ada resep** yang terhubung (karena resep sudah 
 
 ## 💊 Domain Resep — `/api/tps/kunjungan/:id/resep`
 
-### 🆕 POST `/api/tps/kunjungan/:id/resep`
+### ✅ POST `/api/tps/kunjungan/:id/resep`
 
 **Controller:** `src/controllers/tps/resep.ts → createResep()`
 **Middleware:** `requireAuth` + cek `peran` (`apoteker` atau `admin`)
@@ -353,7 +364,7 @@ Saat resep disimpan, stok faskes langsung dipotong dan `pergerakan_stok` dicatat
 
 Endpoint lookup untuk mengisi dropdown di form input TPS.
 
-### 🆕 GET `/api/tps/referensi/penyakit`
+### ✅ GET `/api/tps/referensi/penyakit`
 
 **Controller:** `src/controllers/tps/referensi.ts → listPenyakit()`
 **Middleware:** `requireAuth`
@@ -374,7 +385,7 @@ Data bersumber dari distinct `kode_icd10` di `rekam_medis` + daftar master yang 
 
 ---
 
-### 🆕 GET `/api/tps/referensi/wilayah`
+### ✅ GET `/api/tps/referensi/wilayah`
 
 **Controller:** `src/controllers/tps/referensi.ts → listWilayah()`
 **Middleware:** `requireAuth`
@@ -394,7 +405,7 @@ Penting agar input selalu cocok dengan `wilayah.nama_kecamatan` (konsistensi hea
 
 ---
 
-### 🆕 GET `/api/tps/referensi/obat`
+### ✅ GET `/api/tps/referensi/obat`
 
 **Controller:** `src/controllers/tps/referensi.ts → listObat()`
 **Middleware:** `requireAuth`
@@ -431,7 +442,7 @@ Hanya tampilkan obat yang `stok.jumlah_tersedia > 0` di faskes pengguna.
 
 ---
 
-### 🆕 GET `/api/tps/referensi/formula`
+### ✅ GET `/api/tps/referensi/formula`
 
 **Controller:** `src/controllers/tps/referensi.ts → listFormula()`
 **Middleware:** `requireAuth`
@@ -459,18 +470,18 @@ Hanya tampilkan formula yang **semua komponennya** punya stok cukup di faskes pe
 
 | # | Method | Endpoint | Tabel | Peran | Status |
 |---|--------|----------|-------|-------|--------|
-| 1 | POST | `/api/tps/kunjungan` | `rekam_medis` | Semua | 🆕 |
-| 2 | GET | `/api/tps/kunjungan` | `rekam_medis` | Semua | 🆕 |
-| 3 | GET | `/api/tps/kunjungan/:id` | `rekam_medis`, `resep`, `resep_item` | Semua | 🆕 |
-| 4 | PUT | `/api/tps/kunjungan/:id` | `rekam_medis` | Semua | 🆕 |
-| 5 | DELETE | `/api/tps/kunjungan/:id` | `rekam_medis` | Semua | 🆕 |
-| 6 | POST | `/api/tps/kunjungan/:id/resep` | `resep`, `resep_item`, `stok`, `pergerakan_stok` | `apoteker`, `admin` | 🆕 |
-| 7 | GET | `/api/tps/referensi/penyakit` | *(static + `rekam_medis`)* | Semua | 🆕 |
-| 8 | GET | `/api/tps/referensi/wilayah` | `wilayah` | Semua | 🆕 |
-| 9 | GET | `/api/tps/referensi/obat` | `obat`, `stok` | Semua | 🆕 |
-| 10 | GET | `/api/tps/referensi/formula` | `formula_racikan`, `formula_komponen`, `stok` | Semua | 🆕 |
+| 1 | POST | `/api/tps/kunjungan` | `rekam_medis` | Semua | ✅ |
+| 2 | GET | `/api/tps/kunjungan` | `rekam_medis` | Semua | ✅ |
+| 3 | GET | `/api/tps/kunjungan/:id` | `rekam_medis`, `resep`, `resep_item` | Semua | ✅ |
+| 4 | PUT | `/api/tps/kunjungan/:id` | `rekam_medis` | Semua | ✅ |
+| 5 | DELETE | `/api/tps/kunjungan/:id` | `rekam_medis` | Semua | ✅ |
+| 6 | POST | `/api/tps/kunjungan/:id/resep` | `resep`, `resep_item`, `stok`, `pergerakan_stok` | `apoteker`, `admin` | ✅ |
+| 7 | GET | `/api/tps/referensi/penyakit` | *(static + `rekam_medis`)* | Semua | ✅ |
+| 8 | GET | `/api/tps/referensi/wilayah` | `wilayah` | Semua | ✅ |
+| 9 | GET | `/api/tps/referensi/obat` | `obat`, `stok` | Semua | ✅ |
+| 10 | GET | `/api/tps/referensi/formula` | `formula_racikan`, `formula_komponen`, `stok` | Semua | ✅ |
 
-**Total: 10 endpoint baru**
+**Total: 10 endpoint — semua sudah diimplementasikan & lulus test integrasi (`npm run test:tps`), selesai di Phase 5 (2026-07-02)**
 
 ---
 
@@ -551,7 +562,7 @@ MIS endpoint berikut langsung mendapat manfaatnya:
 |--------------------------|-------------|
 | `GET /api/cases/spatial` | `rekam_medis` (sudah ✅) |
 | `GET /api/cases/temporal` | `rekam_medis` (sudah ✅) |
-| `GET /api/cases/summary` | `rekam_medis` (🆕 di API-SPEC.md) |
+| `GET /api/cases/summary` | `rekam_medis` (sudah ✅, terhubung ke FE dashboard sejak Phase 6 Plan 06-01) |
 | `GET /api/alerts/...` | `alert_ews` ← dibuat dari agregasi `rekam_medis` |
 
 ---

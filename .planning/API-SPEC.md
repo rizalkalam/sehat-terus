@@ -16,10 +16,17 @@ tags:
 >
 > **Konvensi:** Semua endpoint butuh Swagger JSDoc di route file + data seeder idempotent.
 
-> [!important] Prerequisite Phase 5
-> Endpoint MIS yang membaca `rekam_medis` (terutama `/api/cases/summary`) baru bisa menampilkan
-> data yang akuntabel setelah **Phase 5 (TPS)** selesai dan staf klinik mulai input data via
-> `POST /api/tps/kunjungan`. Sebelum itu, data masih dari seeder faker.js.
+> [!success] Phase 5, 6 & 7 Selesai
+> **Phase 5 (TPS)** sudah selesai 2026-07-02 — staf klinik input data via `POST /api/tps/kunjungan`,
+> jadi `rekam_medis` bisa dipertanggungjawabkan per faskes/staf (lihat [[TPS-API-SPEC]]).
+> **Phase 6** menyambungkan dashboard ke data itu: `/api/cases/summary` (F09–F11) dan
+> `/api/cases/temporal` (F08) sudah terhubung ke FE, begitu juga logout/profil (F02, F03).
+> **Phase 7 (EWS)** selesai penuh (2026-07-02): `/peringatan-dini` sekarang hidup dari
+> `GET /api/alerts*` (F13–F16), `PATCH /api/alerts/:id` (F18), dan Z-score detection engine
+> `POST /api/alerts/detect` (F12). Yang masih hardcoded di halaman itu: kartu "Tindakan Darurat"
+> (F17, butuh `GET /api/stok/*` Phase 9 untuk saran realokasi) dan chart stok-vs-kebutuhan (F19).
+> Sisa yang masih hardcoded di sistem: `/settings` (F35, F36 — Phase 10), forecasting
+> (F20–F23 — Phase 8), dan logistik/pengadaan (F24–F34 — Phase 9).
 
 ---
 
@@ -70,7 +77,7 @@ tags:
 ### ✅ POST `/api/auth/logout`
 
 **Controller:** `src/controllers/auth.ts → logout()`
-**FE:** Sidebar tombol logout → `logoutFromApi()` *(FE belum terhubung — F02 🟡)*
+**FE:** Sidebar tombol logout → `logoutFromApi()` *(terhubung sejak Phase 6 Plan 06-03 — F02 ✅)*
 
 **Response 200:**
 ```json
@@ -84,7 +91,7 @@ tags:
 **Controller:** `src/controllers/auth.ts → me()`
 **Middleware:** `requireAuth`
 **Tabel:** `pengguna`, `fasilitas_kesehatan`
-**FE:** `AuthContext` on mount (F03 🟡), `/settings` load profil (F35 🟡)
+**FE:** `AuthContext` on mount (terhubung sejak Phase 6 Plan 06-03 — F03 ✅), `/settings` load profil (F35 🟡 — belum, menunggu Phase 10)
 
 **Response 200:**
 ```json
@@ -186,7 +193,7 @@ tags:
 
 **Controller:** `src/controllers/cases.ts → getTemporalCases()`
 **Tabel:** `RekamMedis`
-**FE:** `/proyeksi-tren` → area chart historis (F08 🟡 — FE belum terhubung)
+**FE:** `/proyeksi-tren` → area chart historis (F08 ✅ — terhubung sejak Phase 6 Plan 06-02; stat cards & alert cards di halaman yang sama masih hardcoded, itu F22/F23 menunggu Phase 8)
 
 **Query Params:**
 | Param | Tipe | Default | Keterangan |
@@ -211,11 +218,11 @@ tags:
 
 ---
 
-### 🆕 GET `/api/cases/summary`
+### ✅ GET `/api/cases/summary`
 
 **Controller:** `src/controllers/cases.ts → getCasesSummary()`
 **Tabel:** `RekamMedis`
-**FE:** `/` → stat cards total kasus (F09), donut chart (F10), disease table (F11)
+**FE:** `/` → stat cards total kasus (F09 ✅), donut chart (F10 ✅), disease table (F11 ✅) — semua terhubung sejak Phase 6 Plan 06-01
 
 **Query Params:** `start_date`, `end_date` (opsional, default 30 hari)
 
@@ -279,11 +286,11 @@ tags:
 > Tabel `alert_ews` di-seed dengan 5 contoh alert.
 > Z-score detection engine (F12) akan mengisi tabel ini secara otomatis — untuk MVP, data alert berasal dari seeder.
 
-### 🆕 GET `/api/alerts`
+### ✅ GET `/api/alerts`
 
 **Controller:** `src/controllers/alerts.ts → getAlerts()`
 **Tabel:** `alert_ews`, `wilayah`
-**FE:** `/peringatan-dini` → list alert cards (F13) · `/` notification bell · `/proyeksi-tren` alert cards (F13)
+**FE:** `/peringatan-dini` → list alert cards (F13 ✅ — tersambung Plan 07-03) · `/` notification bell (masih hardcoded) · `/proyeksi-tren` alert cards (F13, masih hardcoded — beda dari list di `/peringatan-dini`)
 
 **Query Params:**
 | Param | Tipe | Default | Keterangan |
@@ -313,11 +320,11 @@ tags:
 
 ---
 
-### 🆕 GET `/api/alerts/stats`
+### ✅ GET `/api/alerts/stats`
 
 **Controller:** `src/controllers/alerts.ts → getAlertsStats()`
 **Tabel:** `alert_ews`, `stok`
-**FE:** `/peringatan-dini` → 3 InfoStatCards (F15)
+**FE:** `/peringatan-dini` → 3 InfoStatCards (F15 ✅ — tersambung Plan 07-03)
 
 **Query Params:** `faskes_id` (opsional)
 
@@ -344,11 +351,11 @@ tags:
 
 ---
 
-### 🆕 GET `/api/alerts/summary`
+### ✅ GET `/api/alerts/summary`
 
 **Controller:** `src/controllers/alerts.ts → getAlertsSummary()`
 **Tabel:** `alert_ews`
-**FE:** `/peringatan-dini` → AiBanner teks situasi (F16) · `/logistik` → AiBanner (F16)
+**FE:** `/peringatan-dini` → AiBanner teks situasi (F16 ✅ — tersambung Plan 07-03) · `/logistik` → AiBanner (F16, masih hardcoded)
 
 **Response 200:**
 ```json
@@ -362,11 +369,19 @@ tags:
 
 ---
 
-### 🆕 GET `/api/alerts/:id`
+### ✅ GET `/api/alerts/:id`
 
 **Controller:** `src/controllers/alerts.ts → getAlertById()`
-**Tabel:** `alert_ews`, `stok`, `obat`, `fasilitas_kesehatan`
-**FE:** `/peringatan-dini` → modal detail alert (F14)
+**Tabel:** `alert_ews`, `stok`, `obat`
+**FE:** `/peringatan-dini` → modal detail alert (F14 ✅ — tersambung Plan 07-03)
+
+> [!warning] Deviasi dari spec: `wilayah_detail` tidak diimplementasikan
+> Response asli di bawah punya `wilayah_detail` (daftar kelurahan). Field ini **sengaja tidak
+> disertakan** di implementasi — tabel `wilayah` cuma menyimpan granularitas kecamatan, tidak ada
+> data kelurahan untuk dikembalikan tanpa fabrikasi. `level` dihitung dari `persen_lonjakan >= 150%`
+> ATAU `ketahanan_stok_jam <= 48` jam; `estimasi_puncak` adalah heuristik dari `laju_harian`
+> (bukan model prediksi — itu Phase 8). `obat_kritis` maksimal 1 item karena `alert_ews` cuma
+> punya satu `obat_terdampak_id` (bukan array multi-obat seperti contoh di bawah).
 
 **Response 200:**
 ```json
@@ -396,12 +411,17 @@ tags:
 
 ---
 
-### 🆕 PATCH `/api/alerts/:id`
+### ✅ PATCH `/api/alerts/:id`
 
 **Controller:** `src/controllers/alerts.ts → updateAlertStatus()`
 **Middleware:** `requireAuth`
 **Tabel:** `alert_ews`
-**FE:** `/peringatan-dini` → tombol "Tangani" / "Selesai" (F18)
+**FE:** `/peringatan-dini` → tombol "Tangani" / "Selesai" (F18 ✅ — tersambung Plan 07-03)
+
+> [!note] Kolom `ditangani_oleh` ditambahkan ke `alert_ews`
+> Model semula tidak punya kolom ini (lihat [[research/SCHEMA]]). Ditambahkan di Plan 07-02
+> lewat `sequelize.sync({ alter: true })` (ADR-002) — sama seperti `dicatat_oleh` ditambahkan ke
+> `RekamMedis` di Phase 5, demi akuntabilitas siapa yang menangani/menyelesaikan sebuah alert.
 
 **Request Body:**
 ```json
@@ -419,6 +439,52 @@ tags:
   "ditangani_oleh": "uuid-pengguna"
 }
 ```
+
+---
+
+### ✅ POST `/api/alerts/detect`
+
+**Controller:** `src/controllers/alerts.ts → detectAnomalies()`
+**Middleware:** `requireAuth`
+**Tabel:** `RekamMedis`, `alert_ews`
+**FE:** — (dipicu manual/cron, tidak ada tombol UI khusus; hasilnya langsung muncul di `GET /api/alerts` yang sudah tersambung ke `/peringatan-dini`)
+
+> [!note] Ditambahkan di Plan 07-03 — tidak ada di draft spec awal
+> Endpoint ini (F12, Z-score detection engine) tidak punya kontrak request/response yang
+> di-draft sebelumnya di dokumen ini — hanya disebut sebagai item roadmap. Shape di bawah
+> didesain saat implementasi.
+
+**Logic:** Bandingkan jumlah kasus 7 hari terakhir vs baseline 28 hari sebelumnya, per kombinasi
+`(kecamatan, kode_icd10)`. Anomali kalau **z-score ≥ 2 DAN** total kasus 7 hari terakhir ≥ 5
+(batas absolut mencegah kasus kecil seperti 1→3 terdeteksi sebagai "lonjakan 300%" — sesuai
+REQUIREMENTS.md ANL-02). Alert `status='aktif'` yang cocok akan diperbarui statistiknya; kalau
+belum ada, dibuat baru. **Tidak** mengisi `obat_terdampak_id`/`ketahanan_stok_jam` (tidak ada
+pemetaan penyakit→obat di skema) dan **tidak** otomatis menyelesaikan alert yang sudah tidak
+anomali lagi — keduanya scope masa depan. Threshold Z-score (2) dan batas absolut (5 kasus)
+adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02 di luar scope MVP).
+
+**Response 200:**
+```json
+{
+  "checked_at": "2026-07-02T13:00:41.539Z",
+  "kombinasi_dianalisis": 72,
+  "anomali_terdeteksi": 1,
+  "alerts": [
+    {
+      "id": "uuid",
+      "kecamatan": "Turi",
+      "jenis_penyakit": "Infeksi Saluran Pernafasan Akut (ISPA)",
+      "kode_icd10": "J06.9",
+      "persen_lonjakan": 2000,
+      "z_score": 8.16,
+      "jumlah_kasus": 21,
+      "aksi": "baru"
+    }
+  ]
+}
+```
+
+> `aksi` = `"baru"` kalau alert baru dibuat, `"diperbarui"` kalau alert aktif yang sudah ada di-refresh.
 
 ---
 
@@ -755,12 +821,17 @@ tags:
 
 ---
 
-### 🆕 POST `/api/stok/realokasi`
+### ✅ POST `/api/stok/realokasi`
 
 **Controller:** `src/controllers/stok.ts → createRealokasi()`
 **Middleware:** `requireAuth`
 **Tabel:** `stok`, `pergerakan_stok`
-**FE:** `/peringatan-dini` tombol "Pindahkan" (F17) · `/logistik` tab Dead-stock (F29)
+**FE:** `/peringatan-dini` tombol "Pindahkan" (F17 🟡 — BE selesai Plan 07-02, "Tindakan Darurat" tetap hardcoded — tidak ada endpoint sumber saran faskes surplus, butuh `GET /api/stok/*` Phase 9) · `/logistik` tab Dead-stock (F29)
+
+> [!warning] Deviasi dari spec: 1 baris `pergerakan_stok`, bukan 2
+> Side effect di bawah ("Insert 2 baris keluar+masuk") **tidak diikuti persis**. Implementasi
+> mencatat **satu** baris `tipe='realokasi'` dengan `faskes_asal` + `faskes_tujuan` di baris yang
+> sama — memanfaatkan kolom & enum yang memang sudah didesain untuk itu di skema. Lihat [[DECISIONS#ADR-008]].
 
 **Request Body:**
 ```json
@@ -787,19 +858,20 @@ tags:
 }
 ```
 
-**Side effect:**
-- Kurangi `stok.jumlah_tersedia` di faskes asal
-- Tambah `stok.jumlah_tersedia` di faskes tujuan (atau buat baris baru)
-- Insert 2 baris `pergerakan_stok` (keluar + masuk)
+**Side effect (implementasi aktual):**
+- FEFO-deduct `stok.jumlah_tersedia` di faskes asal, bisa lintas beberapa batch
+- Setiap batch yang dipotong di-carry-over ke faskes tujuan (batch + tanggal_kedaluwarsa sama, `findOrCreate`)
+- Insert **satu** baris `pergerakan_stok` (`tipe='realokasi'`, `faskes_asal` + `faskes_tujuan` terisi) — lihat ADR-008
+- Validasi: `faskes_asal_id != faskes_tujuan_id`, `jumlah > 0`, stok cukup (400 dengan detail kalau tidak)
 
 ---
 
-### 🆕 POST `/api/stok/retur`
+### ✅ POST `/api/stok/retur`
 
 **Controller:** `src/controllers/stok.ts → createRetur()`
 **Middleware:** `requireAuth`
 **Tabel:** `stok`, `pergerakan_stok`
-**FE:** `/peringatan-dini` tombol "Tanda Retur" (F17) · `/logistik` tab Dead-stock (F30)
+**FE:** `/peringatan-dini` tombol "Tanda Retur" (F17 🟡 — BE selesai Plan 07-02, sama seperti realokasi — belum tersambung, lihat catatan di atas) · `/logistik` tab Dead-stock (F30)
 
 **Request Body:**
 ```json
@@ -918,74 +990,77 @@ tags:
 | 4 | PUT | `/api/pengguna/profile` | Auth | `/settings` | 🆕 |
 | 5 | GET | `/api/cases/spatial` | Cases | `/` | ✅ |
 | 6 | GET | `/api/cases/region/:name` | Cases | `/` | ✅ |
-| 7 | GET | `/api/cases/temporal` | Cases | `/proyeksi-tren` | ✅ 🟡 |
-| 8 | GET | `/api/cases/summary` | Cases | `/` | 🆕 |
-| 9 | GET | `/api/alerts` | Alerts | `/`, `/peringatan-dini`, `/proyeksi-tren` | 🆕 |
-| 10 | GET | `/api/alerts/stats` | Alerts | `/peringatan-dini` | 🆕 |
-| 11 | GET | `/api/alerts/summary` | Alerts | `/peringatan-dini`, `/logistik` | 🆕 |
-| 12 | GET | `/api/alerts/:id` | Alerts | `/peringatan-dini` | 🆕 |
-| 13 | PATCH | `/api/alerts/:id` | Alerts | `/peringatan-dini` | 🆕 |
-| 14 | GET | `/api/forecasting/projection` | Forecasting | `/proyeksi-tren` | 🆕 |
-| 15 | GET | `/api/forecasting/stats` | Forecasting | `/proyeksi-tren` | 🆕 |
-| 16 | GET | `/api/forecasting/alerts` | Forecasting | `/proyeksi-tren` | 🆕 |
-| 17 | GET | `/api/stok/stats` | Stok | `/logistik` | 🆕 |
-| 18 | GET | `/api/stok/summary` | Stok | `/logistik` | 🆕 |
-| 19 | GET | `/api/stok/chart` | Stok | `/logistik`, `/peringatan-dini` | 🆕 |
-| 20 | GET | `/api/stok/defekta` | Stok | `/logistik` | 🆕 |
-| 21 | GET | `/api/stok/near-expiry` | Stok | `/logistik` | 🆕 |
-| 22 | GET | `/api/stok/slow-moving` | Stok | `/logistik` | 🆕 |
-| 23 | POST | `/api/stok/realokasi` | Stok | `/peringatan-dini`, `/logistik` | 🆕 |
-| 24 | POST | `/api/stok/retur` | Stok | `/peringatan-dini`, `/logistik` | 🆕 |
-| 25 | GET | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
-| 26 | POST | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
+| 7 | GET | `/api/cases/temporal` | Cases | `/proyeksi-tren` | ✅ |
+| 8 | GET | `/api/cases/summary` | Cases | `/` | ✅ |
+| 9 | GET | `/api/alerts` | Alerts | `/`, `/peringatan-dini`, `/proyeksi-tren` | ✅ |
+| 10 | GET | `/api/alerts/stats` | Alerts | `/peringatan-dini` | ✅ |
+| 11 | GET | `/api/alerts/summary` | Alerts | `/peringatan-dini`, `/logistik` | ✅ |
+| 12 | GET | `/api/alerts/:id` | Alerts | `/peringatan-dini` | ✅ |
+| 13 | PATCH | `/api/alerts/:id` | Alerts | `/peringatan-dini` | ✅ |
+| 14 | POST | `/api/alerts/detect` | Alerts | — (cron/trigger) | ✅ |
+| 15 | GET | `/api/forecasting/projection` | Forecasting | `/proyeksi-tren` | 🆕 |
+| 16 | GET | `/api/forecasting/stats` | Forecasting | `/proyeksi-tren` | 🆕 |
+| 17 | GET | `/api/forecasting/alerts` | Forecasting | `/proyeksi-tren` | 🆕 |
+| 18 | GET | `/api/stok/stats` | Stok | `/logistik` | 🆕 |
+| 19 | GET | `/api/stok/summary` | Stok | `/logistik` | 🆕 |
+| 20 | GET | `/api/stok/chart` | Stok | `/logistik`, `/peringatan-dini` | 🆕 |
+| 21 | GET | `/api/stok/defekta` | Stok | `/logistik` | 🆕 |
+| 22 | GET | `/api/stok/near-expiry` | Stok | `/logistik` | 🆕 |
+| 23 | GET | `/api/stok/slow-moving` | Stok | `/logistik` | 🆕 |
+| 24 | POST | `/api/stok/realokasi` | Stok | `/peringatan-dini`, `/logistik` | ✅ 🟡 |
+| 25 | POST | `/api/stok/retur` | Stok | `/peringatan-dini`, `/logistik` | ✅ 🟡 |
+| 26 | GET | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
+| 27 | POST | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
 
-**Total MIS: 3 ada · 1 ada (FE belum terhubung) · 22 perlu dibuat**
-**Total TPS: 10 endpoint baru (lihat [[TPS-API-SPEC]])**
-**Grand total seluruh sistem: 36 endpoint**
+**Total MIS: 13 selesai (backend + FE, atau backend-only by design) · 2 backend selesai, FE belum tersambung (realokasi/retur "Tindakan Darurat" — butuh Phase 9) · 12 perlu dibuat (Phase 8–9–10)**
+**Total TPS: 10/10 endpoint selesai (lihat [[TPS-API-SPEC]])**
+**Grand total seluruh sistem: 37 endpoint — 23 selesai penuh (BE+FE atau backend-only) · 2 backend selesai (FE pending) · 12 belum dibuat**
 
 ---
 
 ## 🛣️ Urutan Implementasi
 
-> [!warning] Urutan Wajib
-> **Phase 5 (TPS)** harus selesai lebih dulu sebelum MIS integration di bawah ini dimulai.
-> Tanpa TPS, data `rekam_medis` tetap dari faker seeder — tidak akuntabel.
-> Lihat task #1–#6 di task list dan [[TPS-API-SPEC]] untuk detail Phase 5.
+> [!success] Tahap 0–2 Selesai (Phase 5 & 6, 2026-07-02)
+> **Phase 5 (TPS)** dan **Phase 6 (MIS Dashboard Integration)** sudah selesai penuh.
+> Data `rekam_medis` sekarang akuntabel via `POST /api/tps/kunjungan` (lihat [[TPS-API-SPEC]]),
+> dan dashboard utama (`/`) + `/proyeksi-tren` (chart) + logout/profil sudah hidup dari API real.
+> Tahap 3 dan seterusnya (EWS, Forecasting, Logistik, Settings) masih pending.
 
-### Tahap 0 — TPS Selesai Dulu (Phase 5 — lihat TPS-API-SPEC.md)
+### ✅ Tahap 0 — TPS Selesai Dulu (Phase 5 — lihat TPS-API-SPEC.md)
 ```
-Task #1  Tambah kolom dicatat_oleh ke RekamMedis
-Task #2  Update seeder (faskes_id + dicatat_oleh terisi)
-Task #3  Endpoint referensi TPS
-Task #4  Endpoint CRUD kunjungan
-Task #5  Endpoint resep + potong stok
-Task #6  GET /api/cases/summary
-```
-
-### Tahap 1 — Quick Connect (Phase 6 — FE sudah ada, tinggal sambungkan)
-```
-F02  Sidebar logout → POST /api/auth/logout
-F03  AuthContext → GET /api/auth/me saat app mount
-F08  /proyeksi-tren → GET /api/cases/temporal (ganti hardcoded array)
-F35  /settings → GET /api/auth/me (ganti hardcoded form values)
+Task #1  Tambah kolom dicatat_oleh ke RekamMedis           ✅
+Task #2  Update seeder (faskes_id + dicatat_oleh terisi)   ✅
+Task #3  Endpoint referensi TPS                            ✅
+Task #4  Endpoint CRUD kunjungan                           ✅
+Task #5  Endpoint resep + potong stok                      ✅
+Task #6  GET /api/cases/summary                            ✅
 ```
 
-### Tahap 2 — Dashboard Utama (halaman / hidup dari API)
+### ✅ Tahap 1 — Quick Connect (Phase 6 Plan 06-03)
 ```
-F09–F11  GET /api/cases/summary   → stat cards + donut chart + disease table
-F13      GET /api/alerts          → notification bell badge
+F02  Sidebar logout → POST /api/auth/logout                       ✅
+F03  AuthContext → GET /api/auth/me saat app mount                ✅
+F08  /proyeksi-tren → GET /api/cases/temporal (chart)              ✅
+F35  /settings → GET /api/auth/me (ganti hardcoded form values)   🔜 Phase 10
 ```
 
-### Tahap 3 — Early Warning System
+### ✅ Tahap 2 — Dashboard Utama (Phase 6 Plan 06-01)
 ```
-F15  GET /api/alerts/stats        → 3 stat cards EWS
-F16  GET /api/alerts/summary      → AiBanner teks
-F13  GET /api/alerts              → list alert cards
-F14  GET /api/alerts/:id          → modal detail
-F18  PATCH /api/alerts/:id        → tombol tangani/selesai
-F19  GET /api/stok/chart          → line chart stok vs kebutuhan
-F17  POST /api/stok/realokasi     → tindakan relokasi
-     POST /api/stok/retur         → tindakan retur
+F09–F11  GET /api/cases/summary   → stat cards + donut chart + disease table   ✅
+F13      GET /api/alerts          → notification bell badge                    ✅ BE (FE pending)
+```
+
+### ✅ Tahap 3 — Early Warning System (Phase 7 — selesai)
+```
+F15  GET /api/alerts/stats        → 3 stat cards EWS              ✅ BE+FE (Plan 07-01 / 07-03)
+F16  GET /api/alerts/summary      → AiBanner teks                 ✅ BE+FE (Plan 07-01 / 07-03)
+F13  GET /api/alerts              → list alert cards               ✅ BE+FE (Plan 07-01 / 07-03)
+F14  GET /api/alerts/:id          → modal detail                   ✅ BE+FE (Plan 07-01 / 07-03)
+F18  PATCH /api/alerts/:id        → tombol tangani/selesai          ✅ BE+FE (Plan 07-02 / 07-03)
+F12  POST /api/alerts/detect      → Z-score detection engine        ✅ BE (Plan 07-03, tanpa UI by design)
+F17  POST /api/stok/realokasi     → tindakan relokasi               ✅ BE (Plan 07-02) — 🔜 FE, butuh Phase 9
+     POST /api/stok/retur         → tindakan retur                  ✅ BE (Plan 07-02) — 🔜 FE, butuh Phase 9
+F19  GET /api/stok/chart          → line chart stok vs kebutuhan   🔜 Phase 9
 ```
 
 ### Tahap 4 — Proyeksi & Forecasting
@@ -1041,4 +1116,4 @@ F36  PUT /api/pengguna/profile    → simpan perubahan profil
 
 ---
 
-*Dibuat 2026-06-30 · Diperbarui 2026-07-02 — tambah referensi TPS, fix active_patients logic, update urutan implementasi*
+*Dibuat 2026-06-30 · Diperbarui 2026-07-02 — tandai `/api/cases/summary`, `/api/cases/temporal`, `/api/auth/logout`, `/api/auth/me` selesai terhubung ke FE (Phase 6 06-01/06-02/06-03); tandai 4 endpoint `GET /api/alerts*` selesai di backend (Phase 7 Plan 07-01); tandai `PATCH /api/alerts/:id`, `POST /api/stok/realokasi`, `POST /api/stok/retur` selesai di backend (Phase 7 Plan 07-02); tambah spec `POST /api/alerts/detect` dan tandai seluruh alerts (kecuali realokasi/retur) selesai BE+FE (Phase 7 Plan 07-03 — Phase 7 selesai penuh)*
