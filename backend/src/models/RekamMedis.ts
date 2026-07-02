@@ -8,6 +8,7 @@ export class RekamMedis extends Model {
   declare nama_penyakit: string;
   declare kecamatan_domisili: string;
   declare faskes_id: string | null;
+  declare dicatat_oleh: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -20,6 +21,7 @@ RekamMedis.init(
     nama_penyakit: { type: DataTypes.STRING, allowNull: false },
     kecamatan_domisili: { type: DataTypes.STRING, allowNull: false },
     faskes_id: { type: DataTypes.UUID, allowNull: true },
+    dicatat_oleh: { type: DataTypes.UUID, allowNull: true },
   },
   {
     sequelize,

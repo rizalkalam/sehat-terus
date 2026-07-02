@@ -6,6 +6,7 @@ import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
 import casesRouter from './routes/cases';
 import authRouter from './routes/auth';
+import tpsRouter from './routes/tps';
 
 dotenv.config();
 
@@ -29,5 +30,6 @@ app.get('/health', (_req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/cases', casesRouter);
+app.use('/api/tps', tpsRouter);
 
 export default app;

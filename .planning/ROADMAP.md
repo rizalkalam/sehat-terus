@@ -2,102 +2,175 @@
 
 ## Overview
 
-Sehat Terus is structured as a decoupled monorepo containing a Next.js (Frontend) service and an Express.js (Backend) service. The implementation roadmap is structured as follows: establishing the containerized development environment for both services along with the base Sequelize setup (Phase 1); creating the backend database seeding script and validating regional sub-district mappings (Phase 2); implementing high-performance aggregation APIs on the backend and building the core interactive map and trend line dashboards on the frontend (Phase 3); adding predictive forecasting models and statistical Z-score anomaly alarms to complete the early warning system (Phase 4); and securing the system with user authentication and introducing configurable administrative settings for managers/admins (Phase 5).
+Sehat Terus adalah sistem dua lapis: **TPS** (Transaction Processing System) untuk staf klinik mencatat kunjungan pasien, dan **MIS** (Management Information System) untuk manajer memantau tren penyakit, stok obat, dan early warning secara spasial.
+
+Stack: Next.js 15 (frontend) · Express.js + Sequelize (backend) · PostgreSQL · Docker Compose.
+
+---
+
+## Catatan Perubahan Scope
+
+> **Scope update 2026-07-02:** TPS (pencatatan kunjungan pasien oleh staf klinik) yang semula *out of scope* kini masuk ke dalam sistem agar data `rekam_medis` bisa dipertanggungjawabkan per faskes dan per staf. Phase 4 (Auth) dikerjakan lebih awal dari urutan original.
+
+---
 
 ## Phases
 
-- [x] **Phase 1: Environment & Database Bedrock** - Set up Next.js frontend scaffolding, Express.js backend scaffolding with Sequelize configuration, and root Docker Compose orchestration.
-- [x] **Phase 2: Mock Ingestion & Geographic Mapping Validation** - Seed realistic clinical records using Sequelize + Faker.js in the backend, and validate GeoJSON sub-district names.
-- [x] **Phase 3: Core Surveillance & GIS Visualizations** - Build backend aggregation endpoints, Leaflet choropleth heatmap, and historical Recharts charts.
-- [ ] **Phase 4: Early Warning System & Forecasting Analytics** - Implement backend forecasting projections, Z-score anomaly logic, and the Early Warning dashboard UI.
-- [ ] **Phase 5: Authentication & Administrative Settings** - Implement login page, JWT/session authentication, database-persisted mitigation task toggles, and configurable threshold settings.
+- [x] **Phase 1: Environment & Database Bedrock** — Scaffold monorepo Next.js + Express + PostgreSQL + Docker Compose, Sequelize ORM setup.
+- [x] **Phase 2: Mock Ingestion & GIS Mapping Validation** — Seeder 5.500 rekam medis dengan Faker.js, validasi GeoJSON kecamatan Sleman.
+- [x] **Phase 3: Core GIS Visualizations** — Endpoint agregasi spasial/temporal, choropleth Leaflet, region detail panel.
+- [x] **Phase 4: Authentication & Multi-user Setup** — JWT login/logout, requireAuth middleware, semua Sequelize models, seeder lengkap, dashboard restructure + polish.
+- [ ] **Phase 5: TPS — Pencatatan Kunjungan Pasien** — Backend TPS API agar staf klinik bisa input data kunjungan yang terlacak ke faskes + pengguna.
+- [ ] **Phase 6: MIS Dashboard Integration** — Sambungkan komponen dashboard yang masih hardcoded ke endpoint API real.
+- [ ] **Phase 7: Early Warning System (EWS)** — Endpoint alert, Z-score detection engine, halaman /peringatan-dini dari data real.
+- [ ] **Phase 8: Forecasting & Proyeksi** — Double exponential smoothing, endpoint forecasting, halaman /proyeksi-tren dari data real.
+- [ ] **Phase 9: Logistik & Pengadaan** — Endpoint stok, near-expiry, slow-moving, surat pesanan, halaman /logistik dari data real.
+- [ ] **Phase 10: Profile & Settings** — Edit profil pengguna, PUT /api/pengguna/profile, halaman /settings dari data real.
+
+---
 
 ## Phase Details
 
-### Phase 1: Environment & Database Bedrock
-**Goal**: Establish containerized PostgreSQL, Next.js frontend, and Express.js backend services, set up Sequelize ORM, and verify end-to-end database connectivity.
-**Depends on**: Nothing (first phase)
-**Requirements**: [API-01, API-02]
-**Success Criteria** (what must be TRUE):
-  1. Next.js, Express.js, and PostgreSQL containers boot successfully and communicate over the Docker Network.
-  2. Sequelize migrations successfully generate the PostgreSQL database schema including the `RekamMedis` table with B-Tree indexes on `tanggal_kunjungan` and `kecamatan_domisili`.
-  3. The Express.js server can successfully connect to and run queries against the PostgreSQL database.
-**Plans**: 3 plans
+### ✅ Phase 1: Environment & Database Bedrock
+**Selesai:** 2026-06-21
+**Goal:** Monorepo siap jalan, Sequelize connect ke PostgreSQL, Docker Compose berjalan.
 
 Plans:
-- [ ] 01-01: Scaffold the Next.js App Router frontend with TypeScript, Tailwind CSS, and configure its development Dockerfile.
-- [ ] 01-02: Scaffold the Express.js API backend with TypeScript, configure Sequelize, and define its development Dockerfile.
-- [ ] 01-03: Create the root docker-compose.yml, configure the PostgreSQL service, define Sequelize schema with B-Tree indexes, run migrations, and test connectivity.
+- [x] 01-01: Scaffold Next.js + Tailwind + TypeScript
+- [x] 01-02: Scaffold Express.js + Sequelize + TypeScript
+- [x] 01-03: Docker Compose + PostgreSQL + koneksi end-to-end
 
-### Phase 2: Mock Ingestion & Geographic Mapping Validation
-**Goal**: Build a backend CLI seed script generating realistic clinical data, and validate that sub-district names match the keys in the GeoJSON boundary assets.
-**Depends on**: Phase 1
-**Requirements**: [SEED-01, SEED-02]
-**Success Criteria** (what must be TRUE):
-  1. Backend CLI seed script successfully inserts 5,000+ realistic medical records using Sequelize in under 30 seconds.
-  2. Every seeded sub-district name matches exactly with keys in the local Yogyakarta/Jakarta GeoJSON files.
-**Plans**: 2 plans
+---
+
+### ✅ Phase 2: Mock Ingestion & GIS Mapping Validation
+**Selesai:** 2026-06-22
+**Goal:** 5.000+ rekam medis di DB, nama kecamatan cocok dengan GeoJSON.
 
 Plans:
-- [ ] 02-01: Integrate and validate local Yogyakarta/Jakarta GeoJSON boundary files.
-- [ ] 02-02: Implement Faker.js-powered CLI database seeder script in the Express.js backend.
+- [x] 02-01: Validasi GeoJSON kecamatan Sleman
+- [x] 02-02: Seeder Faker.js (5.500 rekam_medis)
 
-### Phase 3: Core Surveillance & GIS Visualizations
-**Goal**: Build high-performance backend database-level aggregation endpoints, and develop interactive Leaflet maps and charts on the frontend.
-**Depends on**: Phase 2
-**Requirements**: [MAP-01, MAP-02, MAP-03, API-03]
-**Success Criteria** (what must be TRUE):
-  1. Express.js backend provides performant spatial-temporal aggregation API endpoints.
-  2. Next.js Choropleth Map displays Yogyakarta/Jakarta sub-districts colored by case density, loading data dynamically from the Express.js API.
-  3. Clicking a sub-district updates the Region Detail Panel showing case numbers and normalized incidence rates.
-  4. Historical Recharts line chart is filterable and renders trend lines based on backend data.
-**Plans**: 3 plans
+---
+
+### ✅ Phase 3: Core GIS Visualizations
+**Selesai:** 2026-06-24
+**Goal:** Peta choropleth + region detail + tren temporal dari API real.
 
 Plans:
-- [x] 03-01: Implement database-level aggregation API endpoints in the Express.js backend.
-- [x] 03-02: Develop interactive Choropleth Map Component in the Next.js frontend using react-leaflet.
-- [x] 03-03: Implement the dynamic Region Detail Panel and historical time-series Recharts chart with filters in the frontend.
+- [x] 03-01: Endpoint agregasi backend (`/api/cases/spatial`, `/temporal`, `/region/:name`)
+- [x] 03-02: Choropleth map Leaflet di frontend
+- [x] 03-03: Region detail panel + time-series chart dengan filter
 
-### Phase 4: Early Warning System & Forecasting Analytics
-**Goal**: Build predictive forecasting trendlines and Z-score anomaly alarm calculations in the backend, and render alerts on the frontend.
-**Depends on**: Phase 3
-**Requirements**: [ANL-01, ANL-02, ANL-03]
-**Success Criteria** (what must be TRUE):
-  1. Backend API projects 14-30 days of future cases and exposes this via a forecasting endpoint.
-  2. Backend anomaly detection engine calculates Z-scores and flags outbreaks based on historical averages and baseline filters.
-  3. Frontend Early Warning dashboard displays alert cards ("Siaga" / "Aman") and a datatable for tracking rare disease occurrences.
-**Plans**: 3 plans
+---
+
+### ✅ Phase 4: Authentication & Multi-user Setup
+**Selesai:** 2026-06-30 *(dikerjakan sebelum Phase 4 original — EWS)*
+**Goal:** JWT auth, semua Sequelize models, seeder lengkap, dashboard restructure.
 
 Plans:
-- [ ] 04-01: Implement double exponential smoothing/linear regression trend projection in the Express.js backend.
-- [ ] 04-02: Develop Z-score anomaly detection engine with absolute minimum baseline filtering in the backend.
-- [ ] 04-03: Create early warning dashboard UI with status cards and rare disease datatable in the frontend.
+- [x] 04-01: Backend JWT auth (`/api/auth/login`, `/logout`, `/me`) + requireAuth middleware
+- [x] 04-02: Semua Sequelize models (16 tabel) + seedAll.ts idempotent
+- [x] 04-03: Frontend auth integration + dashboard restructure + UI polish
 
-### Phase 5: Authentication & Administrative Settings
-**Goal**: Secure the MIS application with user login/session verification and allow managers to persist mitigation tasks and adjust forecasting/anomaly configurations.
-**Depends on**: Phase 4
-**Requirements**: [AUTH-01, AUTH-02, AUTH-03, ADM-01, ADM-02]
-**Success Criteria** (what must be TRUE):
-  1. The login page `/login` restricts all dashboard routes to authenticated users.
-  2. The Express.js backend supports secure JWT or session token generation and verification.
-  3. Clicking quick mitigation tasks toggles their `completed` state and persists it to the database.
-  4. Managers can configure Z-score thresholds and minimum baselines, with updates saved and reflected in live anomaly flags.
-**Plans**: 3 plans
+---
+
+### ✅ Phase 5: TPS — Pencatatan Kunjungan Pasien
+**Selesai:** 2026-07-02
+**Goal:** Staf klinik dari cabang manapun bisa input kunjungan pasien via API. Setiap record terlacak ke faskes dan pengguna yang menginput.
+
+**Kenapa phase ini penting:** Data `rekam_medis` sekarang 100% dari seeder (faker). Agar MIS dashboard bisa dipertanggungjawabkan, data harus dari input nyata staf klinik.
 
 Plans:
-- [ ] 05-01: Implement backend JWT/cookie authentication routes, user models, and seed credentials.
-- [ ] 05-02: Create frontend `/login` page and router middleware to protect dashboards.
-- [ ] 05-03: Implement database models, APIs, and UI controls for persisting mitigation tasks and customizing Z-score thresholds.
+- [x] 05-01: Tambah kolom `dicatat_oleh` ke model `RekamMedis` (fondasi akuntabilitas)
+- [x] 05-02: Update seedAll.ts — isi `faskes_id` + `dicatat_oleh` di rekam_medis dummy
+- [x] 05-03: Endpoint referensi TPS (`/api/tps/referensi/wilayah`, `/penyakit`, `/obat`, `/formula`)
+- [x] 05-04: Endpoint CRUD kunjungan (`POST/GET/PUT/DELETE /api/tps/kunjungan`)
+- [x] 05-05: Endpoint resep + potong stok (`POST /api/tps/kunjungan/:id/resep`) — pakai DB transaction
+- [x] 05-06: Endpoint MIS `/api/cases/summary` (stat cards + donut + tabel penyakit dari data real)
+
+**Spec:** `.planning/TPS-API-SPEC.md`
+
+---
+
+### 🔜 Phase 6: MIS Dashboard Integration
+**Status:** Pending
+**Goal:** Semua komponen dashboard yang masih hardcoded/mock diganti ke data API real.
+
+Plans:
+- [ ] 06-01: Sambungkan tabel penyakit + donut chart + stat cards → `GET /api/cases/summary`
+- [ ] 06-02: Sambungkan `/proyeksi-tren` → `GET /api/cases/temporal` (F08 integrasi pending)
+- [ ] 06-03: Sambungkan AuthContext logout → `POST /api/auth/logout` (F02), load profil → `GET /api/auth/me` (F03)
+
+---
+
+### 🔜 Phase 7: Early Warning System (EWS)
+**Status:** Pending
+**Goal:** Alert aktif bisa dibaca dari DB, Z-score detection engine berjalan, halaman /peringatan-dini dari data real.
+
+Plans:
+- [ ] 07-01: Endpoint `GET /api/alerts`, `GET /api/alerts/:id`, `GET /api/alerts/stats`, `GET /api/alerts/summary`
+- [ ] 07-02: Endpoint `PATCH /api/alerts/:id` (tangani/selesai) + `POST /api/stok/realokasi` + `POST /api/stok/retur`
+- [ ] 07-03: Z-score detection engine (`POST /api/alerts/detect`) + sambungkan halaman /peringatan-dini ke API
+
+---
+
+### 🔜 Phase 8: Forecasting & Proyeksi
+**Status:** Pending
+**Goal:** Proyeksi 14-30 hari ke depan dari double exponential smoothing, halaman /proyeksi-tren dari data real.
+
+Plans:
+- [ ] 08-01: Endpoint `GET /api/forecasting/projection` — gabungkan historis `rekam_medis` + tabel `prediksi_kebutuhan`
+- [ ] 08-02: Endpoint `GET /api/forecasting/stats` + `GET /api/forecasting/alerts`
+- [ ] 08-03: Algoritma double exponential smoothing + sambungkan halaman /proyeksi-tren ke API
+
+---
+
+### 🔜 Phase 9: Logistik & Pengadaan
+**Status:** Pending
+**Goal:** Manajemen stok, near-expiry, slow-moving, surat pesanan — semua dari data real.
+
+Plans:
+- [ ] 09-01: Endpoint stok (`GET /api/stok/stats`, `/chart`, `/defekta`, `/near-expiry`, `/slow-moving`)
+- [ ] 09-02: Endpoint surat pesanan (`GET/POST /api/surat-pesanan`)
+- [ ] 09-03: Sambungkan halaman /logistik ke semua endpoint stok + SP
+
+---
+
+### 🔜 Phase 10: Profile & Settings
+**Status:** Pending
+**Goal:** Pengguna bisa edit profil sendiri, halaman /settings dari data real.
+
+Plans:
+- [ ] 10-01: Endpoint `PUT /api/pengguna/profile`
+- [ ] 10-02: Sambungkan halaman /settings → `GET /api/auth/me` (F35) + `PUT /api/pengguna/profile` (F36)
+
+---
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+**Execution Order:** 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. Environment & Database Bedrock | 3/3 | Completed | 2026-06-21 |
-| 2. Mock Ingestion & Geographic Mapping Validation | 2/2 | Completed | 2026-06-22 |
-| 3. Core Surveillance & GIS Visualizations | 3/3 | Completed | 2026-06-24 |
-| 4. Early Warning System & Forecasting Analytics | 0/3 | Not started | - |
-| 5. Authentication & Administrative Settings | 0/3 | Not started | - |
+| Phase | Plans | Status | Selesai |
+|-------|-------|--------|---------|
+| 1. Environment & Database Bedrock | 3/3 | ✅ Selesai | 2026-06-21 |
+| 2. Mock Ingestion & GIS Mapping | 2/2 | ✅ Selesai | 2026-06-22 |
+| 3. Core GIS Visualizations | 3/3 | ✅ Selesai | 2026-06-24 |
+| 4. Authentication & Multi-user Setup | 3/3 | ✅ Selesai | 2026-06-30 |
+| 5. TPS — Pencatatan Kunjungan | 6/6 | ✅ Selesai | 2026-07-02 |
+| 6. MIS Dashboard Integration | 0/3 | 🔄 In Progress | — |
+| 7. Early Warning System | 0/3 | 🔜 Pending | — |
+| 8. Forecasting & Proyeksi | 0/3 | 🔜 Pending | — |
+| 9. Logistik & Pengadaan | 0/3 | 🔜 Pending | — |
+| 10. Profile & Settings | 0/2 | 🔜 Pending | — |
+| **Total** | **18/28** | **64%** | |
+
+```
+Progress keseluruhan:
+Phase 1-5 (selesai)  ████████████░░░░░░░░  64%
+Phase 6   (jalan)    ░░░░░░░░░░░░░░░░░░░░   0%  ← posisi sekarang
+Phase 7-10 (pending) ░░░░░░░░░░░░░░░░░░░░  36%
+```
+
+---
+
+*Diperbarui 2026-07-02 — scope update: TPS system ditambahkan, Phase 4 (Auth) dikerjakan di luar urutan*

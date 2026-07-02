@@ -29,6 +29,10 @@ Pengguna.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' }
 FasilitasKesehatan.hasMany(RekamMedis, { foreignKey: 'faskes_id', as: 'rekam_medis' });
 RekamMedis.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' });
 
+// ── Master: Pengguna ↔ RekamMedis ────────────────────────────────────────────
+Pengguna.hasMany(RekamMedis, { foreignKey: 'dicatat_oleh', as: 'rekam_medis_dicatat' });
+RekamMedis.belongsTo(Pengguna, { foreignKey: 'dicatat_oleh', as: 'pencatat' });
+
 // ── Racikan ───────────────────────────────────────────────────────────────────
 FormulaRacikan.hasMany(FormulaKomponen, { foreignKey: 'formula_id', as: 'komponen', onDelete: 'CASCADE' });
 FormulaKomponen.belongsTo(FormulaRacikan, { foreignKey: 'formula_id', as: 'formula' });

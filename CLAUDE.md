@@ -55,6 +55,23 @@ cd frontend && npm run dev
 
 ---
 
+## Aturan Wajib Update Dokumentasi (SELALU — Setiap Sesi)
+
+Setiap kali ada **progress implementasi, keputusan arsitektur, atau perubahan scope**, update dokumen berikut **di akhir sesi atau segera setelah perubahan**:
+
+| Dokumen | Update ketika |
+|---------|---------------|
+| `.planning/CHANGELOG.md` | Ada fitur selesai, endpoint dibuat, atau keputusan penting |
+| `.planning/FEATURES-MAP.md` | Status fitur berubah (misalnya 🟠 → ✅) |
+| `.planning/STATE.md` | Progress phase berubah, task selesai, atau posisi berubah |
+| `.planning/ROADMAP.md` | Phase selesai, scope berubah, atau plan baru ditambahkan |
+| `.planning/API-SPEC.md` | Endpoint baru ditambahkan atau spec berubah |
+| `.planning/TPS-API-SPEC.md` | Spec TPS berubah atau endpoint TPS ditambahkan |
+
+**Aturan:** Jangan tunggu diminta — langsung update setelah setiap perubahan bermakna.
+
+---
+
 ## Aturan Wajib Setiap Endpoint Baru
 
 1. **Swagger JSDoc** di route file (`src/routes/*.ts`) — lihat `src/routes/auth.ts` sebagai template

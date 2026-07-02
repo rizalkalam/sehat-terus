@@ -11,6 +11,7 @@ import {
   Obat, Pbf, FormulaRacikan, FormulaKomponen,
   Stok, PergerakanStok,
   AlertEws, PrediksiKebutuhan, SuratPesanan, SpItem,
+  RekamMedis,
 } from './models';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -128,7 +129,15 @@ async function seedAll() {
     const penggunaMap: Record<string, Pengguna> = {};
     for (const u of penggunaData) {
       const exists = await Pengguna.findOne({ where: { email: u.email } });
-      if (exists) { penggunaMap[u.email] = exists; log('pengguna', `EXISTS  ${u.email}`); continue; }
+      if (exists) {
+        exists.faskes_id = u.faskes?.id ?? null;
+        exists.nomor_sipa = (u as { nomor_sipa?: string }).nomor_sipa ?? null;
+        exists.peran = u.peran;
+        await exists.save();
+        penggunaMap[u.email] = exists;
+        log('pengguna', `UPDATED ${u.email} (${u.peran})`);
+        continue;
+      }
       const password_hash = await bcrypt.hash(u.password, 10);
       const rec = await Pengguna.create({
         nama: u.nama, email: u.email, password_hash,
@@ -315,6 +324,49 @@ async function seedAll() {
       log('surat_pesanan', `EXISTS  (${spCount} SP)`);
     }
 
+    // ── 9.5. REKAM MEDIS (TPS KUNJUNGAN) ──────────────────────────────────────
+    console.log('\n▸ [9.5] Seeding rekam_medis (TPS kunjungan)...');
+    const rmCount = await RekamMedis.count();
+    if (rmCount === 0) {
+      const apoteker = penggunaMap['apoteker@sehatterus.id'];
+      const manajer = penggunaMap['carmen@sehatterus.id'];
+      const admin = penggunaMap['admin@sehatterus.id'];
+      
+      const diseases = [
+        { code: 'J06.9', name: 'Infeksi Saluran Pernafasan Akut (ISPA)' },
+        { code: 'J11', name: 'Influenza / Flu' },
+        { code: 'A09', name: 'Diare & Gastroenteritis' },
+        { code: 'A90', name: 'Demam Berdarah Dengue (DBD)' },
+        { code: 'I10', name: 'Hipertensi / Darah Tinggi' },
+      ];
+
+      const kecamatanList = ['Depok', 'Sleman', 'Mlati', 'Ngaglik', 'Gamping'];
+
+      const visits = [];
+      const now = new Date();
+
+      for (let i = 0; i < 15; i++) {
+        const date = new Date();
+        date.setDate(now.getDate() - (i % 7)); // past 7 days
+        const disease = diseases[i % diseases.length];
+        const kecamatan = kecamatanList[i % kecamatanList.length];
+        
+        visits.push({
+          tanggal_kunjungan: date,
+          kode_icd10: disease.code,
+          nama_penyakit: disease.name,
+          kecamatan_domisili: kecamatan,
+          faskes_id: i % 2 === 0 ? faskes1.id : faskes2.id,
+          dicatat_oleh: i % 3 === 0 ? apoteker?.id : (i % 3 === 1 ? manajer?.id : admin?.id),
+        });
+      }
+
+      await RekamMedis.bulkCreate(visits);
+      log('rekam_medis', `15 kunjungan awal dibuat`);
+    } else {
+      log('rekam_medis', `EXISTS  (${rmCount} kunjungan)`);
+    }
+
     // ── Summary ───────────────────────────────────────────────────────────────
     console.log('\n╔══════════════════════════════════════════╗');
     console.log('║       Seeding selesai! Ringkasan:        ║');
@@ -324,8 +376,9 @@ async function seedAll() {
       Obat.count(), Pbf.count(), FormulaRacikan.count(),
       Stok.count(), PergerakanStok.count(),
       AlertEws.count(), PrediksiKebutuhan.count(), SuratPesanan.count(),
+      RekamMedis.count(),
     ]);
-    const labels = ['wilayah','fasilitas_kesehatan','pengguna','obat','pbf','formula_racikan','stok','pergerakan_stok','alert_ews','prediksi_kebutuhan','surat_pesanan'];
+    const labels = ['wilayah','fasilitas_kesehatan','pengguna','obat','pbf','formula_racikan','stok','pergerakan_stok','alert_ews','prediksi_kebutuhan','surat_pesanan','rekam_medis'];
     labels.forEach((l, i) => console.log(`║  ${l.padEnd(26)} ${String(counts[i]).padStart(4)} baris  ║`));
     console.log('╚══════════════════════════════════════════╝');
 

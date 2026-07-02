@@ -8,7 +8,8 @@
     "backend"
   ],
   "scripts": {
-    "test:db": "tsx scripts/test-db-connection.ts"
+    "test:db": "tsx scripts/test-db-connection.ts",
+    "test:tps": "tsx scripts/test-tps.ts"
   },
   "devDependencies": {
     "dotenv": "^16.4.7",

@@ -1,6 +1,6 @@
 ---
-title: API Specification — SehatTerus Backend
-updated: 2026-06-30
+title: API Specification — SehatTerus Backend (MIS)
+updated: 2026-07-02
 project: SehatTerus
 tags:
   - api
@@ -11,10 +11,15 @@ tags:
 # 📡 API Specification — SehatTerus
 
 > [!abstract] Tentang Dokumen Ini
-> Spesifikasi lengkap semua endpoint backend yang dibutuhkan untuk menghidupkan data di setiap halaman dashboard manajer.
-> Gunakan dokumen ini sebagai **konteks utama** saat develop endpoint baru.
+> Spesifikasi endpoint **MIS (Management Information System)** — untuk halaman dashboard manajer.
+> Untuk endpoint **TPS (pencatatan kunjungan pasien oleh staf klinik)**, lihat [[TPS-API-SPEC]].
 >
 > **Konvensi:** Semua endpoint butuh Swagger JSDoc di route file + data seeder idempotent.
+
+> [!important] Prerequisite Phase 5
+> Endpoint MIS yang membaca `rekam_medis` (terutama `/api/cases/summary`) baru bisa menampilkan
+> data yang akuntabel setelah **Phase 5 (TPS)** selesai dan staf klinik mulai input data via
+> `POST /api/tps/kunjungan`. Sebelum itu, data masih dari seeder faker.js.
 
 ---
 
@@ -257,10 +262,14 @@ tags:
 ```
 
 **Logic:**
-- `total_kasus` = COUNT semua `RekamMedis` dalam rentang
+- `total_kasus` = COUNT semua `rekam_medis` dalam rentang
 - `active_kecamatan` = COUNT DISTINCT `kecamatan_domisili` dengan > 0 kasus
-- `active_patients` = COUNT DISTINCT `nik_pasien` dalam rentang
-- `top_diseases` = GROUP BY `kode_icd10` DESC LIMIT 5
+- `active_patients` = COUNT `rekam_medis` dalam rentang (proxy pasien unik — `nik_pasien` tidak ada di model, satu baris = satu kunjungan)
+- `top_diseases` = GROUP BY `kode_icd10` ORDER BY COUNT DESC LIMIT 5
+
+> [!note] Catatan `active_patients`
+> Model `rekam_medis` tidak menyimpan `nik_pasien`. Nilai ini adalah jumlah kunjungan (bukan pasien unik).
+> Jika ke depan dibutuhkan pasien unik, perlu tambah kolom `nik_pasien` ke tabel.
 
 ---
 
@@ -930,13 +939,30 @@ tags:
 | 25 | GET | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
 | 26 | POST | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
 
-**Total: 3 ada · 1 ada (FE belum terhubung) · 22 perlu dibuat**
+**Total MIS: 3 ada · 1 ada (FE belum terhubung) · 22 perlu dibuat**
+**Total TPS: 10 endpoint baru (lihat [[TPS-API-SPEC]])**
+**Grand total seluruh sistem: 36 endpoint**
 
 ---
 
 ## 🛣️ Urutan Implementasi
 
-### Tahap 1 — Quick Connect (FE sudah ada, tinggal sambungkan)
+> [!warning] Urutan Wajib
+> **Phase 5 (TPS)** harus selesai lebih dulu sebelum MIS integration di bawah ini dimulai.
+> Tanpa TPS, data `rekam_medis` tetap dari faker seeder — tidak akuntabel.
+> Lihat task #1–#6 di task list dan [[TPS-API-SPEC]] untuk detail Phase 5.
+
+### Tahap 0 — TPS Selesai Dulu (Phase 5 — lihat TPS-API-SPEC.md)
+```
+Task #1  Tambah kolom dicatat_oleh ke RekamMedis
+Task #2  Update seeder (faskes_id + dicatat_oleh terisi)
+Task #3  Endpoint referensi TPS
+Task #4  Endpoint CRUD kunjungan
+Task #5  Endpoint resep + potong stok
+Task #6  GET /api/cases/summary
+```
+
+### Tahap 1 — Quick Connect (Phase 6 — FE sudah ada, tinggal sambungkan)
 ```
 F02  Sidebar logout → POST /api/auth/logout
 F03  AuthContext → GET /api/auth/me saat app mount
@@ -1006,11 +1032,13 @@ F36  PUT /api/pengguna/profile    → simpan perubahan profil
 
 | Dokumen | Isi |
 |---------|-----|
-| [[FEATURES-MAP]] | Status per fitur (37 fitur) |
+| [[TPS-API-SPEC]] | Spesifikasi 10 endpoint TPS (pencatatan kunjungan staf klinik) |
+| [[FEATURES-MAP]] | Status per fitur (37 fitur MIS) |
 | [[CHANGELOG]] | Progress per sesi |
 | [[DECISIONS]] | Keputusan arsitektur (ADR) |
 | [[research/SCHEMA]] | SQL schema lengkap |
+| [[ROADMAP]] | Phase plan (10 phase, posisi sekarang: Phase 5) |
 
 ---
 
-*Dibuat 2026-06-30 · Diperbarui otomatis oleh Claude Code setiap endpoint baru selesai*
+*Dibuat 2026-06-30 · Diperbarui 2026-07-02 — tambah referensi TPS, fix active_patients logic, update urutan implementasi*

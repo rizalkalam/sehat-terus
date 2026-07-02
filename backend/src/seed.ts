@@ -5,7 +5,7 @@ import path from 'path';
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 dotenv.config(); // fallback
 
-import { sequelize, RekamMedis } from './models';
+import { sequelize, RekamMedis, FasilitasKesehatan, Pengguna } from './models';
 import { faker } from '@faker-js/faker';
 
 const KECAMATAN_LIST = [
@@ -65,6 +65,13 @@ async function seed() {
     await sequelize.sync();
     console.log('Database tables synced.');
 
+    // Fetch existing faskes and users
+    const faskesList = await FasilitasKesehatan.findAll();
+    const penggunaList = await Pengguna.findAll();
+    if (faskesList.length === 0 || penggunaList.length === 0) {
+      throw new Error('FasilitasKesehatan atau Pengguna kosong. Jalankan npm run seed:all terlebih dahulu!');
+    }
+
     // Clear existing rekam medis records
     console.log('Clearing existing medical records...');
     await RekamMedis.destroy({ where: {}, truncate: true, cascade: true });
@@ -82,13 +89,17 @@ async function seed() {
       const disease = getRandomDisease();
       const randomDate = faker.date.between({ from: twoYearsAgo, to: today });
       const randomKecamatan = KECAMATAN_LIST[Math.floor(Math.random() * KECAMATAN_LIST.length)];
+      const randomFaskes = faskesList[Math.floor(Math.random() * faskesList.length)];
+      const randomPengguna = penggunaList[Math.floor(Math.random() * penggunaList.length)];
 
       records.push({
         id: faker.string.uuid(),
         tanggal_kunjungan: randomDate,
         kode_icd10: disease.code,
         nama_penyakit: disease.name,
-        kecamatan_domisili: randomKecamatan
+        kecamatan_domisili: randomKecamatan,
+        faskes_id: randomFaskes.id,
+        dicatat_oleh: randomPengguna.id,
       });
     }
 

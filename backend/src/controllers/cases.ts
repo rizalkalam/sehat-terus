@@ -140,3 +140,66 @@ export const getRegionDetail = async (req: Request, res: Response): Promise<void
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 };
+
+export const getCasesSummary = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { start_date, end_date } = req.query;
+
+    const start = start_date ? new Date(start_date as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = end_date ? new Date(end_date as string) : new Date();
+
+    const where: any = {
+      tanggal_kunjungan: {
+        [Op.between]: [start, end]
+      }
+    };
+
+    const total_kasus = await RekamMedis.count({ where });
+    
+    const active_kecamatan = await RekamMedis.count({
+      distinct: true,
+      col: 'kecamatan_domisili',
+      where
+    });
+
+    const active_patients = total_kasus; // proxy
+
+    const topDiseasesResult = await RekamMedis.findAll({
+      attributes: [
+        'kode_icd10',
+        'nama_penyakit',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'jumlah']
+      ],
+      where,
+      group: ['kode_icd10', 'nama_penyakit'],
+      order: [[sequelize.fn('COUNT', sequelize.col('id')), 'DESC']],
+      limit: 5
+    });
+
+    const top_diseases = topDiseasesResult.map((item: any) => {
+      const jumlah = parseInt(item.get('jumlah') as string, 10);
+      const persen = total_kasus > 0 ? parseFloat(((jumlah / total_kasus) * 100).toFixed(1)) : 0;
+      return {
+        kode_icd10: item.get('kode_icd10'),
+        nama_penyakit: item.get('nama_penyakit'),
+        jumlah,
+        persen
+      };
+    });
+
+    const periode_label = start_date && end_date
+      ? `Periode ${start_date} s/d ${end_date}`
+      : '30 hari terakhir';
+
+    res.status(200).json({
+      total_kasus,
+      active_kecamatan,
+      active_patients,
+      periode_label,
+      top_diseases
+    });
+  } catch (error: any) {
+    console.error('Error in getCasesSummary:', error);
+    res.status(500).json({ error: error.message || 'Internal Server Error' });
+  }
+};
