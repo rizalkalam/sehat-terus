@@ -71,6 +71,8 @@ FasilitasKesehatan.hasMany(AlertEws, { foreignKey: 'faskes_id', as: 'alerts' });
 AlertEws.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' });
 Obat.hasMany(AlertEws, { foreignKey: 'obat_terdampak_id', as: 'alerts' });
 AlertEws.belongsTo(Obat, { foreignKey: 'obat_terdampak_id', as: 'obat_terdampak' });
+Pengguna.hasMany(AlertEws, { foreignKey: 'ditangani_oleh', as: 'alerts_ditangani' });
+AlertEws.belongsTo(Pengguna, { foreignKey: 'ditangani_oleh', as: 'penangan' });
 
 // ── MIS: PrediksiKebutuhan ────────────────────────────────────────────────────
 Obat.hasMany(PrediksiKebutuhan, { foreignKey: 'obat_id', as: 'prediksi' });

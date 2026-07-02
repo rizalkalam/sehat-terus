@@ -17,6 +17,7 @@ export class AlertEws extends Model {
   declare status: StatusAlert;
   declare terdeteksi_pada: Date;
   declare ditangani_pada: Date | null;
+  declare ditangani_oleh: string | null;
 }
 
 AlertEws.init(
@@ -38,6 +39,7 @@ AlertEws.init(
     },
     terdeteksi_pada: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
     ditangani_pada: { type: DataTypes.DATE, allowNull: true },
+    ditangani_oleh: { type: DataTypes.UUID, allowNull: true },
   },
   {
     sequelize,
