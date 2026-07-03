@@ -230,4 +230,48 @@ langsung.
 
 ---
 
+## ADR-010 — Merge Parsial `feat/disease-api-integration` (bukan Merge Penuh)
+
+**Tanggal:** 2026-07-03
+**Status:** Aktif
+
+**Keputusan:**
+Branch teman satu kelompok (`TonyKeys`, `feat/disease-api-integration`) diambil **manual &
+selektif** ke branch baru `feat/logistic-ai-integration`, bukan lewat `git merge` biasa.
+
+**Alasan:**
+Branch itu ternyata dibuat dari snapshot project yang jauh lebih lama (`git log` menunjukkan
+commit pertamanya adalah *root commit* tanpa parent, lalu di-splice manual ke histori lama kita
+lewat commit "resolve merge conflicts") — dari sebelum Phase 5 (TPS) dan Phase 7 (EWS + stok)
+ada. `app.ts` versi branch itu tidak mengimpor `tps`/`alerts`/`stok` router sama sekali. Kalau
+di-merge polos, ketiga router yang sudah kita bangun akan **hilang**.
+
+**Yang diambil (ditambahkan manual ke `backend/src/`):**
+- `controllers/ai.ts` + `routes/ai.ts` — `POST /api/ai/analyze`, ringkasan situasi penyakit via
+  Groq LLM (`llama-3.1-8b-instant`). Fitur baru, di luar 37 fitur di `FEATURES-MAP.md`. Butuh
+  env var `GROQ_API_KEY` (ditambahkan ke `.env.example` & `docker-compose.yml`) — tanpa key ini
+  endpoint akan gagal saat dipanggil, bukan saat startup.
+- `controllers/logistic.ts` + `routes/logistic.ts` — mengisi gap F24 (stock chart), F26 (stat
+  cards logistik), F27 (near-expiry), F31 (list surat pesanan) yang sebelumnya masih 🟠 BE
+  Pending. **`getAlerts` dari versi teman TIDAK diambil** — duplikat dari `alerts.ts` kita yang
+  jauh lebih lengkap (ada filter status, detail per-id, stats, summary, PATCH).
+- `controllers/auth.ts` — fungsi `register()` + `POST /api/auth/register`, **backend-only**.
+
+**Yang sengaja TIDAK diambil:**
+- Seluruh duplikat `.planning/*` dari snapshot lama branch itu (versi kita lebih baru).
+- `app.ts`, `cases.ts`, model-model versi lama (branch itu tidak punya perubahan Phase 5/7 kita).
+- Frontend register page tidak disambungkan ke `POST /api/auth/register` — FE tetap pakai
+  `registerUser()` di `frontend/src/lib/auth.client.ts` yang sengaja mengembalikan pesan
+  "Pendaftaran mandiri dinonaktifkan, hubungi Administrator" (keputusan produk yang sudah ada
+  sebelum merge ini, lihat catatan di `.planning/quick/20260702-fix-frontend-register-build/`).
+  Endpoint backend disediakan untuk kebutuhan Admin/testing saja.
+
+**Deviasi dari `API-SPEC.md`:** spec awal merencanakan endpoint logistik di bawah prefix
+`GET /api/stok/*` (Tahap 5). Implementasi yang diambil dari merge ini pakai prefix
+`GET /api/logistic/*` — dipertahankan apa adanya (bukan di-rename ke `/api/stok/*`) supaya kode
+teman tidak diubah lebih jauh dari yang perlu. FE yang menyambungkan endpoint ini nanti (Phase 9)
+harus pakai prefix `/api/logistic/*`, bukan `/api/stok/*` seperti di spec lama.
+
+---
+
 *Diperbarui oleh Claude Code setiap ada keputusan arsitektur baru*

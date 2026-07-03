@@ -84,3 +84,43 @@ export async function me(req: Request, res: Response): Promise<void> {
     res.status(500).json({ error: 'Terjadi kesalahan server.' });
   }
 }
+
+export async function register(req: Request, res: Response): Promise<void> {
+  const { email, password, name, displayName } = req.body ?? {};
+
+  if (!email || !password || !name) {
+    res.status(400).json({ error: 'Email, kata sandi, dan nama wajib diisi.' });
+    return;
+  }
+
+  if (password.length < 6) {
+    res.status(400).json({ error: 'Kata sandi minimal 6 karakter.' });
+    return;
+  }
+
+  try {
+    const existing = await Pengguna.findOne({ where: { email } });
+    if (existing) {
+      res.status(409).json({ error: 'Email sudah terdaftar.' });
+      return;
+    }
+
+    const password_hash = await bcrypt.hash(String(password), 10);
+
+    const user = await Pengguna.create({
+      email,
+      password_hash,
+      nama: displayName || name,
+      peran: 'staf_logistik',
+      aktif: true,
+    });
+
+    res.status(201).json({
+      message: 'Akun berhasil dibuat.',
+      user: { id: user.id, email: user.email, nama: user.nama },
+    });
+  } catch (err) {
+    console.error('[auth/register]', err);
+    res.status(500).json({ error: 'Terjadi kesalahan server.' });
+  }
+}

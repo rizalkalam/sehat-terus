@@ -58,18 +58,29 @@ tags:
 | Status | Jumlah | Persentase |
 |--------|--------|------------|
 | ✅ Selesai | 16 | 43% |
-| 🟡 Integrasi Pending | 4 | 11% |
-| 🟠 BE Pending | 14 | 38% |
+| 🟡 Integrasi Pending | 8 | 22% |
+| 🟠 BE Pending | 10 | 27% |
 | ❌ Belum Ada | 3 | 8% |
 | **Total** | **37** | |
 
 ```
 Progress keseluruhan:
 Selesai          ████████░░░░░░░░░░░░  43%
-Integrasi        ██░░░░░░░░░░░░░░░░░░  11%
-BE Pending       ███████░░░░░░░░░░░░░  38%
+Integrasi        ████░░░░░░░░░░░░░░░░  22%
+BE Pending       █████░░░░░░░░░░░░░░░  27%
 Belum Ada        ██░░░░░░░░░░░░░░░░░░   8%
 ```
+
+> [!info] Merge parsial dari branch `feat/disease-api-integration` (2026-07-03)
+> Branch teman satu kelompok (`TonyKeys`) dibuat dari snapshot project yang jauh lebih lama
+> (sebelum Phase 5 TPS & Phase 7 EWS/stok ada) — merge polos akan menghapus `tps`/`alerts`/`stok`
+> router yang sudah dibangun. Diambil manual & selektif ke branch baru
+> `feat/logistic-ai-integration`: endpoint `GET /api/logistic/*` (mengisi gap F24, F26, F27, F31)
+> dan `POST /api/ai/analyze` (ringkasan LLM via Groq, fitur baru di luar 37 fitur map ini).
+> `getAlerts` versi teman **tidak diambil** (duplikat, versi kita di `alerts.ts` lebih lengkap).
+> `POST /api/auth/register` juga diambil tapi **backend-only** — FE tetap pakai
+> `registerUser()` yang sengaja mengembalikan pesan "dinonaktifkan" (keputusan produk yang sudah
+> ada, tidak diubah oleh merge ini). Lihat [[DECISIONS#ADR-010]].
 
 ---
 
@@ -277,10 +288,10 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F24 | Stock chart per obat (sisa vs kebutuhan) | 🟠 | `stok`, `obat`, `fasilitas_kesehatan` | `/logistik` |
+| F24 | Stock chart per obat (sisa vs kebutuhan) | 🟡 | `stok`, `obat`, `fasilitas_kesehatan` | `/logistik` |
 | F25 | Defekta — obat di bawah stok minimum | 🟠 | `stok`, `obat`, `fasilitas_kesehatan` | `/logistik` |
-| F26 | Stat cards logistik (nilai dead-stock, stockout risk, ketahanan) | 🟠 | `stok`, `obat`, `pergerakan_stok` | `/logistik` |
-| F27 | Near-expiry — obat mendekati kedaluwarsa (≤ 3 bulan) | 🟠 | `stok`, `obat` | `/logistik` |
+| F26 | Stat cards logistik (nilai dead-stock, stockout risk, ketahanan) | 🟡 | `stok`, `obat`, `pergerakan_stok` | `/logistik` |
+| F27 | Near-expiry — obat mendekati kedaluwarsa (≤ 3 bulan) | 🟡 | `stok`, `obat` | `/logistik` |
 | F28 | Slow-moving — obat tidak bergerak dalam N hari | 🟠 | `stok`, `pergerakan_stok`, `obat` | `/logistik` |
 | F29 | Realokasi stok antar cabang | 🟡 | `stok`, `pergerakan_stok`, `fasilitas_kesehatan` | `/logistik` |
 | F30 | Retur / Penyesuaian stok | 🟡 | `stok`, `pergerakan_stok` | `/logistik` |
@@ -318,7 +329,7 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F31 | List surat pesanan per faskes | 🟠 | `surat_pesanan`, `sp_item`, `pbf` | `/logistik` |
+| F31 | List surat pesanan per faskes | 🟡 | `surat_pesanan`, `sp_item`, `pbf` | `/logistik` |
 | F32 | Buat SP otomatis dari defekta (dikelompokkan per PBF) | 🟠 | `surat_pesanan`, `sp_item`, `stok`, `pbf`, `obat` | `/logistik` |
 | F33 | Update status SP (draf → disetujui → dikirim → diterima) | ❌ | `surat_pesanan` | Belum ada halaman |
 | F34 | SP terpisah otomatis untuk obat NPP | ❌ | `surat_pesanan`, `sp_item`, `obat` | Belum ada |
@@ -349,6 +360,13 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | `/api/cases/temporal` | GET | ✅ | F06, F08 |
 | `/api/cases/region/:name` | GET | ✅ | F06 |
 | `/api/docs` | GET | ✅ | (Swagger UI) |
+| `/api/logistic/stok` | GET | ✅ BE (2026-07-03 merge) | F24 (daftar mentah) |
+| `/api/logistic/stok/chart` | GET | ✅ BE (2026-07-03 merge) | F24 |
+| `/api/logistic/stats` | GET | ✅ BE (2026-07-03 merge) | F26 |
+| `/api/logistic/near-expiry` | GET | ✅ BE (2026-07-03 merge) | F27 |
+| `/api/logistic/surat-pesanan` | GET | ✅ BE (2026-07-03 merge) | F31 |
+| `/api/ai/analyze` | POST | ✅ BE (2026-07-03 merge, butuh `GROQ_API_KEY`) | fitur baru, di luar 37 fitur map ini |
+| `/api/auth/register` | POST | ✅ BE-only (2026-07-03 merge) | tidak dipakai FE (lihat ADR-010) |
 
 ---
 

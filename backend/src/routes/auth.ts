@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, logout, me } from '../controllers/auth';
+import { login, logout, me, register } from '../controllers/auth';
 import { requireAuth } from '../middleware/auth';
 
 const router = Router();
@@ -104,5 +104,43 @@ router.post('/logout', logout);
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/me', requireAuth, me);
+
+/**
+ * @openapi
+ * /api/auth/register:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Buat akun pengguna baru (peran default staf_logistik)
+ *     description: Endpoint backend tersedia untuk kebutuhan admin/testing. Registrasi mandiri dari FE sengaja dinonaktifkan (lihat `registerUser()` di `frontend/src/lib/auth.client.ts`) — akun baru dibuat lewat Administrator.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password, name]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 example: sehat123
+ *               name:
+ *                 type: string
+ *               displayName:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       201:
+ *         description: Akun berhasil dibuat
+ *       400:
+ *         description: Field wajib kosong atau password < 6 karakter
+ *       409:
+ *         description: Email sudah terdaftar
+ *       500:
+ *         description: Internal Server Error
+ */
+router.post('/register', register);
 
 export default router;

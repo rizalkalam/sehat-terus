@@ -1084,6 +1084,22 @@ F29  POST /api/stok/realokasi     → realokasi dari logistik
 F30  POST /api/stok/retur         → retur dari logistik
 ```
 
+> [!warning] Deviasi 2026-07-03 — Endpoint di atas untuk F24/F26/F27/F31 sudah **ada di backend**
+> tapi pakai prefix `/api/logistic/*`, BUKAN `/api/stok/*` seperti direncanakan di atas — diambil
+> dari merge parsial branch teman (`feat/disease-api-integration`), lihat [[DECISIONS#ADR-010]].
+> Detail aktual:
+> - `GET /api/logistic/stok` — daftar stok mentah (semua faskes, urut jumlah tersedia ASC)
+> - `GET /api/logistic/stok/chart` (F24) — `{ drug, sisaStock, kebutuhan }[]`, 6 obat teratas
+> - `GET /api/logistic/stats` (F26) — `{ deadStock, stockout, ketahanan, cabangBerisiko }`
+> - `GET /api/logistic/near-expiry` (F27) — stok exp. ≤ 3 bulan, sudah diformat siap tampil
+> - `GET /api/logistic/surat-pesanan` (F31) — daftar SP + items + PBF + faskes
+>
+> F25 (defekta), F28 (slow-moving), F29/F30 (realokasi/retur dari halaman logistik), F32 (buat SP)
+> masih belum ada — FE `/logistik` juga belum disambungkan ke endpoint `/api/logistic/*` ini.
+>
+> Fitur tambahan di luar 37 fitur map: `POST /api/ai/analyze` (ringkasan LLM via Groq, butuh
+> `GROQ_API_KEY`) dan `POST /api/auth/register` (backend-only, FE sengaja tidak disambungkan).
+
 ### Tahap 6 — Profile & Settings
 ```
 F36  PUT /api/pengguna/profile    → simpan perubahan profil

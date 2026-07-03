@@ -13,6 +13,31 @@ tags:
 
 ---
 
+## 2026-07-03 — Session: Merge Parsial Branch Teman (`feat/disease-api-integration`)
+
+### ✅ Diselesaikan
+
+Branch baru `feat/logistic-ai-integration` dibuat dari `feat/mis-dashboard-ews-integration`.
+Branch teman satu kelompok (`TonyKeys`) ternyata root commit terpisah (snapshot lama, sebelum
+Phase 5 TPS & Phase 7 EWS/stok) yang di-splice ke histori lewat commit "resolve merge conflicts"
+— merge polos akan menghapus router `tps`/`alerts`/`stok` yang sudah kita bangun. Diambil manual
+& selektif, lihat [[DECISIONS#ADR-010]] untuk detail lengkap.
+
+**Ditambahkan:**
+- `POST /api/ai/analyze` (fitur baru, di luar 37 fitur map) — ringkasan situasi penyakit via Groq LLM
+- `GET /api/logistic/stok`, `/stok/chart`, `/stats`, `/near-expiry`, `/surat-pesanan` — mengisi
+  gap F24, F26, F27, F31 (status naik dari 🟠 BE Pending → 🟡 Integrasi Pending, FE belum disambung)
+- `POST /api/auth/register` — backend-only, FE tetap pakai pesan "dinonaktifkan" (tidak diubah)
+- `GROQ_API_KEY` ditambahkan ke `.env.example` & `docker-compose.yml` (backend service)
+
+**Dibuang (duplikat/usang, sengaja tidak diambil):** `getAlerts` versi teman (kalah lengkap dari
+`alerts.ts` kita), seluruh `.planning/*` versi lama dari snapshot branch itu, `app.ts`/model versi
+lama yang tidak punya Phase 5/7.
+
+Diverifikasi: `npx tsc --noEmit` di `backend/` lulus tanpa error setelah semua penambahan.
+
+---
+
 ## 2026-07-02 — Session: Modal Blur — Fix Sebenarnya (Sesi Sebelumnya Belum Tuntas)
 
 ### ⚠️ Koreksi Diri

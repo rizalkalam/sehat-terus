@@ -9,6 +9,8 @@ import authRouter from './routes/auth';
 import tpsRouter from './routes/tps';
 import alertsRouter from './routes/alerts';
 import stokRouter from './routes/stok';
+import aiRouter from './routes/ai';
+import logisticRouter from './routes/logistic';
 
 dotenv.config();
 
@@ -35,5 +37,7 @@ app.use('/api/cases', casesRouter);
 app.use('/api/tps', tpsRouter);
 app.use('/api/alerts', alertsRouter);
 app.use('/api/stok', stokRouter);
+app.use('/api/ai', aiRouter);
+app.use('/api/logistic', logisticRouter);
 
 export default app;
