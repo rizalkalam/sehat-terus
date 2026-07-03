@@ -24,7 +24,7 @@ Stack: Next.js 15 (frontend) · Express.js + Sequelize (backend) · PostgreSQL �
 - [x] **Phase 6: MIS Dashboard Integration** — Sambungkan komponen dashboard yang masih hardcoded ke endpoint API real.
 - [x] **Phase 7: Early Warning System (EWS)** — Endpoint alert, Z-score detection engine, halaman /peringatan-dini dari data real.
 - [ ] **Phase 8: Forecasting & Proyeksi** — Double exponential smoothing, endpoint forecasting, halaman /proyeksi-tren dari data real.
-- [ ] **Phase 9: Logistik & Pengadaan** — Endpoint stok, near-expiry, slow-moving, surat pesanan, halaman /logistik dari data real.
+- [ ] **Phase 9: Logistik & Pengadaan** — Endpoint stok, near-expiry, slow-moving, surat pesanan, halaman /logistik dari data real. *(sebagian endpoint GET sudah ada lebih awal lewat merge 2026-07-03, lihat detail Phase 9 di bawah)*
 - [ ] **Phase 10: Profile & Settings** — Edit profil pengguna, PUT /api/pengguna/profile, halaman /settings dari data real.
 
 ---
@@ -126,13 +126,21 @@ Plans:
 ---
 
 ### 🔜 Phase 9: Logistik & Pengadaan
-**Status:** Pending
+**Status:** Pending (backend sebagian sudah ada lebih awal — lihat catatan di bawah)
 **Goal:** Manajemen stok, near-expiry, slow-moving, surat pesanan — semua dari data real.
 
 Plans:
 - [ ] 09-01: Endpoint stok (`GET /api/stok/stats`, `/chart`, `/defekta`, `/near-expiry`, `/slow-moving`)
 - [ ] 09-02: Endpoint surat pesanan (`GET/POST /api/surat-pesanan`)
 - [ ] 09-03: Sambungkan halaman /logistik ke semua endpoint stok + SP
+
+> [!note] Backend duluan lewat merge parsial (2026-07-03)
+> `GET /api/logistic/{stok, stok/chart, stats, near-expiry, surat-pesanan}` sudah ada di backend
+> — diambil dari branch teman (`feat/disease-api-integration`) lewat merge selektif, bukan dari
+> eksekusi Plan 09-01/09-02 formal. Prefix-nya `/api/logistic/*`, **bukan** `/api/stok/*` seperti
+> direncanakan di atas — lihat [[DECISIONS#ADR-010]] dan [[API-SPEC]]. Yang masih kosong: `defekta`,
+> `slow-moving`, `POST /api/surat-pesanan` (buat SP dari defekta), dan seluruh 09-03 (FE `/logistik`
+> belum disambungkan ke endpoint manapun, termasuk yang sudah ada).
 
 ---
 

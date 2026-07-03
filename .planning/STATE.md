@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 completed in full (07-01, 07-02, 07-03), Phase 8 pending
-last_updated: "2026-07-02T20:15:00.000Z"
-last_activity: 2026-07-02 -- Phase 7 completed (Plan 07-03: Z-score engine + /peringatan-dini FE wiring)
+stopped_at: Phase 7 completed in full (07-01, 07-02, 07-03); partial merge from teammate branch adds Phase 9 backend head start; Phase 8 pending
+last_updated: "2026-07-03T11:07:00.000Z"
+last_activity: 2026-07-03 -- Quick Task merge-disease-api-integration (branch feat/logistic-ai-integration, pushed, not yet PR'd)
 progress:
   total_phases: 10
   completed_phases: 7
@@ -134,7 +134,7 @@ Yang sebenarnya terjadi:
 ## Pending Todos (setelah Phase 7)
 
 - **Phase 8 (berikutnya):** Forecasting — double exp. smoothing + endpoints; sisa hardcoded di `/proyeksi-tren`: 3 stat cards (F22) + 3 alert cards rekomendasi (F23). Area chart ISPA/DBD sudah live sejak Plan 06-02.
-- **Phase 9:** Logistik — stok endpoints (`GET /api/stok/*`) + surat pesanan + halaman /logistik dari data real. Ini juga akan mengaktifkan "Tindakan Darurat" (F17) di `/peringatan-dini` yang masih hardcoded karena butuh endpoint stok lintas-faskes.
+- **Phase 9:** Logistik — stok endpoints + surat pesanan + halaman /logistik dari data real. Ini juga akan mengaktifkan "Tindakan Darurat" (F17) di `/peringatan-dini` yang masih hardcoded karena butuh endpoint stok lintas-faskes. **Update 2026-07-03:** sebagian endpoint GET (`stok/chart`, `stats`, `near-expiry`, `surat-pesanan`) sudah ada duluan lewat merge parsial dari branch teman, di bawah prefix `/api/logistic/*` bukan `/api/stok/*` yang direncanakan — lihat [[DECISIONS#ADR-010]]. Masih perlu: `defekta`, `slow-moving`, `POST /api/surat-pesanan`, dan seluruh Plan 09-03 (FE `/logistik` belum disambungkan sama sekali).
 - **Phase 10:** Settings — edit profil + halaman /settings dari data real
 
 ---
@@ -165,6 +165,7 @@ Yang sebenarnya terjadi:
 |------|-----------|---------|
 | `20260702-fix-frontend-register-build` | Memperbaiki import registerUser di frontend dan melakukan rebuild docker compose | 2026-07-02 |
 | `20260702-responsive-trend-page` | Grid responsif untuk stat cards/chart/alert cards di `/proyeksi-tren` (breakpoint `md`/`xl`, dihitung ulang karena sidebar fixed 349px) — diverifikasi 4 lebar viewport via Playwright, lalu di-rebuild ulang ke Docker (build ke-2 yang sukses hari ini) | 2026-07-02 |
+| `20260703-merge-disease-api-integration` | Merge parsial branch teman (`feat/disease-api-integration`) ke branch baru `feat/logistic-ai-integration` — ambil `POST /api/ai/analyze` + 5 endpoint `GET /api/logistic/*` (mengisi gap F24/F26/F27/F31), buang duplikat & docs usang. Lihat [[DECISIONS#ADR-010]]. | 2026-07-03 |
 
 > [!note] Observasi (bukan tindakan) — `alert_ews` dan `RekamMedis` sedikit lebih besar dari baseline
 > Saat verifikasi Quick Task di atas, `alert_ews` menunjukkan 7 baris (bukan 5) dan `RekamMedis`
@@ -177,6 +178,6 @@ Yang sebenarnya terjadi:
 
 ## Session Continuity
 
-Last session: 2026-07-02
-Stopped at: Phase 7 completed in full (07-01, 07-02, 07-03) — Z-score engine + /peringatan-dini FE wiring, all verified (curl, Postgres, Playwright). Plus: Trend page made responsive (Quick Task), and Docker frontend image successfully rebuilt for the first time since Phase 6 (registerUser blocker resolved) — all FE work this session is now genuinely live in the container, not just local-dev-verified.
-Resume: Mulai Phase 8 (Forecasting & Proyeksi) — endpoint `GET /api/forecasting/projection`, `/stats`, `/alerts` (Plan 08-01)
+Last session: 2026-07-03
+Stopped at: Merge parsial branch teman (`feat/disease-api-integration`) selesai di branch `feat/logistic-ai-integration` (bukan Plan formal — lihat Quick Tasks di atas dan [[DECISIONS#ADR-010]]), sudah di-push, siap dibuat PR. `npx tsc --noEmit` dan `npm run build` lulus.
+Resume: Mulai Phase 8 (Forecasting & Proyeksi) — endpoint `GET /api/forecasting/projection`, `/stats`, `/alerts` (Plan 08-01). Phase 9 sekarang punya head start backend (lihat catatan Phase 9 di ROADMAP.md).
