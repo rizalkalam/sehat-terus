@@ -17,20 +17,20 @@ created: 2026-06-21
 
 | Property | Value |
 |----------|-------|
-| **Framework** | prisma validate / tsx script |
-| **Config file** | prisma/schema.prisma |
-| **Quick run command** | `npx prisma validate` |
+| **Framework** | Custom TS script / Docker CLI |
+| **Config file** | docker-compose.yml / backend/src/config/database.ts |
+| **Quick run command** | `docker compose config` |
 | **Full suite command** | `npx tsx scripts/test-db-connection.ts` |
-| **Estimated runtime** | ~10 seconds |
+| **Estimated runtime** | ~15 seconds |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Run `npx prisma validate`
+- **After every task commit:** Run `docker compose config` or service compile tests
 - **After every plan wave:** Run `npx tsx scripts/test-db-connection.ts`
 - **Before `/gsd-verify-work`:** Full suite must be green
-- **Max feedback latency:** 10 seconds
+- **Max feedback latency:** 15 seconds
 
 ---
 
@@ -38,10 +38,10 @@ created: 2026-06-21
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | 01 | 1 | API-01 | - | N/A | integration | `npx next --version` | package.json | ░ pending |
-| 01-01-02 | 01 | 1 | API-01 | - | N/A | integration | `docker compose config` | docker-compose.yml | ░ pending |
-| 01-02-01 | 02 | 2 | API-02 | - | N/A | unit | `npx prisma validate` | prisma/schema.prisma | ░ pending |
-| 01-02-02 | 02 | 2 | API-02 | - | N/A | integration | `npx tsx scripts/test-db-connection.ts` | scripts/test-db-connection.ts | ░ pending |
+| 01-01-01 | 01 | 1 | API-01 | - | N/A | integration | `cd frontend && npm run build` | frontend/package.json | ░ pending |
+| 01-02-01 | 02 | 2 | API-01 | - | N/A | integration | `cd backend && npx tsc --noEmit` | backend/package.json | ░ pending |
+| 01-03-01 | 03 | 3 | API-01 | - | N/A | integration | `docker compose config` | docker-compose.yml | ░ pending |
+| 01-03-02 | 03 | 3 | API-02 | - | N/A | unit | `npx tsx scripts/test-db-connection.ts` | scripts/test-db-connection.ts | ░ pending |
 
 *Status: ░ pending / ✅ green / ❌ red / ⚠️ flaky*
 
@@ -49,8 +49,10 @@ created: 2026-06-21
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/test-db-connection.ts` — DB connection and schema validation test script
-- [ ] `prisma/schema.prisma` — Prisma base schema placeholder
+- [ ] `scripts/test-db-connection.ts` — DB connection test script
+- [ ] `docker-compose.yml` — Docker Compose configuration file
+- [ ] `frontend/package.json` — Next.js packages
+- [ ] `backend/package.json` — Express.js packages
 
 ---
 
@@ -66,7 +68,7 @@ created: 2026-06-21
 - [ ] Sampling continuity: no 3 consecutive tasks without automated verify
 - [ ] Wave 0 covers all MISSING references
 - [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
+- [ ] Feedback latency < 15s
 - [ ] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
