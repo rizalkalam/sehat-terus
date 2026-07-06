@@ -360,11 +360,12 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
 | FA1 | Admin dashboard layout + sidebar navigasi (`/admin`) | ✅ | — | `/admin` |
-| FA2 | Guard peran admin — FE (`middleware.ts`) + BE (`requireAdmin`) | ✅ | `pengguna` | `/admin/*` (redirect non-admin), link "Admin Panel" muncul kondisional di `Sidebar.tsx` utama |
+| FA2 | Guard peran admin — FE (`middleware.ts`) + BE (`requireAdmin`) | ✅ | `pengguna` | `/admin/*` (redirect non-admin), admin diblokir total dari semua halaman MIS |
 | FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
 | FA4 | Registrasi mandiri dinonaktifkan, akun baru cuma lewat admin | ✅ (sudah ada sebelum merge ini) | `pengguna` | `/register` (pesan error tetap), `/admin/users` (jalur resmi buat akun) |
 | FA5 | CRUD master obat dari admin panel | ❌ | `obat` | Belum ada —**sengaja di-exclude** dari merge 2026-07-06, direncanakan phase berikutnya |
 | FA6 | CRUD stok dari admin panel | ❌ | `stok` | Belum ada — sama seperti FA5, phase berikutnya |
+| FA8 | Landing per peran setelah login (`middleware.ts`) | ✅ | `pengguna` | admin → `/admin`; manajer → `/` (dashboard MIS); apoteker & staf_logistik → **Swagger UI backend** (`/api/docs`), karena belum ada halaman FE untuk peran itu (lihat [[CHANGELOG]] 2026-07-06) |
 | FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ❌ | `stok`, `pergerakan_stok`, `alert_ews` | Belum ada — sama seperti FA5, phase berikutnya |
 
 > [!note] Kenapa FA5–FA7 di-exclude, bukan cuma "belum sempat"

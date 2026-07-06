@@ -56,6 +56,20 @@ route `/admin`, `/admin/users` ter-compile). Belum diverifikasi end-to-end di br
 login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — lihat catatan cara tes
 di respons chat sesi ini.
 
+**Susulan #3 (masih 2026-07-06):** User minta login "masuk ke page sesuai role masing-masing".
+Klarifikasi: apoteker & staf_logistik **belum punya halaman dashboard FE sendiri** (cuma admin dan
+manajer yang punya) — jadi untuk sementara, 2 peran itu diarahkan ke Swagger UI backend
+(`/api/docs`) sebagai "halaman kerja" mereka, bukan dashboard MIS. `middleware.ts` ditulis ulang
+sekali lagi: fungsi `landingPathFor(peran)` menentukan tujuan redirect per peran (admin→`/admin`,
+apoteker/staf_logistik→URL absolut ke Swagger, sisanya→`/`), dipakai baik saat post-login
+redirect maupun guard di setiap request. Diverifikasi ke-4 akun seed via browser: admin→`/admin`,
+carmen (manajer)→`/`, apoteker→`http://localhost:5000/api/docs/`, logistik (staf_logistik)→sama.
+**Catatan kasar (belum diselesaikan):** karena Swagger di-serve backend (port 5000, di luar
+Next.js), begitu apoteker/staf_logistik "landing" di sana, tidak ada jalan mudah balik ke halaman
+login/logout aplikasi FE — mereka perlu ketik ulang URL atau clear cookie manual. Diterima sebagai
+keterbatasan sementara sesuai instruksi user ("sementara ini... sisanya pakai interface swagger"),
+belum diminta untuk diperbaiki.
+
 **Susulan #2 (masih 2026-07-06) — bug ditemukan lewat test browser:** User minta tombol "Kembali"
 di `AdminSidebar` diperjelas fungsinya. Investigasi: label "Kembali" itu terpasang di tombol yang
 sebenarnya manggil `logout()` — mismatch nama vs fungsi peninggalan sesi sebelumnya. Tapi pas
