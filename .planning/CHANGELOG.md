@@ -56,6 +56,13 @@ route `/admin`, `/admin/users` ter-compile). Belum diverifikasi end-to-end di br
 login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — lihat catatan cara tes
 di respons chat sesi ini.
 
+**Susulan (masih 2026-07-06):** Admin awalnya mendarat di dashboard MIS (`/`) yang sama seperti
+peran lain, harus klik link "Admin Panel" di sidebar dulu. Diubah: `middleware.ts` sekarang
+redirect admin dari `/` langsung ke `/admin` (berlaku juga untuk redirect setelah login, karena
+navigasi client-side dari halaman login tetap lewat middleware ini). Halaman MIS lain
+(`/proyeksi-tren`, dst.) tetap bisa diakses admin lewat URL langsung — cuma landing di `/` yang
+dialihkan.
+
 ---
 
 ## 2026-07-03 — Session: Merge Parsial Branch Teman (`feat/disease-api-integration`)
