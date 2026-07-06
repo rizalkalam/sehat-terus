@@ -13,6 +13,51 @@ tags:
 
 ---
 
+## 2026-07-06 — Session: Merge Selektif Admin Dashboard (`feat/admin-system-and-ai-update`)
+
+### ✅ Diselesaikan
+
+Branch teman satu kelompok (`TonyKeys`, branch `feat/admin-system-and-ai-update`, commit `6adaa31`)
+punya 1 commit besar yang menggabungkan 6 fitur: admin dashboard layout, CRUD obat, CRUD stok,
+role-based access, registrasi admin-only, toggle aktif akun, dan prediksi AI kebutuhan obat.
+User minta cuma 4 fitur diambil ke `merge-feat-dashboard` — CRUD obat/stok & prediksi AI
+sengaja di-exclude (lihat [[FEATURES-MAP#Domain 8]] FA5–FA7 untuk detail & cara lanjutkan nanti).
+
+**Ditambahkan (FA1–FA4, lihat [[FEATURES-MAP#Domain 8 — Admin Panel]]):**
+- `frontend/src/app/admin/{layout,page}.tsx`, `admin/users/page.tsx`, `components/AdminSidebar.tsx`
+  — dashboard admin dengan sidebar (Overview + Pengguna saja, di-trim dari source yang juga
+  punya menu Master Obat/Stok Obat)
+- `backend/src/{routes,controllers}/admin.ts` — CRUD pengguna + list faskes. Source aslinya
+  menggabungkan ini dengan CRUD obat/stok di file yang sama; di-split manual supaya scope obat/
+  stok tidak ikut kebawa
+- `frontend/src/middleware.ts` — guard `/admin/*` redirect ke `/` kalau bukan `peran: admin`
+- `frontend/src/components/Sidebar.tsx` — link "Admin Panel" muncul kondisional untuk admin
+- Registrasi admin-only (FA4) ternyata **sudah ada** di `merge-feat-dashboard` sebelum merge ini
+  (identik dengan source) — tidak ada perubahan diperlukan
+
+**Bug ditemukan & diperbaiki selama merge:**
+- `st_user` cookie di branch ini belum membawa field `peran` — tanpa ini, guard admin di FE
+  selalu gagal (redirect walau user beneran admin) karena `user?.peran` selalu `undefined`.
+  Ditambahkan ke `res.cookie('st_user', ...)` di `controllers/auth.ts` (login) + tipe `User` FE.
+- Form edit pengguna (`admin/users/page.tsx`) selalu reset `faskes_id` ke kosong saat `openEdit`
+  dipanggil, alih-alih prefill assignment faskes yang sudah ada — akan menghapus faskes user
+  kalau admin save tanpa sengaja ganti dropdown. Diperbaiki: prefill dari `u.faskes_id`.
+- `adminsidebar.tsx` (lowercase) di source di-import sebagai `@/components/AdminSidebar`
+  (uppercase) — cocok di Windows (case-insensitive) tapi bakal 404 di Docker/Linux. File dibuat
+  ulang dengan penamaan konsisten (`AdminSidebar.tsx`).
+- **Endpoint `/api/admin/*` cuma dilindungi `requireAuth`, bukan `requireAdmin`** — user mana pun
+  yang login (bukan cuma admin) bisa panggil endpoint itu langsung lewat curl, proteksi role cuma
+  ada di level middleware Next.js (bisa dilewati kalau akses API langsung). Ditambahkan middleware
+  `requireAdmin` baru (403 kalau `peran !== 'admin'`), dipasang setelah `requireAuth` di
+  `routes/admin.ts` — commit terpisah, diminta eksplisit oleh user setelah laporan awal merge.
+
+Diverifikasi: `npx tsc --noEmit` dan `npm run build` lulus bersih di backend & frontend (termasuk
+route `/admin`, `/admin/users` ter-compile). Belum diverifikasi end-to-end di browser (belum
+login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — lihat catatan cara tes
+di respons chat sesi ini.
+
+---
+
 ## 2026-07-03 — Session: Merge Parsial Branch Teman (`feat/disease-api-integration`)
 
 ### ✅ Diselesaikan

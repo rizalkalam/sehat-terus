@@ -349,6 +349,34 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 
 ---
 
+## 🛡️ Domain 8 — Admin Panel (di luar 37 fitur original)
+
+> [!abstract] Konteks
+> Ditambahkan lewat merge selektif dari branch teman `feat/admin-system-and-ai-update` (author
+> TonyKeys) ke `merge-feat-dashboard`, 2026-07-06. Source branch aslinya menggabungkan 6 fitur
+> jadi satu commit besar; hanya 4 yang diambil (scope dipersempit atas permintaan user) — lihat
+> [[CHANGELOG]] entri 2026-07-06 untuk rincian apa yang dipangkas dan kenapa.
+
+| ID | Fitur | Status | Tabel DB | Halaman FE |
+|----|-------|--------|----------|------------|
+| FA1 | Admin dashboard layout + sidebar navigasi (`/admin`) | ✅ | — | `/admin` |
+| FA2 | Guard peran admin — FE (`middleware.ts`) + BE (`requireAdmin`) | ✅ | `pengguna` | `/admin/*` (redirect non-admin), link "Admin Panel" muncul kondisional di `Sidebar.tsx` utama |
+| FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
+| FA4 | Registrasi mandiri dinonaktifkan, akun baru cuma lewat admin | ✅ (sudah ada sebelum merge ini) | `pengguna` | `/register` (pesan error tetap), `/admin/users` (jalur resmi buat akun) |
+| FA5 | CRUD master obat dari admin panel | ❌ | `obat` | Belum ada —**sengaja di-exclude** dari merge 2026-07-06, direncanakan phase berikutnya |
+| FA6 | CRUD stok dari admin panel | ❌ | `stok` | Belum ada — sama seperti FA5, phase berikutnya |
+| FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ❌ | `stok`, `pergerakan_stok`, `alert_ews` | Belum ada — sama seperti FA5, phase berikutnya |
+
+> [!note] Kenapa FA5–FA7 di-exclude, bukan cuma "belum sempat"
+> Source branch punya `routes/admin.ts`+`controllers/admin.ts` yang menggabungkan CRUD user +
+> CRUD obat + CRUD stok jadi satu file. User eksplisit minta cuma 4 fitur (FA1–FA4) yang diambil,
+> jadi controller/route di-split manual — FA5–FA7 bukan dihapus karena rusak, tapi memang belum
+> diintegrasikan ke branch ini. Kode aslinya (untuk referensi kalau mau dikerjakan lagi) ada di
+> branch `feat/admin-system-and-ai-update`, commit `6adaa31`, fungsi `getObat/createObat/updateObat/
+> deleteObat/getStokAdmin/updateStok` di `admin.ts` + endpoint `GET /api/ai/predict-drugs`.
+
+---
+
 ## 🗂️ Mapping: Endpoint Backend yang Sudah Ada
 
 | Endpoint | Method | Status | Fitur Terkait |
@@ -367,6 +395,9 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | `/api/logistic/surat-pesanan` | GET | ✅ BE (2026-07-03 merge) | F31 |
 | `/api/ai/analyze` | POST | ✅ BE (2026-07-03 merge, butuh `GROQ_API_KEY`) | fitur baru, di luar 37 fitur map ini |
 | `/api/auth/register` | POST | ✅ BE-only (2026-07-03 merge) | tidak dipakai FE (lihat ADR-010) |
+| `/api/admin/users` | GET/POST | ✅ (2026-07-06 merge) | FA3 |
+| `/api/admin/users/:id` | PUT/DELETE | ✅ (2026-07-06 merge) | FA3 |
+| `/api/admin/faskes` | GET | ✅ (2026-07-06 merge) | FA3 |
 
 ---
 
