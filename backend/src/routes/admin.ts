@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import {
   getUsers, createUser, updateUser, deleteUser,
   getFaskes,
@@ -7,8 +7,8 @@ import {
 
 const router = Router();
 
-// Semua route admin butuh auth
-router.use(requireAuth);
+// Semua route admin butuh auth + peran admin
+router.use(requireAuth, requireAdmin);
 
 // Users
 router.get('/users', getUsers);
