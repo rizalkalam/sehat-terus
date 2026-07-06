@@ -56,7 +56,21 @@ route `/admin`, `/admin/users` ter-compile). Belum diverifikasi end-to-end di br
 login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — lihat catatan cara tes
 di respons chat sesi ini.
 
-**Susulan (masih 2026-07-06):** Admin awalnya mendarat di dashboard MIS (`/`) yang sama seperti
+**Susulan #2 (masih 2026-07-06) — bug ditemukan lewat test browser:** User minta tombol "Kembali"
+di `AdminSidebar` diperjelas fungsinya. Investigasi: label "Kembali" itu terpasang di tombol yang
+sebenarnya manggil `logout()` — mismatch nama vs fungsi peninggalan sesi sebelumnya. Tapi pas
+ditest di browser (Playwright, klik tombolnya beneran), **`logout()` ternyata no-op sama sekali**
+— tidak ada request `POST /api/auth/logout` terkirim, URL tidak berubah. Root cause: `useAuth()`
+balik ke stub default (`logout: () => {}`) karena `admin/layout.tsx` tidak pernah dibungkus
+`<AuthProvider>` (cuma `(dashboard)/layout.tsx` MIS yang dibungkus). Ini juga jelasin kenapa kode
+asli source branch punya hack aneh (`localStorage.clear()` + `window.location.href` manual) di
+tombol ini — itu workaround untuk bug yang sama, bukan fix yang benar. Diperbaiki: `admin/layout.tsx`
+sekarang dibungkus `<AuthProvider>` (sama seperti dashboard layout), dan label tombol diganti jadi
+"Keluar" supaya sesuai fungsi aslinya (logout, bukan navigasi "back" — lagipula sejak MIS diblokir
+total untuk admin, tidak ada tempat buat "kembali" secara logis). Diverifikasi ulang di browser:
+klik "Keluar" → `POST /api/auth/logout` 200 → redirect ke `/login`.
+
+**Susulan #1 (masih 2026-07-06):** Admin awalnya mendarat di dashboard MIS (`/`) yang sama seperti
 peran lain, harus klik link "Admin Panel" di sidebar dulu. Diubah 2 tahap:
 1. Redirect admin dari `/` langsung ke `/admin` setelah login.
 2. **Diperluas jadi blokir total** atas permintaan user — admin sekarang tidak bisa membuka

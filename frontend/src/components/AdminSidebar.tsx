@@ -52,7 +52,7 @@ export default function AdminSidebar() {
         className="flex gap-[12px] items-center px-[16px] py-[12px] rounded-[12px] font-josefin text-[16px] transition-all text-white/60 hover:bg-white/10 hover:text-white w-full text-left cursor-pointer"
       >
         <LogOut className="size-[20px] shrink-0" />
-        Kembali
+        Keluar
       </button>
     </aside>
   );
