@@ -49,9 +49,13 @@ cd frontend && npm run dev
 | Email | Password | Peran |
 |-------|----------|-------|
 | carmen@sehatterus.id | sehat123 | manajer |
-| budi@sehatterus.id | sehat123 | apoteker |
-| sari@sehatterus.id | sehat123 | staf_logistik |
-| admin@sehatterus.id | sehat123 | admin |
+| apoteker@sehatterus.id | apoteker123 | apoteker |
+| logistik@sehatterus.id | logistik123 | staf_logistik |
+| admin@sehatterus.id | admin123 | admin |
+
+> [!note] Landing per peran setelah login
+> admin → `/admin`; manajer → `/` (dashboard MIS); apoteker & staf_logistik → Swagger UI backend
+> (`/api/docs`), karena keduanya belum punya halaman dashboard FE sendiri (lihat `middleware.ts`).
 
 ---
 
