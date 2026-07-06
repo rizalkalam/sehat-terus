@@ -56,6 +56,18 @@ route `/admin`, `/admin/users` ter-compile). Belum diverifikasi end-to-end di br
 login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — lihat catatan cara tes
 di respons chat sesi ini.
 
+**Susulan #4 (masih 2026-07-06) — bug ditemukan lewat laporan user:** Logout dari satu peran lalu
+login lagi sebagai peran lain **tanpa refresh manual halaman `/login`** membawa user ke landing
+page peran SEBELUMNYA, bukan peran yang baru login. Root cause: `router.push()`/`router.replace()`
+(client-side navigation Next.js App Router) bisa memakai client router cache — hasil render
+halaman dari sebelum logout — tanpa menjamin `middleware.ts` dievaluasi ulang dengan cookie baru.
+Reproduksi by browser (Playwright): login manajer → `/`, logout → `/login`, login admin di halaman
+`/login` yang sama tanpa reload manual → **sebelum fix** tetap nyangkut, **sesudah fix** benar ke
+`/admin`. Diperbaiki: `AuthContext.logout()` dan `login/page.tsx` post-login redirect diganti dari
+`router.push`/`router.replace` ke `window.location.href` (full page reload) — memaksa request baru
+lewat middleware dengan cookie ter-update, bukan soft-navigation yang bisa reuse cache. `useRouter`
+di kedua file jadi tidak dipakai lagi, dihapus.
+
 **Susulan #3 (masih 2026-07-06):** User minta login "masuk ke page sesuai role masing-masing".
 Klarifikasi: apoteker & staf_logistik **belum punya halaman dashboard FE sendiri** (cuma admin dan
 manajer yang punya) — jadi untuk sementara, 2 peran itu diarahkan ke Swagger UI backend

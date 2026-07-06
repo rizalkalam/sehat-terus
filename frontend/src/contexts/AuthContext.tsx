@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import type { User } from "@/lib/auth";
 import { getUserFromCookie, clearAuthCookies, setAuthCookies, getMe, logoutFromApi } from "@/lib/auth.client";
 
@@ -19,7 +18,6 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -46,7 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await logoutFromApi();
     setUser(null);
-    router.push("/login");
+    // Full reload — pastikan navigasi berikutnya (mis. login lagi sebagai peran
+    // lain) tidak mewarisi halaman dari client router cache milik sesi sebelumnya.
+    window.location.href = "/login";
   };
 
   return (

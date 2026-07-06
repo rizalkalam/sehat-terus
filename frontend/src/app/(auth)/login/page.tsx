@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Activity, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { loginWithApi } from "@/lib/auth.client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,8 +32,11 @@ export default function LoginPage() {
     }
 
     // Cookie st_auth & st_user sudah disetel oleh backend via Set-Cookie.
+    // Full reload (bukan router.replace) — memastikan middleware.ts jalan ulang
+    // dengan cookie baru, bukan menampilkan halaman dari client router cache
+    // yang di-render sebelum logout (peran lama masih kepakai kalau soft nav).
     const from = new URLSearchParams(window.location.search).get("from") || "/";
-    router.replace(from);
+    window.location.href = from;
   };
 
   return (
