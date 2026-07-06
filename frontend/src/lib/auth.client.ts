@@ -32,6 +32,7 @@ export async function loginWithApi(
         email: data.user.email,
         name: data.user.nama,
         displayName: data.user.nama,
+        peran: data.user.peran,
       },
     };
   } catch {
@@ -53,6 +54,7 @@ export async function getMe(): Promise<{ ok: true; user: User } | { ok: false }>
         email: data.user.email,
         name: data.user.nama,
         displayName: data.user.nama,
+        peran: data.user.peran,
       },
     };
   } catch {

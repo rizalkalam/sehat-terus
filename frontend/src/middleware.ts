@@ -10,6 +10,7 @@ export function middleware(request: NextRequest) {
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
   const isAuthed = request.cookies.has("st_auth");
+  const userCookie = request.cookies.get("st_user")?.value;
 
   // Unauthenticated → redirect to login, carry original destination
   if (!isPublic && !isAuthed) {
@@ -25,6 +26,23 @@ export function middleware(request: NextRequest) {
     url.pathname = "/";
     url.searchParams.delete("from");
     return NextResponse.redirect(url);
+  }
+
+  // Admin guard — /admin/* hanya untuk admin
+  if (pathname.startsWith("/admin")) {
+    try {
+      const decoded = decodeURIComponent(userCookie || "{}");
+      const user = JSON.parse(decoded);
+      if (user?.peran !== "admin") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
   }
 
   return NextResponse.next();
