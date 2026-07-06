@@ -28,6 +28,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Admin yang mendarat di dashboard MIS ("/") langsung diarahkan ke /admin
+  if (pathname === "/" && isAuthed) {
+    try {
+      const user = JSON.parse(decodeURIComponent(userCookie || "{}"));
+      if (user?.peran === "admin") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // cookie tidak valid — biarkan lanjut, bukan tanggung jawab guard ini
+    }
+  }
+
   // Admin guard — /admin/* hanya untuk admin
   if (pathname.startsWith("/admin")) {
     try {
