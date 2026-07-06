@@ -3,6 +3,15 @@ import type { NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/register"];
 
+function getPeran(userCookie: string | undefined): string | null {
+  try {
+    const user = JSON.parse(decodeURIComponent(userCookie || "{}"));
+    return user?.peran ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -11,6 +20,7 @@ export function middleware(request: NextRequest) {
   );
   const isAuthed = request.cookies.has("st_auth");
   const userCookie = request.cookies.get("st_user")?.value;
+  const isAdmin = isAuthed && getPeran(userCookie) === "admin";
 
   // Unauthenticated → redirect to login, carry original destination
   if (!isPublic && !isAuthed) {
@@ -23,40 +33,23 @@ export function middleware(request: NextRequest) {
   // Already authenticated → don't show login/register again
   if (isPublic && isAuthed) {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = isAdmin ? "/admin" : "/";
     url.searchParams.delete("from");
     return NextResponse.redirect(url);
   }
 
-  // Admin yang mendarat di dashboard MIS ("/") langsung diarahkan ke /admin
-  if (pathname === "/" && isAuthed) {
-    try {
-      const user = JSON.parse(decodeURIComponent(userCookie || "{}"));
-      if (user?.peran === "admin") {
-        const url = request.nextUrl.clone();
-        url.pathname = "/admin";
-        return NextResponse.redirect(url);
-      }
-    } catch {
-      // cookie tidak valid — biarkan lanjut, bukan tanggung jawab guard ini
-    }
+  // Admin dibatasi cuma ke /admin/* — semua halaman MIS diblokir, dialihkan ke /admin
+  if (isAdmin && !pathname.startsWith("/admin")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    return NextResponse.redirect(url);
   }
 
-  // Admin guard — /admin/* hanya untuk admin
-  if (pathname.startsWith("/admin")) {
-    try {
-      const decoded = decodeURIComponent(userCookie || "{}");
-      const user = JSON.parse(decoded);
-      if (user?.peran !== "admin") {
-        const url = request.nextUrl.clone();
-        url.pathname = "/";
-        return NextResponse.redirect(url);
-      }
-    } catch {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
-    }
+  // Non-admin dilarang ke /admin/*
+  if (!isAdmin && pathname.startsWith("/admin")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();

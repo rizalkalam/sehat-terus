@@ -57,11 +57,16 @@ login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — liha
 di respons chat sesi ini.
 
 **Susulan (masih 2026-07-06):** Admin awalnya mendarat di dashboard MIS (`/`) yang sama seperti
-peran lain, harus klik link "Admin Panel" di sidebar dulu. Diubah: `middleware.ts` sekarang
-redirect admin dari `/` langsung ke `/admin` (berlaku juga untuk redirect setelah login, karena
-navigasi client-side dari halaman login tetap lewat middleware ini). Halaman MIS lain
-(`/proyeksi-tren`, dst.) tetap bisa diakses admin lewat URL langsung — cuma landing di `/` yang
-dialihkan.
+peran lain, harus klik link "Admin Panel" di sidebar dulu. Diubah 2 tahap:
+1. Redirect admin dari `/` langsung ke `/admin` setelah login.
+2. **Diperluas jadi blokir total** atas permintaan user — admin sekarang tidak bisa membuka
+   halaman MIS manapun (`/`, `/proyeksi-tren`, `/peringatan-dini`, `/logistik`, `/settings`), semua
+   path selain `/admin/*` dialihkan balik ke `/admin` selama peran-nya admin. `middleware.ts`
+   ditulis ulang: `isAdmin` dihitung sekali di awal, lalu dipakai simetris — admin diblokir dari
+   non-`/admin`, non-admin diblokir dari `/admin` (guard yang sudah ada sebelumnya).
+   Konsekuensi: link "Admin Panel" di `Sidebar.tsx` (sidebar MIS utama) jadi tidak mungkin
+   ke-render lagi (admin tidak pernah melihat sidebar itu) — dihapus sebagai dead code, bukan
+   didiamkan.
 
 ---
 

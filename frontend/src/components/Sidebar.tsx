@@ -1,22 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, TrendingUp, AlertTriangle, Package, Settings, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, TrendingUp, AlertTriangle, Package, Settings, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { getUserFromCookie } from "@/lib/auth.client";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const { logout } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    const user = getUserFromCookie();
-    setIsAdmin(user?.peran === "admin");
-  }, []);
 
   const menuItems = [
     {
@@ -49,16 +42,6 @@ export default function Sidebar() {
       icon: Settings,
       iconSize: "size-[25px]",
     },
-    ...(isAdmin
-      ? [
-          {
-            name: "Admin Panel",
-            path: "/admin",
-            icon: ShieldCheck,
-            iconSize: "size-[25px]",
-          },
-        ]
-      : []),
   ];
 
   return (
