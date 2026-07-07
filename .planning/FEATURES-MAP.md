@@ -57,19 +57,22 @@ tags:
 
 | Status | Jumlah | Persentase |
 |--------|--------|------------|
-| ✅ Selesai | 16 | 43% |
-| 🟡 Integrasi Pending | 8 | 22% |
-| 🟠 BE Pending | 10 | 27% |
-| ❌ Belum Ada | 3 | 8% |
+| ✅ Selesai | 35 | 95% |
+| 🟡 Integrasi Pending | 0 | 0% |
+| 🟠 BE Pending | 0 | 0% |
+| ❌ Belum Ada | 2 | 5% |
 | **Total** | **37** | |
 
 ```
 Progress keseluruhan:
-Selesai          ████████░░░░░░░░░░░░  43%
-Integrasi        ████░░░░░░░░░░░░░░░░  22%
-BE Pending       █████░░░░░░░░░░░░░░░  27%
-Belum Ada        ██░░░░░░░░░░░░░░░░░░   8%
+Selesai          ████████████████████░  95%
+Belum Ada        █░░░░░░░░░░░░░░░░░░░░   5%
 ```
+
+> [!note] Phase 8, 9 & 10 sudah selesai
+> F20–F23 (Phase 8), F17/F19/F24–F32/F34 (Phase 9), dan F04/F35/F36 (Phase 10 — Settings) sekarang
+> semuanya ✅. Sisa pending: F33 (SP status workflow), F37 (multi-faskes) — lihat detail di tabel
+> Domain di bawah.
 
 > [!info] Merge parsial dari branch `feat/disease-api-integration` (2026-07-03)
 > Branch teman satu kelompok (`TonyKeys`) dibuat dari snapshot project yang jauh lebih lama
@@ -95,7 +98,7 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | F01 | Login email & password → set JWT cookie | ✅ | `pengguna` | `/login` |
 | F02 | Logout → hapus cookie sesi | ✅ | — | Sidebar |
 | F03 | Load profil otomatis saat app dibuka | ✅ | `pengguna` | Semua (AuthContext) |
-| F04 | Edit profil (nama, telepon, alamat) | 🟠 | `pengguna` | `/settings` |
+| F04 | Edit profil (nama, telepon, alamat) | ✅ | `pengguna` | `/settings` |
 
 > [!success] F02–F03 Selesai (Phase 6, Plan 06-03)
 > `AuthContext.logout()` sekarang memanggil `logoutFromApi()` → `POST /api/auth/logout`, yang
@@ -143,6 +146,11 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 > yang mau dibandingkan — bukan cuma ISPA/DBD terus-menerus. Diverifikasi: ganti dropdown ke
 > "Influenza / Flu" langsung update chart + tooltip dengan angka real dari API.
 >
+> **Update 2026-07-07 (Phase 8):** Chart diganti total ke `GET /api/forecasting/projection`
+> (mingguan, bukan bulanan) supaya bagian proyeksi bisa digambar garis putus-putus menyambung
+> dari titik historis terakhir. Stat cards & alert cards yang disebut di atas sebagai "masih
+> hardcoded" sekarang hidup dari `/api/forecasting/{stats,alerts}` — lihat [[#Domain 4]] F20–F23.
+>
 > **Update 2026-07-02 — Responsive layout:** Halaman `/proyeksi-tren` sebelumnya 100% fixed-pixel
 > (tidak ada breakpoint Tailwind sama sekali di seluruh area dashboard). Stat cards & alert cards
 > (`flex-1` 3-kolom) jadi sangat sempit/terpotong di viewport sedang karena sidebar fixed 349px
@@ -160,7 +168,8 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 
 > [!info] Konteks
 > Deteksi lonjakan kasus berbasis Z-score. Output disimpan di `alert_ews`.
-> FE sudah tersambung penuh ke `/peringatan-dini` sejak Plan 07-03 (kecuali F17 tindakan cepat & F19 chart).
+> FE sudah tersambung penuh ke `/peringatan-dini` sejak Plan 07-03; F17 & F19 selesai di Phase 9
+> (2026-07-07) begitu `GET /api/logistic/{defekta,slow-moving,stok/chart}` ada.
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
@@ -168,10 +177,10 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | F13 | Daftar alert aktif (Kritis / Waspada) | ✅ | `alert_ews`, `wilayah` | `/peringatan-dini`, `/proyeksi-tren` |
 | F14 | Detail alert (lonjakan %, laju harian, sisa stok jam) | ✅ | `alert_ews`, `stok`, `obat` | `/peringatan-dini` (modal) |
 | F15 | Stat cards EWS (stok kritis, lonjakan, wilayah) | ✅ | `alert_ews`, `stok` | `/peringatan-dini` |
-| F16 | AI ringkasan situasi (teks otomatis dari data alert) | ✅ | `alert_ews` | `/peringatan-dini`, `/logistik` |
-| F17 | Tindakan: Relokasi & retur stok dari alert | 🟡 | `alert_ews`, `stok`, `pergerakan_stok` | `/peringatan-dini` |
+| F16 | AI ringkasan situasi (teks otomatis dari data alert) | ✅ | `alert_ews` | `/peringatan-dini` — **belum** di `/logistik`, lihat catatan Domain 5 |
+| F17 | Tindakan: Relokasi & retur stok dari alert | ✅ | `stok`, `pergerakan_stok`, `fasilitas_kesehatan` | `/peringatan-dini` |
 | F18 | Tindakan: Tandai alert "ditangani / selesai" | ✅ | `alert_ews` | `/peringatan-dini` |
-| F19 | Chart stok vs kebutuhan per penyakit | 🟠 | `stok`, `alert_ews`, `obat` | `/peringatan-dini` |
+| F19 | Chart stok vs kebutuhan per obat kritis | ✅ | `stok`, `pergerakan_stok`, `obat` | `/peringatan-dini` |
 
 > [!success] F13–F16, F18 Selesai Penuh — Backend + FE (Phase 7, Plan 07-01→07-03)
 > `GET /api/alerts`, `/:id`, `/stats`, `/summary`, dan `PATCH /api/alerts/:id` semua terimplementasi
@@ -264,19 +273,24 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 ## 📈 Domain 4 — Proyeksi & Forecasting
 
 > [!info] Konteks
-> Prediksi kebutuhan 14–30 hari ke depan dengan double exponential smoothing.
-> Output disimpan di `prediksi_kebutuhan` agar tidak dihitung ulang tiap request.
+> Prediksi kasus 14–30 hari ke depan dengan double exponential smoothing (Holt's linear trend).
+> **Update 2026-07-07:** `prediksi_kebutuhan` ternyata bukan untuk ini — schema-nya `obat_id`/
+> `faskes_id`/`jumlah_prediksi` (kebutuhan obat per faskes, dipakai Phase 9), bukan proyeksi kasus
+> penyakit. Dihitung on-the-fly dari `RekamMedis` tiap request (mingguan, minggu berjalan
+> dikeluarkan dari fit). Lihat [[DECISIONS#ADR-011]] dan [[API-SPEC#Domain Forecasting]].
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F20 | Algoritma proyeksi 14–30 hari (double exp. smoothing) | 🟠 | `RekamMedis`, `prediksi_kebutuhan` | — (backend logic) |
-| F21 | Area chart proyeksi tren (ISPA vs DBD) | 🟠 | `prediksi_kebutuhan` | `/proyeksi-tren` |
-| F22 | Stat cards proyeksi (peningkatan/penurunan tertinggi) | 🟠 | `prediksi_kebutuhan` | `/proyeksi-tren` |
-| F23 | Alert cards rekomendasi obat dari proyeksi | 🟠 | `prediksi_kebutuhan`, `alert_ews`, `obat` | `/proyeksi-tren` |
+| F20 | Algoritma proyeksi 14–30 hari (double exp. smoothing) | ✅ | `RekamMedis` | — (backend logic) |
+| F21 | Area chart proyeksi tren, garis putus-putus untuk proyeksi | ✅ | `RekamMedis` | `/proyeksi-tren` |
+| F22 | Stat cards proyeksi (peningkatan/penurunan tertinggi) | ✅ | `RekamMedis` | `/proyeksi-tren` |
+| F23 | Alert cards rekomendasi obat dari proyeksi | ✅ | `RekamMedis`, `resep`, `resep_item`, `obat`, `alert_ews` | `/proyeksi-tren` |
 
-> [!note] Data Sudah Tersedia
-> Tabel `prediksi_kebutuhan` sudah di-seed dengan 6 prediksi untuk periode `2026-07`.
-> Yang belum ada: endpoint GET + algoritma kalkulasi otomatis.
+> [!note] rekomendasi_obat (F23) — tidak ada pemetaan penyakit→obat fabrikasi
+> Diambil dari riwayat `resep_item` nyata untuk penyakit itu, fallback ke `alert_ews.
+> obat_terdampak_id` kalau riwayat resep kosong, atau array kosong kalau tidak ada sumber data
+> nyata sama sekali. Beberapa baris `resep`/`resep_item` contoh ditambahkan ke `seedAll.ts` (satu
+> per penyakit utama) supaya fallback ini punya sinyal nyata untuk diuji.
 
 ---
 
@@ -284,22 +298,26 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 
 > [!info] Konteks
 > Stok multi-batch per faskes. Near-expiry dan slow-moving dihitung dari `stok` + `pergerakan_stok`.
-> FE sudah ada tab "Dead-stock & relokasi" dengan UI lengkap, semua masih hardcoded.
+> Semua disambungkan penuh di Phase 9 (2026-07-07) — lihat [[CHANGELOG]] dan [[DECISIONS#ADR-012]].
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F24 | Stock chart per obat (sisa vs kebutuhan) | 🟡 | `stok`, `obat`, `fasilitas_kesehatan` | `/logistik` |
-| F25 | Defekta — obat di bawah stok minimum | 🟠 | `stok`, `obat`, `fasilitas_kesehatan` | `/logistik` |
-| F26 | Stat cards logistik (nilai dead-stock, stockout risk, ketahanan) | 🟡 | `stok`, `obat`, `pergerakan_stok` | `/logistik` |
-| F27 | Near-expiry — obat mendekati kedaluwarsa (≤ 3 bulan) | 🟡 | `stok`, `obat` | `/logistik` |
-| F28 | Slow-moving — obat tidak bergerak dalam N hari | 🟠 | `stok`, `pergerakan_stok`, `obat` | `/logistik` |
-| F29 | Realokasi stok antar cabang | 🟡 | `stok`, `pergerakan_stok`, `fasilitas_kesehatan` | `/logistik` |
-| F30 | Retur / Penyesuaian stok | 🟡 | `stok`, `pergerakan_stok` | `/logistik` |
+| F24 | Stock chart per obat (sisa vs kebutuhan) | ✅ | `stok`, `obat`, `pergerakan_stok` | `/logistik` |
+| F25 | Defekta — obat di bawah stok minimum | ✅ | `stok`, `obat`, `pbf`, `surat_pesanan` | `/logistik` |
+| F26 | Stat cards logistik (nilai dead-stock, stockout risk, ketahanan) | ✅ | `stok`, `obat`, `pergerakan_stok` | `/logistik` |
+| F27 | Near-expiry — obat mendekati kedaluwarsa (≤ 3 bulan) | ✅ | `stok`, `obat` | `/logistik` |
+| F28 | Slow-moving — obat tidak bergerak dalam N hari | ✅ | `stok`, `pergerakan_stok`, `obat`, `fasilitas_kesehatan` | `/logistik`, `/peringatan-dini` |
+| F29 | Realokasi stok antar cabang | ✅ | `stok`, `pergerakan_stok`, `fasilitas_kesehatan` | `/logistik`, `/peringatan-dini` |
+| F30 | Retur / Penyesuaian stok | ✅ | `stok`, `pergerakan_stok` | `/logistik`, `/peringatan-dini` |
 
-> [!success] F29–F30 Backend Selesai (Phase 7, Plan 07-02 — dikonsumsi bareng F17)
-> `POST /api/stok/realokasi` dan `POST /api/stok/retur` sama-sama dipakai `/peringatan-dini` (F17)
-> dan `/logistik` (F29–F30) — satu backend, dua halaman FE. `/logistik` sudah punya tombol
-> "Sarankan realokasi" / "Tanda retur" hardcoded di tab "Dead-stock & relokasi", tinggal disambungkan.
+> [!success] F24–F30 Selesai Penuh (Phase 9, 2026-07-07)
+> `POST /api/stok/realokasi` dan `POST /api/stok/retur` (Phase 7) akhirnya disambungkan ke FE lewat
+> `GET /api/logistic/slow-moving` (F28) yang menghitung nyata **penyakit mana yang butuh
+> realokasi** vs **retur** — bukan cuma sekadar dua tombol tersambung, tapi rekomendasinya sendiri
+> nyata: `saran='realokasi'` hanya kalau ada faskes lain yang benar-benar kekurangan obat yang sama,
+> else `'retur'`. Dipakai bareng di `/logistik` (F29–F30) dan `/peringatan-dini` "Tindakan Darurat" (F17).
+> `getStats` (F26) yang tadinya pakai asumsi tetap "stok / 10 per hari" untuk `ketahanan_hari`
+> sekarang pakai rata-rata pemakaian nyata dari `pergerakan_stok` tipe `'keluar'`.
 
 > [!success] Penyempurnaan 2026-07-02 — F26 (4 Stat Card) Tetap Statis Satu Baris
 > User minta 4 stat card di `/logistik` (F26) TIDAK ikut pola grid responsif yang dipakai
@@ -316,8 +334,10 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 > gak keliatan kosong), badge jadi pill chip (`bg-[#0c818a]/8 rounded-[6px]`) bukan teks polos.
 
 > [!note] Data Sudah Tersedia
-> Tabel `stok` (15 baris), `pergerakan_stok` (15 baris awal masuk) sudah di-seed.
-> Ada 2 item near-minimum (CTM 15 strip, Metformin 5 strip) dan 1 near-expiry (Antasida exp. Des 2026).
+> Tabel `stok` (16 baris), `pergerakan_stok` (192 baris — 41 dari sebelumnya + 151 riwayat
+> `keluar` sintetis 45 hari ditambah Phase 9 untuk fast/medium-mover, lihat [[DECISIONS#ADR-012]]).
+> Ada beberapa item di bawah minimum (Codein 8/10, Metformin 5/30, CTM 6/50) dan 1 near-expiry
+> (CTM exp. 1 bln lagi).
 
 ---
 
@@ -326,13 +346,21 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 > [!info] Konteks
 > SP = Surat Pesanan ke PBF. Satu SP per PBF. Item NPP wajib di SP terpisah.
 > Hanya `apoteker` (punya `nomor_sipa`) yang boleh menandatangani SP NPP.
+> F31–F32, F34 selesai Phase 9 (2026-07-07) — lihat [[DECISIONS#ADR-012]].
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F31 | List surat pesanan per faskes | 🟡 | `surat_pesanan`, `sp_item`, `pbf` | `/logistik` |
-| F32 | Buat SP otomatis dari defekta (dikelompokkan per PBF) | 🟠 | `surat_pesanan`, `sp_item`, `stok`, `pbf`, `obat` | `/logistik` |
+| F31 | List surat pesanan per faskes | ✅ | `surat_pesanan`, `sp_item`, `pbf`, `obat` | `/logistik` |
+| F32 | Buat SP dari defekta (dikelompokkan per PBF+tipe) | ✅ | `surat_pesanan`, `sp_item`, `stok`, `pbf`, `obat` | `/logistik` |
 | F33 | Update status SP (draf → disetujui → dikirim → diterima) | ❌ | `surat_pesanan` | Belum ada halaman |
-| F34 | SP terpisah otomatis untuk obat NPP | ❌ | `surat_pesanan`, `sp_item`, `obat` | Belum ada |
+| F34 | SP terpisah untuk obat NPP (validasi tolak campur golongan) | ✅ | `surat_pesanan`, `sp_item`, `obat`, `pengguna` | `/logistik` (lewat grouping defekta + validasi BE) |
+
+> [!note] F32/F34 — "otomatis" berarti server memaksa pemisahan, bukan satu klik bikin semua SP
+> Defekta (`GET /api/logistic/defekta`) sudah pre-group per `(pbf_id, tipe)` — item npp tidak
+> pernah tercampur dengan reguler di grup manapun. Tombol "Buat Pesanan" tetap per-grup (user klik
+> tiap grup), tapi `POST` di backend menolak keras (400) kalau ada percobaan mencampur golongan,
+> dan `tipe='npp'` ditolak (403) kalau bukan dibuat oleh pengguna dengan `nomor_sipa`. F33 (update
+> status SP setelah dibuat) masih belum ada — di luar scope Phase 9.
 
 > [!note] Data Sudah Tersedia
 > 1 SP contoh (status `draf`) dengan 2 item sudah ada di database.
@@ -343,9 +371,46 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F35 | Load profil dari API saat buka `/settings` | 🟡 | `pengguna`, `fasilitas_kesehatan` | `/settings` |
-| F36 | Simpan perubahan profil | 🟠 | `pengguna` | `/settings` |
+| F35 | Load profil dari API saat buka `/settings` | ✅ | `pengguna`, `fasilitas_kesehatan` | `/settings` |
+| F36 | Simpan perubahan profil | ✅ | `pengguna` | `/settings` |
 | F37 | Pilih/ganti cabang (untuk admin multi-faskes) | ❌ | `fasilitas_kesehatan`, `wilayah` | Belum ada |
+
+> [!success] F04, F35, F36 Selesai (Phase 10 — 2026-07-08)
+> `GET /api/auth/me` diperluas untuk sertakan `nomor_sipa`, `telepon`, `alamat`, dan join `faskes`
+> (nama/tipe/alamat). Endpoint baru `PUT /api/pengguna/profile` (`controllers/pengguna.ts`) validasi
+> `nama` wajib lalu update `nama`/`telepon`/`alamat` milik pengguna yang login. `/settings` ditulis
+> ulang total — field lama (`nickname`, `city`, `district`, `village`, `postcode`, `street`, dll.)
+> dibuang karena tidak ada di skema `pengguna` manapun, diganti field nyata (nama, telepon, alamat
+> editable; email, nomor_sipa, peran, faskes read-only). Lihat [[DECISIONS#ADR-013]].
+
+---
+
+## 🛡️ Domain 8 — Admin Panel (di luar 37 fitur original)
+
+> [!abstract] Konteks
+> Ditambahkan lewat merge selektif dari branch teman `feat/admin-system-and-ai-update` (author
+> TonyKeys) ke `merge-feat-dashboard`, 2026-07-06. Source branch aslinya menggabungkan 6 fitur
+> jadi satu commit besar; hanya 4 yang diambil (scope dipersempit atas permintaan user) — lihat
+> [[CHANGELOG]] entri 2026-07-06 untuk rincian apa yang dipangkas dan kenapa.
+
+| ID | Fitur | Status | Tabel DB | Halaman FE |
+|----|-------|--------|----------|------------|
+| FA1 | Admin dashboard layout + sidebar navigasi (`/admin`) | ✅ | — | `/admin` |
+| FA2 | Guard peran admin — FE (`middleware.ts`) + BE (`requireAdmin`) | ✅ | `pengguna` | `/admin/*` (redirect non-admin), admin diblokir total dari semua halaman MIS |
+| FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ (diverifikasi browser 2026-07-07, 1 bug diperbaiki — lihat [[CHANGELOG]]) | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
+| FA4 | Registrasi mandiri dinonaktifkan, akun baru cuma lewat admin | ✅ (sudah ada sebelum merge ini) | `pengguna` | `/register` (pesan error tetap), `/admin/users` (jalur resmi buat akun) |
+| FA5 | CRUD master obat dari admin panel | ❌ | `obat` | Belum ada —**sengaja di-exclude** dari merge 2026-07-06, direncanakan phase berikutnya |
+| FA6 | CRUD stok dari admin panel | ❌ | `stok` | Belum ada — sama seperti FA5, phase berikutnya |
+| FA8 | Landing per peran setelah login (`middleware.ts`) | ✅ | `pengguna` | admin → `/admin`; manajer → `/` (dashboard MIS); apoteker & staf_logistik → **Swagger UI backend** (`/api/docs`), karena belum ada halaman FE untuk peran itu (lihat [[CHANGELOG]] 2026-07-06) |
+| FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ❌ | `stok`, `pergerakan_stok`, `alert_ews` | Belum ada — sama seperti FA5, phase berikutnya |
+
+> [!note] Kenapa FA5–FA7 di-exclude, bukan cuma "belum sempat"
+> Source branch punya `routes/admin.ts`+`controllers/admin.ts` yang menggabungkan CRUD user +
+> CRUD obat + CRUD stok jadi satu file. User eksplisit minta cuma 4 fitur (FA1–FA4) yang diambil,
+> jadi controller/route di-split manual — FA5–FA7 bukan dihapus karena rusak, tapi memang belum
+> diintegrasikan ke branch ini. Kode aslinya (untuk referensi kalau mau dikerjakan lagi) ada di
+> branch `feat/admin-system-and-ai-update`, commit `6adaa31`, fungsi `getObat/createObat/updateObat/
+> deleteObat/getStokAdmin/updateStok` di `admin.ts` + endpoint `GET /api/ai/predict-drugs`.
 
 ---
 
@@ -355,18 +420,28 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 |----------|--------|--------|---------------|
 | `/api/auth/login` | POST | ✅ | F01 |
 | `/api/auth/logout` | POST | ✅ | F02 |
-| `/api/auth/me` | GET | ✅ | F03, F35 |
+| `/api/auth/me` | GET | ✅ (Phase 10 — sekarang sertakan nomor_sipa/telepon/alamat/faskes) | F03, F35 |
+| `/api/pengguna/profile` | PUT | ✅ (Phase 10 — baru) | F04, F36 |
 | `/api/cases/spatial` | GET | ✅ | F05, F07 |
 | `/api/cases/temporal` | GET | ✅ | F06, F08 |
 | `/api/cases/region/:name` | GET | ✅ | F06 |
 | `/api/docs` | GET | ✅ | (Swagger UI) |
-| `/api/logistic/stok` | GET | ✅ BE (2026-07-03 merge) | F24 (daftar mentah) |
-| `/api/logistic/stok/chart` | GET | ✅ BE (2026-07-03 merge) | F24 |
-| `/api/logistic/stats` | GET | ✅ BE (2026-07-03 merge) | F26 |
-| `/api/logistic/near-expiry` | GET | ✅ BE (2026-07-03 merge) | F27 |
-| `/api/logistic/surat-pesanan` | GET | ✅ BE (2026-07-03 merge) | F31 |
+| `/api/logistic/stok` | GET | ✅ FE tersambung (Phase 9) | F24 (daftar mentah) |
+| `/api/logistic/stok/chart` | GET | ✅ FE tersambung (Phase 9, +`mode=line`) | F24, F19 |
+| `/api/logistic/stats` | GET | ✅ FE tersambung (Phase 9, ketahanan pakai data nyata) | F26 |
+| `/api/logistic/near-expiry` | GET | ✅ FE tersambung (Phase 9) | F27 |
+| `/api/logistic/defekta` | GET | ✅ (Phase 9 — baru) | F25 |
+| `/api/logistic/slow-moving` | GET | ✅ (Phase 9 — baru) | F28, F17 |
+| `/api/logistic/surat-pesanan` | GET | ✅ FE tersambung (Phase 9) | F31 |
+| `/api/logistic/surat-pesanan` | POST | ✅ (Phase 9 — baru) | F32, F34 |
 | `/api/ai/analyze` | POST | ✅ BE (2026-07-03 merge, butuh `GROQ_API_KEY`) | fitur baru, di luar 37 fitur map ini |
 | `/api/auth/register` | POST | ✅ BE-only (2026-07-03 merge) | tidak dipakai FE (lihat ADR-010) |
+| `/api/admin/users` | GET/POST | ✅ (2026-07-06 merge) | FA3 |
+| `/api/admin/users/:id` | PUT/DELETE | ✅ (2026-07-06 merge) | FA3 |
+| `/api/admin/faskes` | GET | ✅ (2026-07-06 merge) | FA3 |
+| `/api/forecasting/projection` | GET | ✅ (2026-07-07) | F21 |
+| `/api/forecasting/stats` | GET | ✅ (2026-07-07) | F22 |
+| `/api/forecasting/alerts` | GET | ✅ (2026-07-07) | F23 |
 
 ---
 
@@ -377,15 +452,16 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | `wilayah` | 17 | F05, F06, F07, F09, F13 |
 | `fasilitas_kesehatan` | 2 | F01–F04, F24–F26, F29, F31–F32, F35–F37 |
 | `pengguna` | 4 | F01–F04, F35–F36 |
-| `RekamMedis` | 5.500 | F05–F12, F20 |
-| `obat` | 14 | F14, F19, F23–F32 |
-| `pbf` | 3 | F31–F32, F34 |
+| `RekamMedis` | 5.532 | F05–F12, F20–F22 |
+| `resep` / `resep_item` | 5 / 6 | F23 (rekomendasi obat, sumber utama) |
+| `obat` | 14 (semua punya `pbf_id` sejak Phase 9) | F14, F19, F23–F32 |
+| `pbf` | 3 | F25, F31–F32, F34 |
 | `formula_racikan` | 2 | (racikan resep — fase berikutnya) |
 | `formula_komponen` | 4 | (racikan resep — fase berikutnya) |
-| `stok` | 15 | F15, F19, F24–F32 |
-| `pergerakan_stok` | 15 | F26, F28–F30 |
-| `alert_ews` | 5 | F12–F19, F23 |
-| `prediksi_kebutuhan` | 6 | F20–F23 |
+| `stok` | 16 | F15, F19, F24–F32 |
+| `pergerakan_stok` | 192 (41 + 151 riwayat sintetis Phase 9) | F17, F19, F26, F28–F30 |
+| `alert_ews` | 5 | F12–F19, F23 (fallback rekomendasi obat) |
+| `prediksi_kebutuhan` | 6 | Phase 9 tidak memakainya (kebutuhan obat per faskes, bukan proyeksi kasus F20–F23) — lihat [[DECISIONS#ADR-012]] |
 | `surat_pesanan` | 1 | F31–F34 |
 | `sp_item` | 2 | F31–F34 |
 
@@ -399,7 +475,7 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 F02  Sambungkan logout FE → POST /api/auth/logout — ✅ Selesai (Phase 6, Plan 06-03)
 F03  Sambungkan AuthContext → GET /api/auth/me      — ✅ Selesai (Phase 6, Plan 06-03)
 F08  Sambungkan /proyeksi-tren → GET /api/cases/temporal — ✅ Selesai (Phase 6, Plan 06-02)
-F35  Sambungkan /settings → GET /api/auth/me
+F35  Sambungkan /settings → GET /api/auth/me — ✅ Selesai (Phase 10, 2026-07-08)
 ```
 
 ### Berikutnya — Backend Core (Domain EWS & Stats)
@@ -411,21 +487,33 @@ F18      PATCH /api/alerts/:id     — ✅ Selesai (Phase 7, Plan 07-02, FE 07-0
 F12      POST /api/alerts/detect   — ✅ Selesai (Phase 7, Plan 07-03)
 ```
 
-### Setelah Itu — Logistik & Pengadaan
+### Logistik & Pengadaan — ✅ Selesai (Phase 9, 2026-07-07)
 
 ```
-F24–F26  GET /api/stok             (stok per faskes + stat cards)
-F27      GET /api/stok/near-expiry
-F28      GET /api/stok/slow-moving
-F25      GET /api/stok/defekta
-F31–F32  GET/POST /api/surat-pesanan
+F24–F30  GET /api/logistic/{stats,stok/chart,defekta,near-expiry,slow-moving} — ✅ Selesai
+F31–F32  GET/POST /api/logistic/surat-pesanan                                — ✅ Selesai
+F34      Validasi SP NPP terpisah (BE reject campur golongan)                — ✅ Selesai
+F17, F19 /peringatan-dini Tindakan Darurat + chart stok vs kebutuhan         — ✅ Selesai
 ```
 
-### Terakhir — Forecasting & NPP
+### Forecasting — ✅ Selesai (Phase 8, 2026-07-07)
 
 ```
-F20–F23  GET /api/forecasting/:disease
-F34      SP NPP logic
+F20–F23  GET /api/forecasting/{projection,stats,alerts} — ✅ Selesai (Phase 8)
+```
+
+### Profile & Settings — ✅ Selesai (Phase 10, 2026-07-08)
+
+```
+F04      PUT /api/pengguna/profile          — ✅ Selesai
+F35–F36  /settings load + simpan profil real — ✅ Selesai
+```
+
+### Terakhir — Sisa Pekerjaan (belum dikerjakan)
+
+```
+F33            Update status SP (draf → disetujui → dikirim → diterima)
+F37            Pilih/ganti cabang admin multi-faskes
 ```
 
 ---

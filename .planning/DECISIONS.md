@@ -274,4 +274,137 @@ harus pakai prefix `/api/logistic/*`, bukan `/api/stok/*` seperti di spec lama.
 
 ---
 
+## ADR-011 — Forecasting Dihitung On-the-fly dari `RekamMedis`, Bukan `prediksi_kebutuhan`
+
+**Tanggal:** 2026-07-07
+**Status:** Aktif
+
+**Keputusan:**
+Ketiga endpoint `GET /api/forecasting/{projection,stats,alerts}` menghitung proyeksi kasus
+langsung dari `RekamMedis` tiap request (Holt's linear trend / double exponential smoothing,
+granularitas mingguan), bukan membaca dari tabel `prediksi_kebutuhan` seperti disebutkan di
+draft awal `API-SPEC.md`.
+
+**Alasan:**
+`prediksi_kebutuhan` schema-nya `obat_id` + `faskes_id` + `jumlah_prediksi` — itu untuk kebutuhan
+obat per faskes (dipakai `logistic.ts` di Phase 9), bukan proyeksi kasus per penyakit. Tidak ada
+kolom `kode_icd10`/`nama_penyakit` di tabel itu sama sekali, dan tidak ada tabel `penyakit` atau
+proyeksi-kasus lain di schema manapun. Draft `API-SPEC.md` sebelumnya salah mengira tabel ini bisa
+dipakai untuk keduanya.
+
+**Deviasi lain dari draft `API-SPEC.md`:**
+- **Granularitas mingguan, bukan bulanan.** `REQUIREMENTS.md` ANL-01 minta "proyeksi 14-30 hari
+  ke depan" dengan garis tren putus-putus — bucket bulanan (contoh di draft lama) terlalu kasar
+  untuk horizon itu dan tidak mendukung tampilan garis putus-putus yang jelas. Minggu yang sedang
+  berjalan (belum penuh 7 hari, karena query selalu sampai "sekarang") dikeluarkan dari data
+  historis — kalau tidak, minggu itu selalu under-count dan mencemari fit + perbandingan
+  persen_change sebagai penurunan palsu.
+- **`rekomendasi_obat` (F23) tidak pakai pemetaan penyakit→obat statis.** Draft awal mencontohkan
+  `{"ISPA": ["Ibu Profen", "Masker Medis"]}` yang tidak bisa diturunkan dari data manapun. Diambil
+  dari riwayat `resep_item` nyata (join `RekamMedis`→`resep`→`resep_item`→`obat`/`formula_racikan`
+  filter `kode_icd10`), fallback ke `alert_ews.obat_terdampak_id` untuk kode ICD-10 yang sama,
+  atau array kosong kalau tidak ada sumber data nyata sama sekali — konsisten dengan keputusan
+  yang sama di `POST /api/alerts/detect` (Phase 7): "tidak ada pemetaan penyakit→obat di skema".
+  Karena DB cuma punya 1 baris `resep` manual sebelum ini, `seedAll.ts` ditambah beberapa baris
+  `resep`/`resep_item` contoh (satu per penyakit utama di `seed.ts`: ISPA→Amoxicillin,
+  Flu→Paracetamol, Diare→Oralit, DBD→Paracetamol, Hipertensi→Amlodipine) supaya fallback nyata
+  ini punya sinyal untuk diuji, bukan selalu kosong.
+- **Stat card caption diganti jadi generik.** Draft lama punya caption seperti "Terbanyak di
+  Sleman" / "Kampanye Sanitasi Berhasil" yang tidak bisa dihitung dari data manapun. Diganti jadi
+  "Proyeksi minggu depan" untuk keduanya. `penurunan_terbesar` bisa `null` kalau tidak ada
+  penyakit dengan tren menurun saat itu — tidak dipaksakan jadi kartu palsu.
+
+**Konsekuensi:** persentase perubahan (`persen_change`) bisa terlihat volatil untuk penyakit
+dengan volume kasus mingguan kecil (mis. Hipertensi, ~3-4 kasus/minggu) karena data seed
+(`seed.ts`) memakai bobot acak tanpa musiman yang direkayasa — ini karakteristik data asli yang
+diharapkan, bukan bug.
+
+---
+
+## ADR-012 — `obat.pbf_id` Ditambahkan + Riwayat `pergerakan_stok` Sintetis untuk Phase 9
+
+**Tanggal:** 2026-07-07
+**Status:** Aktif
+
+**Keputusan:**
+1. Kolom nullable `pbf_id` (FK ke `pbf`) ditambahkan ke tabel/model `Obat` via `sequelize.sync({
+   alter: true })` (pola yang sama dengan ADR-002), di-seed round-robin ke 3 PBF yang ada.
+2. `seedAll.ts` ditambah ~150 baris `pergerakan_stok` tipe `'keluar'` sintetis (45 hari riwayat,
+   ditandai `referensi='SEED-KELUAR-HIST'`) untuk obat "fast" dan "medium mover"; obat lain
+   sengaja tidak diberi riwayat sama sekali — itulah kandidat slow-moving yang jujur.
+
+**Alasan:**
+- `API-SPEC.md` draft awal Domain Stok bilang defekta harus "group by `obat.pbf_id`", tapi kolom
+  itu **tidak ada** di skema manapun — `pbf_id` cuma ada di `surat_pesanan` (dipilih per-order,
+  bukan properti tetap katalog obat). Tanpa kolom ini, endpoint defekta (Phase 9) tidak bisa
+  mengelompokkan obat per PBF sama sekali.
+- Sebelum Phase 9, 38 dari 38 baris `pergerakan_stok` yang ada semuanya `tipe='masuk'` (penerimaan
+  awal dari seeder Phase 1) — nyaris tidak ada baris `'keluar'` nyata (cuma dari beberapa kali
+  `test-tps.ts` dijalankan). `getStats` (F26) sebelumnya menutupi ini dengan asumsi tetap
+  "`jumlah_tersedia / 10`" untuk `ketahanan_hari` — sekarang diganti pakai rata-rata nyata, tapi
+  itu perlu ADA data pergerakan nyata dulu untuk berarti apa-apa.
+
+**Alternatif yang ditolak:**
+- Membiarkan defekta tidak dikelompokkan sama sekali (flat list) — ditolak karena bertentangan
+  dengan alur kerja yang diminta ("Buat Pesanan" per grup PBF di UI, satu SP per PBF per skema).
+- Memakai data `pergerakan_stok` yang ada apa adanya (nyaris kosong) — ditolak karena `tren_harian`/
+  `ketahanan_hari`/`slow-moving` semuanya akan menunjukkan nol/tak terhingga untuk hampir semua
+  obat, membuat fitur terlihat tidak berfungsi walau logikanya benar.
+
+**Konsekuensi:**
+- `usulan_pesanan`, `tren_harian`, dan `ketahanan_hari` di endpoint defekta/stats sekarang
+  mencerminkan pola konsumsi **buatan** (bukan data TPS nyata) untuk obat "fast"/"medium mover" —
+  ini seed data historis sintetis, bukan fabrikasi runtime di response API. Kalau nanti data TPS
+  nyata (`resep_item` via alur kunjungan) terkumpul cukup banyak, riwayat sintetis ini idealnya
+  digantikan/diabaikan, tinggal filter `referensi != 'SEED-KELUAR-HIST'` di query terkait.
+
+---
+
+## ADR-013 — Profil Pengguna: Kolom Baru `telepon`/`alamat`, `updated_at` Manual, Mockup `/settings` Dibuang
+
+**Tanggal:** 2026-07-08
+**Status:** Aktif
+
+**Keputusan:**
+1. Kolom nullable `telepon` (`STRING(30)`) dan `alamat` (`TEXT`) ditambahkan ke model/tabel
+   `Pengguna` via `sequelize.sync({ alter: true })` (pola sama dengan ADR-002/ADR-012).
+2. `updated_at` ditambahkan sebagai kolom biasa nullable (`allowNull: true`), **bukan** opsi
+   otomatis `updatedAt` Sequelize — controller `updateProfile()` men-set `user.updated_at = new
+   Date()` secara eksplisit sebelum `save()`.
+3. `GET /api/auth/me` diperluas: tambah `nomor_sipa`, `telepon`, `alamat`, dan `include` join
+   `faskes` (nama/tipe/alamat).
+4. Frontend `/settings` **ditulis ulang total** — semua field mockup lama (`nickname`, `firstName`/
+   `lastName`, `city`, `district`, `village`, `state`, `postcode`, `street`) dibuang, diganti field
+   yang benar-benar ada di skema: `nama`/`telepon`/`alamat` (editable), `email`/`nomor_sipa`/`peran`/
+   `faskes` (read-only).
+
+**Alasan:**
+- `API-SPEC.md` sudah lama mendefinisikan `PUT /api/pengguna/profile` dengan body
+  `{nama, telepon, alamat}`, tapi kolom `telepon`/`alamat` **tidak pernah ada** di model `Pengguna`
+  manapun — sama seperti pola ADR-011/ADR-012, spec ditulis duluan sebelum skema menyusul.
+- Mencoba `alter: true` dengan opsi otomatis `updatedAt: 'updated_at'` Sequelize **gagal** —
+  Postgres menolak `ALTER TABLE ... ADD COLUMN "updated_at" ... NOT NULL` karena 4 baris `pengguna`
+  seed yang sudah ada tidak punya nilai untuk kolom itu (`column "updated_at" ... contains null
+  values`). Kolom nullable + di-set manual menghindari masalah ini tanpa perlu default value palsu.
+- Mockup `/settings` lama (nickname, city/district/village/postcode/street — gaya form alamat
+  lengkap ala e-commerce) tidak punya padanan sama sekali di tabel `pengguna` — mempertahankan
+  field itu berarti UI menjanjikan sesuatu yang tidak bisa disimpan, bertentangan dengan prinsip
+  "jangan fabrikasi data yang tidak didukung skema" yang sudah dipakai konsisten sejak Phase 7–9.
+
+**Alternatif yang ditolak:**
+- Memakai `updatedAt: 'updated_at'` otomatis Sequelize dengan `defaultValue: DataTypes.NOW` —
+  ditolak karena menyembunyikan kapan sebenarnya suatu baris terakhir diubah manual vs saat migrasi
+  dijalankan; nilai default silently salah untuk 4 baris seed yang sebenarnya belum pernah di-update.
+- Mempertahankan field alamat lengkap (city/district/village/postcode) dengan menyimpannya sebagai
+  JSON di kolom `alamat` — ditolak karena over-engineering untuk kebutuhan yang diminta (`REQUIREMENTS.md`
+  F04/F36 cuma minta nama/telepon/alamat sederhana), dan tidak ada fitur lain yang butuh alamat
+  terstruktur per komponen.
+
+**Konsekuensi:**
+- Tombol "Ganti foto" (avatar) di `/settings` tetap dekoratif/non-fungsional — tidak ada endpoint
+  upload avatar, di luar scope F04/F35/F36. Sama seperti precedent "X tidak dikerjakan, di luar
+  scope" di Phase 7/9.
+
+---
+
 *Diperbarui oleh Claude Code setiap ada keputusan arsitektur baru*

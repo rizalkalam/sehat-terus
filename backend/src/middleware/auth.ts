@@ -30,3 +30,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
   }
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  if (req.user?.peran !== 'admin') {
+    res.status(403).json({ error: 'Hanya admin yang boleh mengakses endpoint ini.' });
+    return;
+  }
+  next();
+}

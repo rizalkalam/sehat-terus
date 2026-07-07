@@ -11,7 +11,7 @@ import {
   Obat, Pbf, FormulaRacikan, FormulaKomponen,
   Stok, PergerakanStok,
   AlertEws, PrediksiKebutuhan, SuratPesanan, SpItem,
-  RekamMedis,
+  RekamMedis, Resep, ResepItem,
 } from './models';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -121,10 +121,10 @@ async function seedAll() {
     // ── 3. PENGGUNA ──────────────────────────────────────────────────────────
     console.log('\n▸ [3/9] Seeding pengguna...');
     const penggunaData = [
-      { nama: 'Carmenita', email: 'carmen@sehatterus.id', password: 'sehat123', peran: 'manajer' as const, faskes: faskes1 },
-      { nama: 'Administrator', email: 'admin@sehatterus.id', password: 'admin123', peran: 'admin' as const, faskes: null },
-      { nama: 'Apoteker Sleman', email: 'apoteker@sehatterus.id', password: 'apoteker123', peran: 'apoteker' as const, faskes: faskes1, nomor_sipa: 'SIPA-2026-001' },
-      { nama: 'Staf Logistik Depok', email: 'logistik@sehatterus.id', password: 'logistik123', peran: 'staf_logistik' as const, faskes: faskes2 },
+      { nama: 'Carmenita', email: 'carmen@sehatterus.id', password: 'sehat123', peran: 'manajer' as const, faskes: faskes1, telepon: '+62 813-2345-6789', alamat: 'Jl. Kaliurang Km. 8, Sleman, D.I. Yogyakarta' },
+      { nama: 'Administrator', email: 'admin@sehatterus.id', password: 'admin123', peran: 'admin' as const, faskes: null, telepon: null, alamat: null },
+      { nama: 'Apoteker Sleman', email: 'apoteker@sehatterus.id', password: 'apoteker123', peran: 'apoteker' as const, faskes: faskes1, nomor_sipa: 'SIPA-2026-001', telepon: '+62 821-9876-5432', alamat: 'Jl. Kaliurang Km. 7, Sleman, D.I. Yogyakarta' },
+      { nama: 'Staf Logistik Depok', email: 'logistik@sehatterus.id', password: 'logistik123', peran: 'staf_logistik' as const, faskes: faskes2, telepon: '+62 856-1122-3344', alamat: 'Jl. Seturan Raya No. 12, Depok, Sleman' },
     ];
     const penggunaMap: Record<string, Pengguna> = {};
     for (const u of penggunaData) {
@@ -132,6 +132,8 @@ async function seedAll() {
       if (exists) {
         exists.faskes_id = u.faskes?.id ?? null;
         exists.nomor_sipa = (u as { nomor_sipa?: string }).nomor_sipa ?? null;
+        exists.telepon = u.telepon ?? null;
+        exists.alamat = u.alamat ?? null;
         exists.peran = u.peran;
         await exists.save();
         penggunaMap[u.email] = exists;
@@ -143,6 +145,8 @@ async function seedAll() {
         nama: u.nama, email: u.email, password_hash,
         peran: u.peran, faskes_id: u.faskes?.id ?? null,
         nomor_sipa: (u as { nomor_sipa?: string }).nomor_sipa ?? null,
+        telepon: u.telepon ?? null,
+        alamat: u.alamat ?? null,
         aktif: true,
       });
       penggunaMap[u.email] = rec;
@@ -172,6 +176,21 @@ async function seedAll() {
       pbfMap[p.nama] = rec;
       log('pbf', `${created ? 'CREATED' : 'EXISTS '} ${rec.nama}`);
     }
+
+    // ── 5.5. OBAT → PBF (pemasok utama, round-robin) ────────────────────────
+    // Skema tidak punya kolom ini sebelumnya — obat.pbf_id ditambahkan khusus untuk
+    // Phase 9 (defekta perlu dikelompokkan per PBF). Lihat DECISIONS.md ADR-012.
+    const pbfList = Object.values(pbfMap);
+    let obatPbfAssigned = 0;
+    const obatEntries = Object.values(obatMap);
+    for (let i = 0; i < obatEntries.length; i++) {
+      const obat = obatEntries[i];
+      if (!obat.pbf_id) {
+        await obat.update({ pbf_id: pbfList[i % pbfList.length].id });
+        obatPbfAssigned++;
+      }
+    }
+    log('obat', `${obatPbfAssigned} obat di-assign ke PBF (round-robin), ${obatEntries.length - obatPbfAssigned} sudah punya pbf_id`);
 
     // ── 6. FORMULA RACIKAN ───────────────────────────────────────────────────
     console.log('\n▸ [6/9] Seeding formula_racikan...');
@@ -264,6 +283,58 @@ async function seedAll() {
       log('pergerakan_stok', `${pergerakanBatch.length} pergerakan awal (masuk) dibuat`);
     } else {
       log('pergerakan_stok', `EXISTS  (${pgCount} baris)`);
+    }
+
+    // ── 7.5. RIWAYAT PEMAKAIAN (pergerakan_stok tipe 'keluar') ──────────────
+    // Sebelum ini, satu-satunya baris 'keluar' nyata berasal dari test-tps.ts —
+    // tidak cukup untuk menghitung tren_harian/ketahanan/slow-moving (Phase 9).
+    // Ditambahkan di sini sebagai riwayat historis sintetis (bukan transaksi TPS
+    // sungguhan), murni untuk memberi sinyal nyata ke fitur defekta/slow-moving.
+    // Tidak mengubah Stok.jumlah_tersedia — snapshot stok saat ini tetap dari stokSeed,
+    // baris ini cuma riwayat tren. Lihat DECISIONS.md ADR-012.
+    const KELUAR_MARKER = 'SEED-KELUAR-HIST';
+    const existingHist = await PergerakanStok.count({ where: { referensi: KELUAR_MARKER } });
+    if (existingHist === 0) {
+      const FAST_MOVERS = ['Paracetamol 500mg', 'Amoxicillin 500mg', 'Oralit Sachet', 'Ibuprofen 400mg'];
+      const MEDIUM_MOVERS = ['Dexamethasone 0.5mg', 'Chlorpheniramine (CTM) 4mg', 'Amlodipine 5mg', 'Metformin 500mg'];
+      // Semua obat lain (Vitamin C, Antasida, Cetirizine, Codein, bahan baku racikan) sengaja
+      // TIDAK diberi pergerakan 'keluar' dalam 45 hari terakhir — itulah kandidat slow-moving asli.
+
+      const apotekerUser = penggunaMap['apoteker@sehatterus.id'];
+      const logistikUser = penggunaMap['logistik@sehatterus.id'];
+      const histBatch: any[] = [];
+      const HARI_RIWAYAT = 45;
+
+      for (const s of stokSeed) {
+        const namaObat = s.obat.nama;
+        let intervalHari: number | null = null;
+        let qtyRange: [number, number] = [1, 1];
+
+        if (FAST_MOVERS.includes(namaObat)) { intervalHari = 2; qtyRange = [2, 6]; }
+        else if (MEDIUM_MOVERS.includes(namaObat)) { intervalHari = 5; qtyRange = [1, 3]; }
+        else continue; // slow/dead mover — tidak diberi riwayat pergerakan
+
+        for (let hari = HARI_RIWAYAT; hari > 0; hari -= intervalHari) {
+          const tanggal = new Date();
+          tanggal.setDate(tanggal.getDate() - hari);
+          const jumlah = qtyRange[0] + Math.floor(Math.random() * (qtyRange[1] - qtyRange[0] + 1));
+          histBatch.push({
+            obat_id: s.obat.id,
+            faskes_asal: s.faskes.id,
+            faskes_tujuan: null,
+            tipe: 'keluar' as const,
+            jumlah,
+            tanggal,
+            referensi: KELUAR_MARKER,
+            dicatat_oleh: s.faskes.id === faskes1.id ? apotekerUser?.id ?? null : logistikUser?.id ?? null,
+          });
+        }
+      }
+
+      await PergerakanStok.bulkCreate(histBatch);
+      log('pergerakan_stok', `${histBatch.length} riwayat 'keluar' sintetis ditambahkan (${HARI_RIWAYAT} hari, fast+medium movers)`);
+    } else {
+      log('pergerakan_stok', `Riwayat 'keluar' sintetis EXISTS (${existingHist} baris)`);
     }
 
     // ── 8. ALERT EWS ─────────────────────────────────────────────────────────
@@ -365,6 +436,40 @@ async function seedAll() {
       log('rekam_medis', `15 kunjungan awal dibuat`);
     } else {
       log('rekam_medis', `EXISTS  (${rmCount} kunjungan)`);
+    }
+
+    // ── 9.6. RESEP CONTOH PER PENYAKIT (untuk rekomendasi obat forecasting) ────
+    // Menghubungkan penyakit → obat lewat resep_item nyata (bukan pemetaan fabrikasi),
+    // dipakai fallback kosong-aman oleh GET /api/forecasting/alerts kalau tidak ada.
+    console.log('\n▸ [9.6] Seeding resep contoh per penyakit...');
+    const apotekerUser = penggunaMap['apoteker@sehatterus.id'];
+    const diseaseObatMap: { code: string; obatNama: string }[] = [
+      { code: 'J06.9', obatNama: 'Amoxicillin 500mg' },
+      { code: 'J11', obatNama: 'Paracetamol 500mg' },
+      { code: 'A09', obatNama: 'Oralit Sachet' },
+      { code: 'A90', obatNama: 'Paracetamol 500mg' },
+      { code: 'I10', obatNama: 'Amlodipine 5mg' },
+    ];
+
+    for (const { code, obatNama } of diseaseObatMap) {
+      const obat = obatMap[obatNama];
+      if (!obat) continue;
+
+      const existing = await Resep.findOne({
+        include: [{ model: RekamMedis, as: 'rekam_medis', where: { kode_icd10: code }, attributes: [] }],
+      });
+      if (existing) continue;
+
+      const kunjungan = await RekamMedis.findOne({ where: { kode_icd10: code }, order: [['tanggal_kunjungan', 'DESC']] });
+      if (!kunjungan) continue;
+
+      const resep = await Resep.create({
+        rekam_medis_id: kunjungan.get('id'),
+        dibuat_oleh: apotekerUser?.id || null,
+        tanggal: kunjungan.get('tanggal_kunjungan'),
+      });
+      await ResepItem.create({ resep_id: resep.get('id'), obat_id: obat.id, jumlah: 10 });
+      log('resep', `Contoh resep ${obatNama} untuk ${code} dibuat`);
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────

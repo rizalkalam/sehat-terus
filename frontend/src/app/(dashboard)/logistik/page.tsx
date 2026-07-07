@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Truck, ArrowLeftRight } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Truck, ArrowLeftRight, Lock } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -13,59 +13,67 @@ import {
 } from "recharts";
 import PageHeader from "@/components/PageHeader";
 import AiBanner from "@/components/AiBanner";
-import InfoStatCards from "@/components/InfoStatCards";
+import InfoStatCards, { StatCardItem } from "@/components/InfoStatCards";
 import ConfirmModal from "@/components/ConfirmModal";
 import { ContentSkeleton } from "@/components/Skeleton";
+import { useAuth } from "@/contexts/AuthContext";
+import { postJson } from "@/lib/api";
 
-// --- Data ---
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-const stockData = [
-  { drug: "Amoks.", sisaStock: 80, kebutuhan: 112 },
-  { drug: "Paracet.", sisaStock: 150, kebutuhan: 210 },
-  { drug: "Oralit", sisaStock: 230, kebutuhan: 322 },
-];
+// --- API response types ---
 
-const statCards = [
-  { label: "Modal dead-stock", value: "Rp 42,5jt", badges: ["9 item", "17% nilai stok"] },
-  { label: "Risiko stockout", value: "Rp 88jt", badges: ["7 item kritis"] },
-  { label: "Ketahanan terpendek", value: "2 hari", badges: ["Oralit", "Cabang Sleman"] },
-  { label: "Cabang berisiko", value: "3/13", badges: ["Sleman, Bantul, Kota"] },
-];
+interface ChartPoint {
+  drug: string;
+  sisaStock: number;
+  kebutuhan: number;
+}
 
-const defektaGroups = [
-  {
-    supplier: "PBF A",
-    type: "SP reguler",
-    items: [
-      { nama: "Amoksisilin 500mg", jenis: "obat jadi", ketahanan: "3 hari", tren: 80, usulan: "140 unit", status: "Delivered" },
-      { nama: "Paracetamol 500mg", jenis: "obat jadi", ketahanan: "5 hari", tren: 65, usulan: "200 unit", status: "Delivered" },
-    ],
-  },
-  {
-    supplier: "PBF B",
-    type: "SP reguler",
-    items: [
-      { nama: "Oralit sach.", jenis: "obat jadi", ketahanan: "2 hari", tren: 92, usulan: "320 unit", status: "Delivered" },
-      { nama: "Amoksisilin 250mg", jenis: "obat jadi", ketahanan: "4 hari", tren: 71, usulan: "90 unit", status: "Delivered" },
-    ],
-    locked: true,
-  },
-];
+interface StatsResponse {
+  deadStock: { modal: number; count: number };
+  stockout: { risiko: number; count: number };
+  ketahanan: { hari: number; item: string; faskes: string };
+  cabangBerisiko: { count: number; total: number };
+}
 
-const nearExpiryItems = [
-  { nama: "Cetirizine 10mg", qty: "120 strip", nilai: "Rp 3,2 jt tertahan", expired: "Expired Date 2 bln" },
-  { nama: "Cetirizine 10mg", qty: "120 strip", nilai: "Rp 3,2 jt tertahan", expired: "Expired Date 3 bln" },
-];
+interface DefektaItem {
+  obat_id: string;
+  nama: string;
+  jenis: string;
+  satuan: string;
+  ketahanan_hari: number | null;
+  tren_harian: number;
+  jumlah_tersedia: number;
+  stok_minimum: number;
+  jumlah_kekurangan: number;
+  usulan_pesanan: number;
+  harga_satuan: number;
+}
 
-const slowMovingItems = [
-  { nama: "Vitamin B kompleks", modal: "Rp 6,2 jt", tertahan: "Rp 3,2 jt tertahan", action: "Sarankan realokasi" },
-  { nama: "Antasida tablet", modal: "Rp 2,1 jt", tertahan: "Rp 3,2 jt tertahan", action: "Tanda retur" },
-];
+interface DefektaGroup {
+  pbf: { id: string | null; nama: string };
+  tipe: "reguler" | "npp";
+  locked: boolean;
+  items: DefektaItem[];
+}
 
-const relokasiItems = [
-  { drug: "Amoksilin", from: "Bantul", to: "Sleman", desc: "Pindah 90 unit tutup kebutuhan 5 hari" },
-  { drug: "Amoksilin", from: "Bantul", to: "Sleman", desc: "Pindah 90 unit tutup kebutuhan 5 hari" },
-];
+interface NearExpiryItem {
+  nama: string;
+  qty: string;
+  nilai: string;
+  expired: string;
+}
+
+interface SlowMovingItem {
+  stok_id: string;
+  obat: { id: string; nama: string };
+  faskes: { id: string; nama: string } | null;
+  jumlah_tersedia: number;
+  hari_tidak_bergerak: number | null;
+  nilai_modal_rp: number;
+  saran: "realokasi" | "retur";
+  faskes_tujuan_realokasi: { id: string; nama: string } | null;
+}
 
 // --- Modal state type ---
 
@@ -84,6 +92,8 @@ const closedModal: ModalState = {
   confirmLabel: "Konfirmasi",
   onConfirm: () => {},
 };
+
+const rupiah = (n: number) => `Rp ${(n / 1000000).toFixed(1)}jt`;
 
 // --- Sub-components ---
 
@@ -119,16 +129,21 @@ function Tabs({ active, onChange }: { active: string; onChange: (v: string) => v
   );
 }
 
-function StockChart() {
+function StockChart({ data }: { data: ChartPoint[] }) {
   return (
     <div>
       <h2 className="font-josefin font-bold text-[22px] text-black mb-[10px]">
         Stok &amp; Kebutuhan Bulan Depan
       </h2>
       <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] p-[20px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.08)]">
+        {data.length === 0 ? (
+          <div className="h-[220px] flex items-center justify-center text-[#0c818a]/60 font-josefin text-[14px]">
+            Memuat data stok...
+          </div>
+        ) : (
         <ResponsiveContainer width="100%" height={220}>
           <BarChart
-            data={stockData}
+            data={data}
             margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
             barCategoryGap="30%"
             barGap={4}
@@ -158,78 +173,81 @@ function StockChart() {
             <Bar dataKey="kebutuhan" name="Kebutuhan bulan depan" fill="#0C818A" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
 }
 
-function DefektaTable() {
+function DefektaTable({ groups, onBuatPesanan }: { groups: DefektaGroup[]; onBuatPesanan: (g: DefektaGroup) => void }) {
   return (
     <div>
       <h2 className="font-josefin font-bold text-[22px] text-black mb-[10px]">
-        Defekta by AI
+        Defekta — Obat di Bawah Stok Minimum
       </h2>
+      {groups.length === 0 ? (
+        <p className="font-josefin text-[14px] text-black/50 px-[16px] py-[20px]">
+          Tidak ada obat di bawah stok minimum saat ini.
+        </p>
+      ) : (
       <div className="rounded-[12px] overflow-hidden shadow-[0px_0px_10px_0px_rgba(0,0,0,0.08)]">
-        {/* Table header */}
         <div
           className="grid font-josefin font-bold text-[14px] text-white px-[16px] py-[12px]"
-          style={{ backgroundColor: "#00454A", gridTemplateColumns: "2fr 1fr 1fr 0.7fr 1fr 1fr" }}
+          style={{ backgroundColor: "#00454A", gridTemplateColumns: "2fr 1fr 1fr 0.7fr 1fr" }}
         >
           <span>nama item</span>
           <span>jenis</span>
           <span>ketahanan</span>
           <span>tren</span>
           <span>usulan</span>
-          <span>Status</span>
         </div>
 
-        {defektaGroups.map((group, gi) => (
+        {groups.map((group, gi) => (
           <React.Fragment key={gi}>
-            {/* Supplier group header */}
             <div
-              className="flex items-center gap-[10px] px-[16px] py-[8px]"
+              className="flex items-center justify-between gap-[10px] px-[16px] py-[8px]"
               style={{ backgroundColor: "#00454A" }}
             >
-              {group.locked ? (
-                <svg className="size-[16px] text-white" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              ) : (
-                <Truck className="size-[18px] text-white shrink-0" />
-              )}
-              <span className="font-josefin font-bold text-[14px] text-white">
-                {group.type} &nbsp;|&nbsp; {group.supplier}
-              </span>
+              <div className="flex items-center gap-[10px]">
+                {group.locked ? (
+                  <Lock className="size-[16px] text-white shrink-0" />
+                ) : (
+                  <Truck className="size-[18px] text-white shrink-0" />
+                )}
+                <span className="font-josefin font-bold text-[14px] text-white">
+                  SP {group.tipe} &nbsp;|&nbsp; {group.pbf.nama}
+                </span>
+              </div>
+              <button
+                onClick={() => onBuatPesanan(group)}
+                disabled={group.locked}
+                className="font-josefin font-medium text-[12px] text-white rounded-[6px] px-[12px] py-[6px] transition-opacity hover:opacity-80 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                style={{ backgroundColor: "#0c818a" }}
+              >
+                {group.locked ? "SP Aktif Berjalan" : "Buat Pesanan"}
+              </button>
             </div>
 
-            {/* Data rows */}
             {group.items.map((item, ii) => (
               <div
                 key={ii}
                 className="grid font-josefin text-[14px] px-[16px] py-[14px] items-center"
                 style={{
                   backgroundColor: ii % 2 === 0 ? "rgba(222,241,244,1)" : "rgba(255,255,255,1)",
-                  gridTemplateColumns: "2fr 1fr 1fr 0.7fr 1fr 1fr",
+                  gridTemplateColumns: "2fr 1fr 1fr 0.7fr 1fr",
                 }}
               >
                 <span className="font-medium text-black">{item.nama}</span>
-                <span className="text-black">{item.jenis}</span>
-                <span className="text-black">{item.ketahanan}</span>
-                <span className="font-bold text-black">{item.tren}</span>
-                <span className="text-black">{item.usulan}</span>
-                <span>
-                  <span
-                    className="font-medium text-[12px] px-[8px] py-[4px] rounded-full"
-                    style={{ color: "rgb(31,146,84)", backgroundColor: "rgba(31,146,84,0.12)" }}
-                  >
-                    {item.status}
-                  </span>
-                </span>
+                <span className="text-black">{item.jenis === "obat_jadi" ? "obat jadi" : "bahan baku"}</span>
+                <span className="text-black">{item.ketahanan_hari !== null ? `${item.ketahanan_hari} hari` : "—"}</span>
+                <span className="font-bold text-black">{item.tren_harian}</span>
+                <span className="text-black">{item.usulan_pesanan} {item.satuan}</span>
               </div>
             ))}
           </React.Fragment>
         ))}
       </div>
+      )}
     </div>
   );
 }
@@ -251,18 +269,119 @@ function SectionHeader({ title, badge }: { title: string; badge: string }) {
 // --- Main Page ---
 
 export default function LogisticPage() {
+  const { user } = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<"pengadaan" | "deadstock">("pengadaan");
   const [modal, setModal] = useState<ModalState>(closedModal);
 
-  useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 700);
-    return () => clearTimeout(t);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [defektaGroups, setDefektaGroups] = useState<DefektaGroup[]>([]);
+  const [nearExpiryItems, setNearExpiryItems] = useState<NearExpiryItem[]>([]);
+  const [slowMovingItems, setSlowMovingItems] = useState<SlowMovingItem[]>([]);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [statsRes, chartRes, defektaRes, nearExpiryRes, slowMovingRes] = await Promise.all([
+        fetch(`${API_BASE}/api/logistic/stats`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/logistic/stok/chart`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/logistic/defekta`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/logistic/near-expiry`, { credentials: "include" }),
+        fetch(`${API_BASE}/api/logistic/slow-moving`, { credentials: "include" }),
+      ]);
+      if (statsRes.ok) setStats((await statsRes.json()).data);
+      if (chartRes.ok) setChartData((await chartRes.json()).data);
+      if (defektaRes.ok) setDefektaGroups((await defektaRes.json()).data);
+      if (nearExpiryRes.ok) setNearExpiryItems((await nearExpiryRes.json()).data);
+      if (slowMovingRes.ok) setSlowMovingItems((await slowMovingRes.json()).data);
+    } catch (err) {
+      console.error("Error fetching logistik data:", err);
+    } finally {
+      setLoaded(true);
+    }
   }, []);
 
-  const openModal = (config: Omit<ModalState, "open">) =>
-    setModal({ open: true, ...config });
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
   const closeModal = () => setModal(closedModal);
+
+  const statCards: StatCardItem[] = stats
+    ? [
+        { label: "Modal dead-stock", value: rupiah(stats.deadStock.modal), badges: [`${stats.deadStock.count} item`] },
+        { label: "Risiko stockout", value: rupiah(stats.stockout.risiko), badges: [`${stats.stockout.count} item kritis`] },
+        {
+          label: "Ketahanan terpendek",
+          value: stats.ketahanan.hari > 0 ? `${stats.ketahanan.hari} hari` : "—",
+          badges: [stats.ketahanan.item, stats.ketahanan.faskes].filter(Boolean),
+        },
+        { label: "Cabang berisiko", value: `${stats.cabangBerisiko.count}/${stats.cabangBerisiko.total}`, badges: [] },
+      ]
+    : [];
+
+  async function handleBuatPesanan(group: DefektaGroup) {
+    if (!user?.faskes_id || !group.pbf.id) return;
+    setModal({
+      open: true,
+      title: "Konfirmasi Buat Pesanan",
+      description: `Buat SP ${group.tipe} ke ${group.pbf.nama} untuk ${group.items.length} item (total usulan ${group.items.reduce((s, i) => s + i.usulan_pesanan, 0)} unit)?`,
+      confirmLabel: "Buat Pesanan",
+      onConfirm: async () => {
+        const result = await postJson("/api/logistic/surat-pesanan", {
+          faskes_id: user.faskes_id,
+          pbf_id: group.pbf.id,
+          tipe: group.tipe,
+          items: group.items.map((i) => ({ obat_id: i.obat_id, jumlah_usulan: i.usulan_pesanan })),
+        });
+        if (!result.ok) alert(result.error);
+        else await fetchAll();
+        closeModal();
+      },
+    });
+  }
+
+  async function handleRealokasi(item: SlowMovingItem) {
+    if (!item.faskes || !item.faskes_tujuan_realokasi) return;
+    setModal({
+      open: true,
+      title: "Konfirmasi Realokasi",
+      description: `Pindahkan seluruh sisa stok ${item.obat.nama} (${item.jumlah_tersedia} unit) dari ${item.faskes.nama} ke ${item.faskes_tujuan_realokasi.nama}?`,
+      confirmLabel: "Pindahkan",
+      onConfirm: async () => {
+        const result = await postJson("/api/stok/realokasi", {
+          obat_id: item.obat.id,
+          faskes_asal_id: item.faskes!.id,
+          faskes_tujuan_id: item.faskes_tujuan_realokasi!.id,
+          jumlah: item.jumlah_tersedia,
+        });
+        if (!result.ok) alert(result.error);
+        else await fetchAll();
+        closeModal();
+      },
+    });
+  }
+
+  async function handleRetur(item: SlowMovingItem) {
+    if (!item.faskes) return;
+    setModal({
+      open: true,
+      title: "Konfirmasi Retur",
+      description: `Tandai ${item.obat.nama} (${item.jumlah_tersedia} unit) sebagai retur slow-moving di ${item.faskes.nama}? Modal ${rupiah(item.nilai_modal_rp)} akan diproses kembali.`,
+      confirmLabel: "Tanda Retur",
+      onConfirm: async () => {
+        const result = await postJson("/api/stok/retur", {
+          obat_id: item.obat.id,
+          faskes_id: item.faskes!.id,
+          jumlah: item.jumlah_tersedia,
+          alasan: "slow_moving",
+        });
+        if (!result.ok) alert(result.error);
+        else await fetchAll();
+        closeModal();
+      },
+    });
+  }
 
   return (
     <div className="px-[41px] py-[29px] flex flex-col gap-[16px] w-full max-w-[1163px] mx-auto text-black select-none z-10 relative">
@@ -274,14 +393,17 @@ export default function LogisticPage() {
         <>
           <InfoStatCards items={statCards} wrap={false} />
           <AiBanner />
-          <StockChart />
-          <DefektaTable />
+          <StockChart data={chartData} />
+          <DefektaTable groups={defektaGroups} onBuatPesanan={handleBuatPesanan} />
         </>
       ) : (
         <>
           {/* Near-Expiry */}
           <div className="flex flex-col gap-[10px]">
             <SectionHeader title="Near-Expiry" badge="mendekati kedaluwarsa" />
+            {nearExpiryItems.length === 0 && (
+              <p className="font-josefin text-[14px] text-black/50 px-[4px]">Tidak ada obat mendekati kedaluwarsa.</p>
+            )}
             <div className="flex flex-col gap-[8px]">
               {nearExpiryItems.map((item, i) => (
                 <div
@@ -298,12 +420,12 @@ export default function LogisticPage() {
                       <span>{item.nilai}</span>
                     </div>
                   </div>
-                  <button
-                    className="font-josefin font-medium text-[14px] text-white rounded-[8px] px-[16px] py-[8px] transition-opacity hover:opacity-80 cursor-pointer shrink-0"
+                  <span
+                    className="font-josefin font-medium text-[14px] text-white rounded-[8px] px-[16px] py-[8px] shrink-0"
                     style={{ backgroundColor: "#0c818a" }}
                   >
                     {item.expired}
-                  </button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -312,6 +434,9 @@ export default function LogisticPage() {
           {/* Slow-Moving */}
           <div className="flex flex-col gap-[10px]">
             <SectionHeader title="Slow-Moving" badge="modal tertahan" />
+            {slowMovingItems.length === 0 && (
+              <p className="font-josefin text-[14px] text-black/50 px-[4px]">Tidak ada obat slow-moving saat ini.</p>
+            )}
             <div className="flex flex-col gap-[8px]">
               {slowMovingItems.map((item, i) => (
                 <div
@@ -320,49 +445,36 @@ export default function LogisticPage() {
                 >
                   <div className="flex flex-col gap-[4px]">
                     <span className="font-josefin font-semibold text-[24px] text-black leading-tight">
-                      {item.nama}
+                      {item.obat.nama}
                     </span>
                     <div className="flex items-center gap-[8px] font-josefin text-[16px] text-black">
-                      <span>{item.modal}</span>
+                      <span>{item.faskes?.nama ?? "—"}</span>
                       <span>|</span>
-                      <span>{item.tertahan}</span>
+                      <span>{rupiah(item.nilai_modal_rp)} tertahan</span>
                     </div>
                   </div>
                   <button
-                    onClick={() =>
-                      openModal(
-                        item.action === "Tanda retur"
-                          ? {
-                              title: "Konfirmasi Retur",
-                              description: `Tandai ${item.nama} sebagai retur? Modal ${item.modal} akan diproses kembali.`,
-                              confirmLabel: "Tanda Retur",
-                              onConfirm: () => closeModal(),
-                            }
-                          : {
-                              title: "Konfirmasi Realokasi",
-                              description: `Sarankan realokasi ${item.nama} ke cabang lain? Modal ${item.modal} (${item.tertahan}) akan dipindahkan.`,
-                              confirmLabel: "Realokasi",
-                              onConfirm: () => closeModal(),
-                            }
-                      )
-                    }
+                    onClick={() => (item.saran === "realokasi" ? handleRealokasi(item) : handleRetur(item))}
                     className="font-josefin font-medium text-[18px] text-white rounded-[8px] px-[20px] py-[10px] transition-opacity hover:opacity-80 cursor-pointer shrink-0"
                     style={{ backgroundColor: "#0c818a" }}
                   >
-                    {item.action}
+                    {item.saran === "realokasi" ? "Sarankan realokasi" : "Tanda retur"}
                   </button>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Relokasi Antar-Cabang */}
+          {/* Relokasi Antar-Cabang — turunan dari slow-moving yang punya saran realokasi */}
           <div className="flex flex-col gap-[10px]">
             <h2 className="font-josefin font-bold text-[22px] text-black leading-none">
               Relokasi Antar-Cabang
             </h2>
+            {slowMovingItems.filter((i) => i.saran === "realokasi").length === 0 && (
+              <p className="font-josefin text-[14px] text-black/50 px-[4px]">Tidak ada saran realokasi saat ini.</p>
+            )}
             <div className="flex flex-col gap-[8px]">
-              {relokasiItems.map((item, i) => (
+              {slowMovingItems.filter((i) => i.saran === "realokasi").map((item, i) => (
                 <div
                   key={i}
                   className="flex items-center justify-between rounded-[12px] px-[20px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)]"
@@ -372,24 +484,19 @@ export default function LogisticPage() {
                     <div className="flex flex-col gap-[4px]">
                       <div className="flex items-center gap-[12px]">
                         <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
-                          {item.drug}
+                          {item.obat.nama}
                         </span>
-                        <span className="font-josefin text-[20px] text-black leading-none">{item.from}</span>
+                        <span className="font-josefin text-[20px] text-black leading-none">{item.faskes?.nama}</span>
                         <span className="text-black">→</span>
-                        <span className="font-josefin text-[20px] text-black leading-none">{item.to}</span>
+                        <span className="font-josefin text-[20px] text-black leading-none">{item.faskes_tujuan_realokasi?.nama}</span>
                       </div>
-                      <span className="font-josefin text-[16px] text-black leading-none">{item.desc}</span>
+                      <span className="font-josefin text-[16px] text-black leading-none">
+                        Pindah {item.jumlah_tersedia} unit dari stok yang tidak bergerak
+                      </span>
                     </div>
                   </div>
                   <button
-                    onClick={() =>
-                      openModal({
-                        title: "Konfirmasi Relokasi",
-                        description: `Pindahkan 90 unit ${item.drug} dari ${item.from} ke ${item.to}? Stok akan tutup kebutuhan 5 hari.`,
-                        confirmLabel: "Pindahkan",
-                        onConfirm: () => closeModal(),
-                      })
-                    }
+                    onClick={() => handleRealokasi(item)}
                     className="font-josefin font-medium text-[18px] text-white rounded-[8px] px-[20px] py-[10px] transition-opacity hover:opacity-80 cursor-pointer shrink-0"
                     style={{ backgroundColor: "#0c818a" }}
                   >

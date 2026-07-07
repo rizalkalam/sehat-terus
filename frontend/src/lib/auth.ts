@@ -3,6 +3,8 @@ export interface User {
   name: string;
   displayName: string;
   avatarSrc?: string;
+  peran?: string;
+  faskes_id?: string | null;
 }
 
 export const AUTH_COOKIE = "st_auth";

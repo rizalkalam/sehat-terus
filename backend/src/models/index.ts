@@ -80,6 +80,10 @@ PrediksiKebutuhan.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 FasilitasKesehatan.hasMany(PrediksiKebutuhan, { foreignKey: 'faskes_id', as: 'prediksi' });
 PrediksiKebutuhan.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' });
 
+// ── Master: Obat ↔ Pbf (pemasok utama, dipakai untuk group defekta per PBF) ──
+Pbf.hasMany(Obat, { foreignKey: 'pbf_id', as: 'obat' });
+Obat.belongsTo(Pbf, { foreignKey: 'pbf_id', as: 'pbf' });
+
 // ── MIS: SuratPesanan ─────────────────────────────────────────────────────────
 FasilitasKesehatan.hasMany(SuratPesanan, { foreignKey: 'faskes_id', as: 'surat_pesanan' });
 SuratPesanan.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' });

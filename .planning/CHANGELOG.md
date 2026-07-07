@@ -13,6 +13,275 @@ tags:
 
 ---
 
+## 2026-07-08 — Session: Phase 10 (Profile & Settings)
+
+### ✅ Diselesaikan (F04, F35, F36)
+
+Endpoint profil pengguna baru + halaman `/settings` disambungkan penuh ke data real, mengganti
+mockup yang sebelumnya punya field yang tidak ada padanannya di skema `pengguna` sama sekali.
+
+**Backend:**
+- `backend/src/models/Pengguna.ts` — kolom baru `telepon` (nullable), `alamat` (nullable, TEXT),
+  `updated_at` (nullable, di-set manual oleh controller, bukan opsi `updatedAt` otomatis Sequelize).
+- `backend/src/controllers/auth.ts → me()` — diperluas: sertakan `nomor_sipa`, `telepon`, `alamat`,
+  dan `include` join `faskes` (nama/tipe/alamat).
+- `backend/src/controllers/pengguna.ts` (baru) + `backend/src/routes/pengguna.ts` (baru) —
+  `PUT /api/pengguna/profile`, validasi `nama` wajib, update `nama`/`telepon`/`alamat` milik
+  pengguna yang login, mounted di `/api/pengguna`.
+- `backend/src/seedAll.ts` + `seedAuth.ts` — tambah `telepon`/`alamat` contoh untuk ke-4 akun demo.
+
+**Frontend:**
+- `frontend/src/app/(dashboard)/settings/page.tsx` — ditulis ulang total. Fetch profil dari
+  `GET /api/auth/me` saat mount, field mockup lama (`nickname`, `firstName`/`lastName`, `city`,
+  `district`, `village`, `state`, `postcode`, `street`) dibuang karena tidak ada di skema manapun,
+  diganti field nyata: `nama`/`telepon`/`alamat` (editable), `email`/`nomor_sipa`/`peran`/`faskes`
+  (read-only). Simpan lewat `PUT /api/pengguna/profile`.
+- `frontend/src/lib/api.ts` — tambah `putJson()` di samping `postJson()` yang sudah ada (generalisasi
+  ke helper `sendJson()` bersama, method sebagai parameter).
+
+**Keputusan penting (lihat [[DECISIONS#ADR-013]] untuk detail lengkap):**
+- `telepon`/`alamat` ditambahkan via `sequelize.sync({ alter: true })` — sama seperti pola
+  ADR-002/ADR-012, spec `API-SPEC.md` sudah lama minta field ini tapi kolomnya belum pernah ada.
+- `updated_at` awalnya dicoba pakai opsi otomatis `updatedAt: 'updated_at'` Sequelize, tapi
+  `alter: true` **gagal** — Postgres menolak `NOT NULL` tanpa default untuk 4 baris seed yang sudah
+  ada. Diganti kolom nullable biasa, di-set manual di controller.
+- Avatar upload ("Ganti foto") tetap dekoratif — tidak ada endpoint upload, di luar scope F04/F35/F36.
+
+**Verifikasi:** curl `GET /api/auth/me` dan `PUT /api/pengguna/profile` (sukses, validasi nama
+kosong → 400, tanpa auth → 401), backend & frontend Docker di-rebuild, `npm run seed:all` dijalankan
+ulang untuk apply alter table. Playwright (diinstal on-the-fly, tidak ada MCP browser tool tersedia
+sesi ini) login manajer → `/settings` → field terisi data real (cocok dengan curl) → edit
+nama/telepon/alamat → simpan → reload → nilai baru persisten → coba kosongkan nama → error "Nama
+wajib diisi." muncul benar (400) → data dikembalikan ke nilai seed semula lewat UI yang sama setelah
+verifikasi selesai.
+
+---
+
+## 2026-07-07 — Session: Phase 8 (Forecasting & Proyeksi)
+
+### ✅ Diselesaikan (F20–F23)
+
+Endpoint forecasting baru + halaman `/proyeksi-tren` disambungkan penuh ke data real,
+menyelesaikan bagian terakhir yang masih hardcoded di halaman itu (stat cards, alert cards,
+dan bagian proyeksi chart).
+
+**Backend:**
+- `backend/src/utils/holtSmoothing.ts` — Holt's linear trend method (double exponential
+  smoothing), alpha/beta di-fit per penyakit lewat grid search (0.1–0.9, minimasi SSE).
+- `backend/src/controllers/forecasting.ts` + `backend/src/routes/forecasting.ts` —
+  `GET /api/forecasting/{projection,stats,alerts}`, mounted di `/api/forecasting`.
+- `backend/src/seedAll.ts` — tambah beberapa baris `resep`/`resep_item` contoh (satu per
+  penyakit utama: ISPA→Amoxicillin, Flu→Paracetamol, Diare→Oralit, DBD→Paracetamol,
+  Hipertensi→Amlodipine) supaya `rekomendasi_obat` (F23) punya sinyal data nyata untuk fallback
+  join — sebelumnya DB cuma punya 1 baris resep manual dari testing.
+
+**Frontend:** `frontend/src/app/(dashboard)/proyeksi-tren/page.tsx` ditulis ulang total —
+stat cards & alert cards dari hardcoded jadi fetch API real, chart diganti dari
+`/api/cases/temporal` (bulanan) ke `/api/forecasting/projection` (mingguan) dengan segmen
+proyeksi digambar garis putus-putus (`strokeDasharray`) menyambung dari titik historis terakhir.
+
+**Keputusan penting (lihat [[DECISIONS#ADR-011]] untuk detail lengkap):**
+- `prediksi_kebutuhan` **tidak dipakai** — schema-nya untuk kebutuhan obat per faskes (Phase 9),
+  bukan proyeksi kasus penyakit. Draft `API-SPEC.md` sebelumnya salah soal ini.
+- Granularitas **mingguan**, bukan bulanan — sesuai horizon 14-30 hari di `REQUIREMENTS.md`
+  ANL-01. Minggu yang sedang berjalan dikeluarkan dari data historis supaya tidak jadi penurunan
+  palsu di ujung seri.
+- `rekomendasi_obat` (F23) dari riwayat `resep_item` nyata, fallback `alert_ews.obat_terdampak_id`,
+  atau kosong — tidak ada pemetaan penyakit→obat fabrikasi, konsisten dengan keputusan Phase 7.
+- Caption stat card diganti dari klaim tak berdasar data ("Terbanyak di Sleman") jadi generik
+  ("Proyeksi minggu depan").
+
+**Verifikasi:** curl ketiga endpoint langsung, `npm run test:tps` 100% lulus (tidak ada regresi),
+Playwright login manajer → `/proyeksi-tren` → stat cards/chart/alert cards render dengan data
+real, ganti dropdown penyakit di chart → re-fetch dan render benar, tidak ada console error.
+
+---
+
+## 2026-07-07 — Session: Phase 9 (Logistik & Pengadaan)
+
+### ✅ Diselesaikan (F17, F19, F24–F32, F34)
+
+Endpoint logistik yang tersisa dibangun + `/logistik` dan sisa bagian hardcoded `/peringatan-dini`
+(F17 Tindakan Darurat, F19 chart stok vs kebutuhan) disambungkan penuh ke data real.
+
+**Backend:**
+- `backend/src/models/Obat.ts` — kolom baru `pbf_id` (nullable FK ke `pbf`), lihat [[DECISIONS#ADR-011]].
+- `backend/src/controllers/logistic.ts` — `getDefekta`, `getSlowMoving`, `createSuratPesanan` baru;
+  `getStats` diperbaiki (ketahanan pakai rata-rata pemakaian nyata, bukan asumsi tetap "/10");
+  `getStokChart` ditambah `mode=line` untuk chart EWS.
+- `backend/src/routes/logistic.ts` — routes baru + Swagger JSDoc.
+- `backend/src/seedAll.ts` — assign `pbf_id` round-robin ke semua obat, tambah ~150 baris riwayat
+  `pergerakan_stok` tipe `'keluar'` sintetis (45 hari, fast/medium mover) — lihat [[DECISIONS#ADR-011]].
+- `backend/src/controllers/auth.ts` — `st_user` cookie & response login sekarang bawa `faskes_id`
+  (dibutuhkan FE untuk tahu faskes manajer sendiri saat submit SP/realokasi/retur).
+
+**Frontend:**
+- `frontend/src/app/(dashboard)/logistik/page.tsx` — ditulis ulang total, semua array hardcoded
+  (`stockData`, `statCards`, `defektaGroups`, `nearExpiryItems`, `slowMovingItems`, `relokasiItems`)
+  diganti fetch API real. Tombol "Buat Pesanan"/"Sarankan realokasi"/"Tanda retur" tersambung ke
+  `POST /api/logistic/surat-pesanan` dan `POST /api/stok/{realokasi,retur}`.
+- `frontend/src/app/(dashboard)/peringatan-dini/page.tsx` — `chartData` (F19) dan `tindakanItems`
+  (F17) yang tadinya hardcoded sekarang dari `GET /api/logistic/{stok/chart,slow-moving,defekta}`.
+- `frontend/src/lib/api.ts` (baru) — helper `postJson()` yang cek `res.ok`, dipakai di semua
+  tombol aksi — lihat catatan bug di bawah.
+- `frontend/src/lib/auth.ts` / `auth.client.ts` — `User` type + mapping ditambah `faskes_id`.
+
+**Keputusan penting (lihat [[DECISIONS#ADR-011]] untuk detail):**
+- Defekta dikelompokkan per **`(pbf_id, tipe)`**, bukan cuma `pbf_id` — satu PBF bisa memasok
+  obat reguler & npp sekaligus, dan item npp wajib SP terpisah (skema `sp_item`). Tanpa split ini,
+  klik "Buat Pesanan" pada grup campuran akan selalu ditolak backend.
+- `sp_item` tidak punya kolom harga — `harga_satuan`/`subtotal` di response `POST` dihitung dari
+  `obat.harga_beli` saat itu, input `harga_satuan` dari client diabaikan.
+- `GET /api/logistic/summary` (AiBanner `/logistik`) **tidak dikerjakan** — di luar scope yang
+  disepakati; `AiBanner` di halaman itu masih pakai teks default komponennya.
+
+### 🐛 Bug ditemukan & diperbaiki saat verifikasi — Error POST disilent-swallow oleh FE
+
+`fetch()` tidak reject di respons 4xx/5xx (cuma reject kalau network error), jadi percobaan
+"Buat Pesanan" untuk grup npp sebagai manajer (bukan apoteker, sengaja diklik saat testing) kena
+403 dari backend — tapi UI tidak menunjukkan apa-apa, `fetchAll()` tetap terpanggil seolah sukses.
+Ditemukan lewat Playwright (`console --errors` menangkap 403 yang tidak pernah sampai ke user).
+Diperbaiki dengan `postJson()` helper yang cek `res.ok` dan `alert()` pesan error dari body kalau
+gagal, dipakai di semua 5 titik POST di kedua halaman. Diverifikasi ulang: SP reguler oleh manajer
+sukses tanpa dialog, SP npp oleh manajer nolak dengan alert 403, SP npp oleh apoteker sukses.
+
+**Verifikasi end-to-end:** curl semua endpoint baru, `npm run test:tps` 100% lulus tiap rebuild,
+Playwright login manajer → `/logistik` (kedua tab) + `/peringatan-dini` → screenshot semua
+bagian dengan data real → eksekusi nyata "Buat Pesanan" (SP baru tercatat di DB) dan "Tanda retur"
+(stok Vitamin C 250→0 di DB) → data uji dibersihkan lagi setelah verifikasi, tidak ada console
+error tersisa.
+
+---
+
+## 2026-07-07 — Session: Verifikasi End-to-End Admin Dashboard
+
+### ✅ Diverifikasi (menyelesaikan pending dari sesi 2026-07-06)
+
+Login sungguhan di browser (Playwright) sebagai `admin` dan `manajer` (carmen) untuk memastikan
+merge selektif admin dashboard sesi lalu benar-benar berfungsi, bukan cuma lulus `tsc`/`build`:
+
+- Login admin → landing `/admin` (FA8), layout + sidebar render dengan data real (FA1)
+- Admin coba akses `/` dan `/peringatan-dini` → di-redirect balik ke `/admin` (guard FA2 aktif di FE)
+- Logout admin → login manajer (carmen) → landing `/` (dashboard MIS, FA8), coba akses `/admin` →
+  di-redirect ke `/` (guard FA2 blokir non-admin dari admin panel)
+- Tidak ada console error di sepanjang alur
+
+### 🐛 Bug ditemukan & diperbaiki — Edit Pengguna gagal total kalau `faskes_id` kosong
+
+`updateUser` di `backend/src/controllers/admin.ts` meneruskan `faskes_id` mentah-mentah ke
+`user.update()`. FE mengirim string kosong `''` saat opsi "— Tidak ada —" dipilih (misalnya untuk
+akun `admin` yang memang tidak terikat faskes manapun), lalu Postgres menolak dengan
+`invalid input syntax for type uuid: ""` — modal gagal simpan, tidak ada indikasi lain selain
+pesan error mentah dari DB. `createUser` sudah benar (`faskes_id: faskes_id || null`), tapi
+`updateUser` tidak punya fallback yang sama. Diperbaiki dengan menambahkan `|| null` yang sama
+persis (plus `nomor_sipa`, yang punya masalah serupa tapi tidak fatal karena kolomnya bertipe text).
+
+Diverifikasi ulang setelah fix: create → edit (ganti nama) → nonaktifkan (dengan `confirm()`
+dialog) tiga-tiganya berhasil untuk user tanpa faskes, status list ter-refresh benar
+(`Aktif` → `Nonaktif`). Data uji dihapus lagi dari DB setelah verifikasi. `npm run test:tps`
+di-re-run setelah rebuild backend — 100% lulus, tidak ada regresi.
+
+**File diubah:** `backend/src/controllers/admin.ts` (`updateUser`). Docker backend di-rebuild 1x.
+
+---
+
+## 2026-07-06 — Session: Merge Selektif Admin Dashboard (`feat/admin-system-and-ai-update`)
+
+### ✅ Diselesaikan
+
+Branch teman satu kelompok (`TonyKeys`, branch `feat/admin-system-and-ai-update`, commit `6adaa31`)
+punya 1 commit besar yang menggabungkan 6 fitur: admin dashboard layout, CRUD obat, CRUD stok,
+role-based access, registrasi admin-only, toggle aktif akun, dan prediksi AI kebutuhan obat.
+User minta cuma 4 fitur diambil ke `merge-feat-dashboard` — CRUD obat/stok & prediksi AI
+sengaja di-exclude (lihat [[FEATURES-MAP#Domain 8]] FA5–FA7 untuk detail & cara lanjutkan nanti).
+
+**Ditambahkan (FA1–FA4, lihat [[FEATURES-MAP#Domain 8 — Admin Panel]]):**
+- `frontend/src/app/admin/{layout,page}.tsx`, `admin/users/page.tsx`, `components/AdminSidebar.tsx`
+  — dashboard admin dengan sidebar (Overview + Pengguna saja, di-trim dari source yang juga
+  punya menu Master Obat/Stok Obat)
+- `backend/src/{routes,controllers}/admin.ts` — CRUD pengguna + list faskes. Source aslinya
+  menggabungkan ini dengan CRUD obat/stok di file yang sama; di-split manual supaya scope obat/
+  stok tidak ikut kebawa
+- `frontend/src/middleware.ts` — guard `/admin/*` redirect ke `/` kalau bukan `peran: admin`
+- `frontend/src/components/Sidebar.tsx` — link "Admin Panel" muncul kondisional untuk admin
+- Registrasi admin-only (FA4) ternyata **sudah ada** di `merge-feat-dashboard` sebelum merge ini
+  (identik dengan source) — tidak ada perubahan diperlukan
+
+**Bug ditemukan & diperbaiki selama merge:**
+- `st_user` cookie di branch ini belum membawa field `peran` — tanpa ini, guard admin di FE
+  selalu gagal (redirect walau user beneran admin) karena `user?.peran` selalu `undefined`.
+  Ditambahkan ke `res.cookie('st_user', ...)` di `controllers/auth.ts` (login) + tipe `User` FE.
+- Form edit pengguna (`admin/users/page.tsx`) selalu reset `faskes_id` ke kosong saat `openEdit`
+  dipanggil, alih-alih prefill assignment faskes yang sudah ada — akan menghapus faskes user
+  kalau admin save tanpa sengaja ganti dropdown. Diperbaiki: prefill dari `u.faskes_id`.
+- `adminsidebar.tsx` (lowercase) di source di-import sebagai `@/components/AdminSidebar`
+  (uppercase) — cocok di Windows (case-insensitive) tapi bakal 404 di Docker/Linux. File dibuat
+  ulang dengan penamaan konsisten (`AdminSidebar.tsx`).
+- **Endpoint `/api/admin/*` cuma dilindungi `requireAuth`, bukan `requireAdmin`** — user mana pun
+  yang login (bukan cuma admin) bisa panggil endpoint itu langsung lewat curl, proteksi role cuma
+  ada di level middleware Next.js (bisa dilewati kalau akses API langsung). Ditambahkan middleware
+  `requireAdmin` baru (403 kalau `peran !== 'admin'`), dipasang setelah `requireAuth` di
+  `routes/admin.ts` — commit terpisah, diminta eksplisit oleh user setelah laporan awal merge.
+
+Diverifikasi: `npx tsc --noEmit` dan `npm run build` lulus bersih di backend & frontend (termasuk
+route `/admin`, `/admin/users` ter-compile). Belum diverifikasi end-to-end di browser (belum
+login sungguhan sebagai admin/non-admin untuk cek redirect & CRUD user) — lihat catatan cara tes
+di respons chat sesi ini.
+
+**Susulan #4 (masih 2026-07-06) — bug ditemukan lewat laporan user:** Logout dari satu peran lalu
+login lagi sebagai peran lain **tanpa refresh manual halaman `/login`** membawa user ke landing
+page peran SEBELUMNYA, bukan peran yang baru login. Root cause: `router.push()`/`router.replace()`
+(client-side navigation Next.js App Router) bisa memakai client router cache — hasil render
+halaman dari sebelum logout — tanpa menjamin `middleware.ts` dievaluasi ulang dengan cookie baru.
+Reproduksi by browser (Playwright): login manajer → `/`, logout → `/login`, login admin di halaman
+`/login` yang sama tanpa reload manual → **sebelum fix** tetap nyangkut, **sesudah fix** benar ke
+`/admin`. Diperbaiki: `AuthContext.logout()` dan `login/page.tsx` post-login redirect diganti dari
+`router.push`/`router.replace` ke `window.location.href` (full page reload) — memaksa request baru
+lewat middleware dengan cookie ter-update, bukan soft-navigation yang bisa reuse cache. `useRouter`
+di kedua file jadi tidak dipakai lagi, dihapus.
+
+**Susulan #3 (masih 2026-07-06):** User minta login "masuk ke page sesuai role masing-masing".
+Klarifikasi: apoteker & staf_logistik **belum punya halaman dashboard FE sendiri** (cuma admin dan
+manajer yang punya) — jadi untuk sementara, 2 peran itu diarahkan ke Swagger UI backend
+(`/api/docs`) sebagai "halaman kerja" mereka, bukan dashboard MIS. `middleware.ts` ditulis ulang
+sekali lagi: fungsi `landingPathFor(peran)` menentukan tujuan redirect per peran (admin→`/admin`,
+apoteker/staf_logistik→URL absolut ke Swagger, sisanya→`/`), dipakai baik saat post-login
+redirect maupun guard di setiap request. Diverifikasi ke-4 akun seed via browser: admin→`/admin`,
+carmen (manajer)→`/`, apoteker→`http://localhost:5000/api/docs/`, logistik (staf_logistik)→sama.
+**Catatan kasar (belum diselesaikan):** karena Swagger di-serve backend (port 5000, di luar
+Next.js), begitu apoteker/staf_logistik "landing" di sana, tidak ada jalan mudah balik ke halaman
+login/logout aplikasi FE — mereka perlu ketik ulang URL atau clear cookie manual. Diterima sebagai
+keterbatasan sementara sesuai instruksi user ("sementara ini... sisanya pakai interface swagger"),
+belum diminta untuk diperbaiki.
+
+**Susulan #2 (masih 2026-07-06) — bug ditemukan lewat test browser:** User minta tombol "Kembali"
+di `AdminSidebar` diperjelas fungsinya. Investigasi: label "Kembali" itu terpasang di tombol yang
+sebenarnya manggil `logout()` — mismatch nama vs fungsi peninggalan sesi sebelumnya. Tapi pas
+ditest di browser (Playwright, klik tombolnya beneran), **`logout()` ternyata no-op sama sekali**
+— tidak ada request `POST /api/auth/logout` terkirim, URL tidak berubah. Root cause: `useAuth()`
+balik ke stub default (`logout: () => {}`) karena `admin/layout.tsx` tidak pernah dibungkus
+`<AuthProvider>` (cuma `(dashboard)/layout.tsx` MIS yang dibungkus). Ini juga jelasin kenapa kode
+asli source branch punya hack aneh (`localStorage.clear()` + `window.location.href` manual) di
+tombol ini — itu workaround untuk bug yang sama, bukan fix yang benar. Diperbaiki: `admin/layout.tsx`
+sekarang dibungkus `<AuthProvider>` (sama seperti dashboard layout), dan label tombol diganti jadi
+"Keluar" supaya sesuai fungsi aslinya (logout, bukan navigasi "back" — lagipula sejak MIS diblokir
+total untuk admin, tidak ada tempat buat "kembali" secara logis). Diverifikasi ulang di browser:
+klik "Keluar" → `POST /api/auth/logout` 200 → redirect ke `/login`.
+
+**Susulan #1 (masih 2026-07-06):** Admin awalnya mendarat di dashboard MIS (`/`) yang sama seperti
+peran lain, harus klik link "Admin Panel" di sidebar dulu. Diubah 2 tahap:
+1. Redirect admin dari `/` langsung ke `/admin` setelah login.
+2. **Diperluas jadi blokir total** atas permintaan user — admin sekarang tidak bisa membuka
+   halaman MIS manapun (`/`, `/proyeksi-tren`, `/peringatan-dini`, `/logistik`, `/settings`), semua
+   path selain `/admin/*` dialihkan balik ke `/admin` selama peran-nya admin. `middleware.ts`
+   ditulis ulang: `isAdmin` dihitung sekali di awal, lalu dipakai simetris — admin diblokir dari
+   non-`/admin`, non-admin diblokir dari `/admin` (guard yang sudah ada sebelumnya).
+   Konsekuensi: link "Admin Panel" di `Sidebar.tsx` (sidebar MIS utama) jadi tidak mungkin
+   ke-render lagi (admin tidak pernah melihat sidebar itu) — dihapus sebagai dead code, bukan
+   didiamkan.
+
+---
+
 ## 2026-07-03 — Session: Merge Parsial Branch Teman (`feat/disease-api-integration`)
 
 ### ✅ Diselesaikan
