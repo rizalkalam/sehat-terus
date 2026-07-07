@@ -13,6 +13,7 @@ import aiRouter from './routes/ai';
 import logisticRouter from './routes/logistic';
 import adminRouter from './routes/admin';
 import forecastingRouter from './routes/forecasting';
+import penggunaRouter from './routes/pengguna';
 
 dotenv.config();
 
@@ -43,5 +44,6 @@ app.use('/api/ai', aiRouter);
 app.use('/api/logistic', logisticRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/forecasting', forecastingRouter);
+app.use('/api/pengguna', penggunaRouter);
 
 export default app;

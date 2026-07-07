@@ -360,4 +360,51 @@ diharapkan, bukan bug.
 
 ---
 
+## ADR-013 — Profil Pengguna: Kolom Baru `telepon`/`alamat`, `updated_at` Manual, Mockup `/settings` Dibuang
+
+**Tanggal:** 2026-07-08
+**Status:** Aktif
+
+**Keputusan:**
+1. Kolom nullable `telepon` (`STRING(30)`) dan `alamat` (`TEXT`) ditambahkan ke model/tabel
+   `Pengguna` via `sequelize.sync({ alter: true })` (pola sama dengan ADR-002/ADR-012).
+2. `updated_at` ditambahkan sebagai kolom biasa nullable (`allowNull: true`), **bukan** opsi
+   otomatis `updatedAt` Sequelize — controller `updateProfile()` men-set `user.updated_at = new
+   Date()` secara eksplisit sebelum `save()`.
+3. `GET /api/auth/me` diperluas: tambah `nomor_sipa`, `telepon`, `alamat`, dan `include` join
+   `faskes` (nama/tipe/alamat).
+4. Frontend `/settings` **ditulis ulang total** — semua field mockup lama (`nickname`, `firstName`/
+   `lastName`, `city`, `district`, `village`, `state`, `postcode`, `street`) dibuang, diganti field
+   yang benar-benar ada di skema: `nama`/`telepon`/`alamat` (editable), `email`/`nomor_sipa`/`peran`/
+   `faskes` (read-only).
+
+**Alasan:**
+- `API-SPEC.md` sudah lama mendefinisikan `PUT /api/pengguna/profile` dengan body
+  `{nama, telepon, alamat}`, tapi kolom `telepon`/`alamat` **tidak pernah ada** di model `Pengguna`
+  manapun — sama seperti pola ADR-011/ADR-012, spec ditulis duluan sebelum skema menyusul.
+- Mencoba `alter: true` dengan opsi otomatis `updatedAt: 'updated_at'` Sequelize **gagal** —
+  Postgres menolak `ALTER TABLE ... ADD COLUMN "updated_at" ... NOT NULL` karena 4 baris `pengguna`
+  seed yang sudah ada tidak punya nilai untuk kolom itu (`column "updated_at" ... contains null
+  values`). Kolom nullable + di-set manual menghindari masalah ini tanpa perlu default value palsu.
+- Mockup `/settings` lama (nickname, city/district/village/postcode/street — gaya form alamat
+  lengkap ala e-commerce) tidak punya padanan sama sekali di tabel `pengguna` — mempertahankan
+  field itu berarti UI menjanjikan sesuatu yang tidak bisa disimpan, bertentangan dengan prinsip
+  "jangan fabrikasi data yang tidak didukung skema" yang sudah dipakai konsisten sejak Phase 7–9.
+
+**Alternatif yang ditolak:**
+- Memakai `updatedAt: 'updated_at'` otomatis Sequelize dengan `defaultValue: DataTypes.NOW` —
+  ditolak karena menyembunyikan kapan sebenarnya suatu baris terakhir diubah manual vs saat migrasi
+  dijalankan; nilai default silently salah untuk 4 baris seed yang sebenarnya belum pernah di-update.
+- Mempertahankan field alamat lengkap (city/district/village/postcode) dengan menyimpannya sebagai
+  JSON di kolom `alamat` — ditolak karena over-engineering untuk kebutuhan yang diminta (`REQUIREMENTS.md`
+  F04/F36 cuma minta nama/telepon/alamat sederhana), dan tidak ada fitur lain yang butuh alamat
+  terstruktur per komponen.
+
+**Konsekuensi:**
+- Tombol "Ganti foto" (avatar) di `/settings` tetap dekoratif/non-fungsional — tidak ada endpoint
+  upload avatar, di luar scope F04/F35/F36. Sama seperti precedent "X tidak dikerjakan, di luar
+  scope" di Phase 7/9.
+
+---
+
 *Diperbarui oleh Claude Code setiap ada keputusan arsitektur baru*

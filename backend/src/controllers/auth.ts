@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Pengguna } from '../models';
+import { Pengguna, FasilitasKesehatan } from '../models';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'st-jwt-secret-2026';
 const COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 hari
@@ -72,7 +72,8 @@ export async function logout(_req: Request, res: Response): Promise<void> {
 export async function me(req: Request, res: Response): Promise<void> {
   try {
     const user = await Pengguna.findByPk(req.user!.id, {
-      attributes: ['id', 'nama', 'email', 'peran', 'faskes_id', 'aktif'],
+      attributes: ['id', 'nama', 'email', 'peran', 'faskes_id', 'nomor_sipa', 'telepon', 'alamat', 'aktif'],
+      include: [{ model: FasilitasKesehatan, as: 'faskes', attributes: ['nama', 'tipe', 'alamat'] }],
     });
     if (!user) {
       res.status(404).json({ error: 'Pengguna tidak ditemukan.' });

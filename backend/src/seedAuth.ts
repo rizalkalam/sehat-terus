@@ -27,6 +27,8 @@ const USERS_SEED = [
     password: 'sehat123',
     peran: 'manajer' as const,
     faskes_index: 0,
+    telepon: '+62 813-2345-6789',
+    alamat: 'Jl. Kaliurang Km. 8, Sleman, D.I. Yogyakarta',
   },
   {
     nama: 'Administrator',
@@ -42,6 +44,8 @@ const USERS_SEED = [
     peran: 'apoteker' as const,
     faskes_index: 0,
     nomor_sipa: 'SIPA-2026-001',
+    telepon: '+62 821-9876-5432',
+    alamat: 'Jl. Kaliurang Km. 7, Sleman, D.I. Yogyakarta',
   },
   {
     nama: 'Staf Logistik',
@@ -49,6 +53,8 @@ const USERS_SEED = [
     password: 'logistik123',
     peran: 'staf_logistik' as const,
     faskes_index: 1,
+    telepon: '+62 856-1122-3344',
+    alamat: 'Jl. Seturan Raya No. 12, Depok, Sleman',
   },
 ];
 
@@ -97,6 +103,8 @@ async function seedAuth() {
         peran: u.peran,
         faskes_id,
         nomor_sipa: (u as { nomor_sipa?: string }).nomor_sipa ?? null,
+        telepon: (u as { telepon?: string }).telepon ?? null,
+        alamat: (u as { alamat?: string }).alamat ?? null,
         aktif: true,
       });
       console.log(`  CREATED ${u.email} (${u.peran})`);

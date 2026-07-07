@@ -121,10 +121,10 @@ async function seedAll() {
     // ── 3. PENGGUNA ──────────────────────────────────────────────────────────
     console.log('\n▸ [3/9] Seeding pengguna...');
     const penggunaData = [
-      { nama: 'Carmenita', email: 'carmen@sehatterus.id', password: 'sehat123', peran: 'manajer' as const, faskes: faskes1 },
-      { nama: 'Administrator', email: 'admin@sehatterus.id', password: 'admin123', peran: 'admin' as const, faskes: null },
-      { nama: 'Apoteker Sleman', email: 'apoteker@sehatterus.id', password: 'apoteker123', peran: 'apoteker' as const, faskes: faskes1, nomor_sipa: 'SIPA-2026-001' },
-      { nama: 'Staf Logistik Depok', email: 'logistik@sehatterus.id', password: 'logistik123', peran: 'staf_logistik' as const, faskes: faskes2 },
+      { nama: 'Carmenita', email: 'carmen@sehatterus.id', password: 'sehat123', peran: 'manajer' as const, faskes: faskes1, telepon: '+62 813-2345-6789', alamat: 'Jl. Kaliurang Km. 8, Sleman, D.I. Yogyakarta' },
+      { nama: 'Administrator', email: 'admin@sehatterus.id', password: 'admin123', peran: 'admin' as const, faskes: null, telepon: null, alamat: null },
+      { nama: 'Apoteker Sleman', email: 'apoteker@sehatterus.id', password: 'apoteker123', peran: 'apoteker' as const, faskes: faskes1, nomor_sipa: 'SIPA-2026-001', telepon: '+62 821-9876-5432', alamat: 'Jl. Kaliurang Km. 7, Sleman, D.I. Yogyakarta' },
+      { nama: 'Staf Logistik Depok', email: 'logistik@sehatterus.id', password: 'logistik123', peran: 'staf_logistik' as const, faskes: faskes2, telepon: '+62 856-1122-3344', alamat: 'Jl. Seturan Raya No. 12, Depok, Sleman' },
     ];
     const penggunaMap: Record<string, Pengguna> = {};
     for (const u of penggunaData) {
@@ -132,6 +132,8 @@ async function seedAll() {
       if (exists) {
         exists.faskes_id = u.faskes?.id ?? null;
         exists.nomor_sipa = (u as { nomor_sipa?: string }).nomor_sipa ?? null;
+        exists.telepon = u.telepon ?? null;
+        exists.alamat = u.alamat ?? null;
         exists.peran = u.peran;
         await exists.save();
         penggunaMap[u.email] = exists;
@@ -143,6 +145,8 @@ async function seedAll() {
         nama: u.nama, email: u.email, password_hash,
         peran: u.peran, faskes_id: u.faskes?.id ?? null,
         nomor_sipa: (u as { nomor_sipa?: string }).nomor_sipa ?? null,
+        telepon: u.telepon ?? null,
+        alamat: u.alamat ?? null,
         aktif: true,
       });
       penggunaMap[u.email] = rec;

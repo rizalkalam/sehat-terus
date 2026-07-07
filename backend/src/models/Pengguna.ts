@@ -11,7 +11,10 @@ export class Pengguna extends Model {
   declare peran: PeranPengguna;
   declare nomor_sipa: string | null;
   declare faskes_id: string | null;
+  declare telepon: string | null;
+  declare alamat: string | null;
   declare aktif: boolean;
+  declare updated_at: Date | null;
   declare readonly created_at: Date;
 }
 
@@ -27,7 +30,10 @@ Pengguna.init(
     },
     nomor_sipa: { type: DataTypes.STRING(50), allowNull: true },
     faskes_id: { type: DataTypes.UUID, allowNull: true },
+    telepon: { type: DataTypes.STRING(30), allowNull: true },
+    alamat: { type: DataTypes.TEXT, allowNull: true },
     aktif: { type: DataTypes.BOOLEAN, defaultValue: true },
+    updated_at: { type: DataTypes.DATE, allowNull: true },
   },
   {
     sequelize,

@@ -57,23 +57,22 @@ tags:
 
 | Status | Jumlah | Persentase |
 |--------|--------|------------|
-| ✅ Selesai | 32 | 87% |
-| 🟡 Integrasi Pending | 1 | 3% |
-| 🟠 BE Pending | 2 | 5% |
+| ✅ Selesai | 35 | 95% |
+| 🟡 Integrasi Pending | 0 | 0% |
+| 🟠 BE Pending | 0 | 0% |
 | ❌ Belum Ada | 2 | 5% |
 | **Total** | **37** | |
 
 ```
 Progress keseluruhan:
-Selesai          ██████████████████░░░  87%
-Integrasi        █░░░░░░░░░░░░░░░░░░░░   3%
-BE Pending       █░░░░░░░░░░░░░░░░░░░░   5%
+Selesai          ████████████████████░  95%
 Belum Ada        █░░░░░░░░░░░░░░░░░░░░   5%
 ```
 
-> [!note] Phase 8 (Forecasting) dan Phase 9 (Logistik) sudah direkonsiliasi di `merge-feat-dashboard`
-> F20–F23 (Phase 8) dan F17/F19/F24–F32/F34 (Phase 9) sekarang sama-sama ✅. Sisa pending: F04/F35/F36
-> (Settings, Phase 10), F33 (SP status workflow), F37 (multi-faskes) — lihat detail di tabel Domain di bawah.
+> [!note] Phase 8, 9 & 10 sudah selesai
+> F20–F23 (Phase 8), F17/F19/F24–F32/F34 (Phase 9), dan F04/F35/F36 (Phase 10 — Settings) sekarang
+> semuanya ✅. Sisa pending: F33 (SP status workflow), F37 (multi-faskes) — lihat detail di tabel
+> Domain di bawah.
 
 > [!info] Merge parsial dari branch `feat/disease-api-integration` (2026-07-03)
 > Branch teman satu kelompok (`TonyKeys`) dibuat dari snapshot project yang jauh lebih lama
@@ -99,7 +98,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | F01 | Login email & password → set JWT cookie | ✅ | `pengguna` | `/login` |
 | F02 | Logout → hapus cookie sesi | ✅ | — | Sidebar |
 | F03 | Load profil otomatis saat app dibuka | ✅ | `pengguna` | Semua (AuthContext) |
-| F04 | Edit profil (nama, telepon, alamat) | 🟠 | `pengguna` | `/settings` |
+| F04 | Edit profil (nama, telepon, alamat) | ✅ | `pengguna` | `/settings` |
 
 > [!success] F02–F03 Selesai (Phase 6, Plan 06-03)
 > `AuthContext.logout()` sekarang memanggil `logoutFromApi()` → `POST /api/auth/logout`, yang
@@ -372,9 +371,17 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F35 | Load profil dari API saat buka `/settings` | 🟡 | `pengguna`, `fasilitas_kesehatan` | `/settings` |
-| F36 | Simpan perubahan profil | 🟠 | `pengguna` | `/settings` |
+| F35 | Load profil dari API saat buka `/settings` | ✅ | `pengguna`, `fasilitas_kesehatan` | `/settings` |
+| F36 | Simpan perubahan profil | ✅ | `pengguna` | `/settings` |
 | F37 | Pilih/ganti cabang (untuk admin multi-faskes) | ❌ | `fasilitas_kesehatan`, `wilayah` | Belum ada |
+
+> [!success] F04, F35, F36 Selesai (Phase 10 — 2026-07-08)
+> `GET /api/auth/me` diperluas untuk sertakan `nomor_sipa`, `telepon`, `alamat`, dan join `faskes`
+> (nama/tipe/alamat). Endpoint baru `PUT /api/pengguna/profile` (`controllers/pengguna.ts`) validasi
+> `nama` wajib lalu update `nama`/`telepon`/`alamat` milik pengguna yang login. `/settings` ditulis
+> ulang total — field lama (`nickname`, `city`, `district`, `village`, `postcode`, `street`, dll.)
+> dibuang karena tidak ada di skema `pengguna` manapun, diganti field nyata (nama, telepon, alamat
+> editable; email, nomor_sipa, peran, faskes read-only). Lihat [[DECISIONS#ADR-013]].
 
 ---
 
@@ -413,7 +420,8 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 |----------|--------|--------|---------------|
 | `/api/auth/login` | POST | ✅ | F01 |
 | `/api/auth/logout` | POST | ✅ | F02 |
-| `/api/auth/me` | GET | ✅ | F03, F35 |
+| `/api/auth/me` | GET | ✅ (Phase 10 — sekarang sertakan nomor_sipa/telepon/alamat/faskes) | F03, F35 |
+| `/api/pengguna/profile` | PUT | ✅ (Phase 10 — baru) | F04, F36 |
 | `/api/cases/spatial` | GET | ✅ | F05, F07 |
 | `/api/cases/temporal` | GET | ✅ | F06, F08 |
 | `/api/cases/region/:name` | GET | ✅ | F06 |
@@ -467,7 +475,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 F02  Sambungkan logout FE → POST /api/auth/logout — ✅ Selesai (Phase 6, Plan 06-03)
 F03  Sambungkan AuthContext → GET /api/auth/me      — ✅ Selesai (Phase 6, Plan 06-03)
 F08  Sambungkan /proyeksi-tren → GET /api/cases/temporal — ✅ Selesai (Phase 6, Plan 06-02)
-F35  Sambungkan /settings → GET /api/auth/me
+F35  Sambungkan /settings → GET /api/auth/me — ✅ Selesai (Phase 10, 2026-07-08)
 ```
 
 ### Berikutnya — Backend Core (Domain EWS & Stats)
@@ -494,11 +502,17 @@ F17, F19 /peringatan-dini Tindakan Darurat + chart stok vs kebutuhan         —
 F20–F23  GET /api/forecasting/{projection,stats,alerts} — ✅ Selesai (Phase 8)
 ```
 
+### Profile & Settings — ✅ Selesai (Phase 10, 2026-07-08)
+
+```
+F04      PUT /api/pengguna/profile          — ✅ Selesai
+F35–F36  /settings load + simpan profil real — ✅ Selesai
+```
+
 ### Terakhir — Sisa Pekerjaan (belum dikerjakan)
 
 ```
 F33            Update status SP (draf → disetujui → dikirim → diterima)
-F04, F35, F36  Profile & Settings (Phase 10)
 F37            Pilih/ganti cabang admin multi-faskes
 ```
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 (feat/forecasting-proyeksi) and Phase 9 (feat/logistik-pengadaan) reconciled into merge-feat-dashboard; Phase 10 pending
+stopped_at: Phase 10 (feat/profile-settings) complete — all 10 phases of milestone v1.0 done
 last_updated: "2026-07-08T00:00:00.000Z"
-last_activity: 2026-07-08 -- Merged feat/forecasting-proyeksi and feat/logistik-pengadaan into merge-feat-dashboard, resolved .planning/*.md conflicts
+last_activity: 2026-07-08 -- Completed Phase 10 (Profile & Settings) on feat/profile-settings, updated .planning/*.md
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 31
-  completed_plans: 29
-  percent: 94
+  completed_plans: 31
+  percent: 100
 ---
 
 # Project State
@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Menyediakan early warning spasial dan temporal untuk wabah penyakit berbasis data yang dapat dipertanggungjawabkan per faskes.
-**Current focus:** Phase 10 — Profile & Settings (Phase 8 & 9 sudah direkonsiliasi ke `merge-feat-dashboard`)
+**Current focus:** Milestone v1.0 selesai penuh (10/10 phase) — belum ada milestone berikutnya yang direncanakan.
 
 ---
 
 ## Current Position
 
-**Phase:** 08 & 09 — SELESAI, direkonsiliasi ke `merge-feat-dashboard` pada 2026-07-08
-**Plan:** Phase 8: 3 of 3 · Phase 9: 3 of 3 (setara — dikerjakan sebagai satu sesi, bukan 3 plan formal terpisah)
-**Status:** Phase 8 (Forecasting & Proyeksi, branch `feat/forecasting-proyeksi`) dan Phase 9 (Logistik & Pengadaan, branch `feat/logistik-pengadaan`) selesai penuh secara paralel pada 2026-07-07, masing-masing diverifikasi penuh (curl, `npm run test:tps`, Playwright end-to-end). Kedua branch direkonsiliasi ke `merge-feat-dashboard` pada 2026-07-08 — konflik di `.planning/*.md` (API-SPEC, CHANGELOG, DECISIONS, FEATURES-MAP, ROADMAP, STATE) diselesaikan manual; `ADR-011` (Phase 9, pbf_id/pergerakan_stok) di-renumber jadi `ADR-012` karena bentrok nomor dengan `ADR-011` (Phase 8, forecasting). Tidak ada konflik kode (`seedAll.ts` auto-merge bersih). Siap mulai Phase 10.
+**Phase:** 10 — SELESAI pada 2026-07-08 (branch `feat/profile-settings`)
+**Plan:** 10-01 & 10-02 (dikerjakan sebagai satu sesi, bukan 2 plan formal terpisah — sama seperti pola Phase 7–9)
+**Status:** Phase 10 (Profile & Settings) selesai penuh — `PUT /api/pengguna/profile` baru + `GET /api/auth/me` diperluas (nomor_sipa, telepon, alamat, faskes), `/settings` ditulis ulang total dari mockup ke data real. Diverifikasi penuh (curl endpoint + validasi, Docker rebuild, `npm run seed:all`, Playwright end-to-end diinstal on-the-fly). Ini adalah phase terakhir milestone v1.0 — semua 10 phase sekarang selesai.
 
-Progress: `[███████████████████░]` 94% (29/31 plan)
+Progress: `[████████████████████]` 100% (31/31 plan)
 
 ---
 
-## Apa yang Sudah Selesai (Phase 1–9)
+## Apa yang Sudah Selesai (Phase 1–10)
 
 | Phase | Yang Dibangun | Tanggal |
 |-------|--------------|---------|
@@ -48,6 +48,38 @@ Progress: `[███████████████████░]` 94% (
 | 7 | Alert EWS API (7 endpoint) + Z-score detection engine + `/peringatan-dini` disambungkan penuh (stat cards, AI banner, list, modal, tangani/selesai) | 2026-07-02 |
 | 8 | Forecasting API (3 endpoint, Holt's linear trend/double exp. smoothing dihitung on-the-fly dari `RekamMedis`) + `/proyeksi-tren` disambungkan penuh (chart dengan garis putus-putus proyeksi, stat cards, alert cards rekomendasi obat) | 2026-07-07 |
 | 9 | Logistik API (`defekta`, `slow-moving`, `POST surat-pesanan`, `stats`/`stok/chart` diperbaiki) + `obat.pbf_id` baru + riwayat `pergerakan_stok` sintetis + `/logistik` & sisa `/peringatan-dini` (F17, F19) disambungkan penuh | 2026-07-07 |
+| 10 | `PUT /api/pengguna/profile` baru + `GET /api/auth/me` diperluas (nomor_sipa, telepon, alamat, faskes) + `telepon`/`alamat`/`updated_at` baru di `Pengguna` + `/settings` ditulis ulang total dari mockup ke data real | 2026-07-08 |
+
+---
+
+## Phase 10 — Selesai Penuh
+
+**Goal:** Pengguna bisa edit profil sendiri (nama, telepon, alamat), halaman `/settings` dari data real.
+
+| Endpoint / Fitur | Deskripsi | Status |
+|----------|-------|--------|
+| `GET /api/auth/me` (diperluas) | F35 — tambah `nomor_sipa`, `telepon`, `alamat`, join `faskes` | ✅ Selesai, FE tersambung |
+| `PUT /api/pengguna/profile` | F04, F36 — update nama/telepon/alamat milik pengguna sendiri | ✅ Selesai, FE tersambung |
+| `Pengguna.telepon`, `.alamat`, `.updated_at` (kolom baru) | Fondasi profil yang bisa diedit | ✅ Selesai |
+| `/settings` (ditulis ulang total) | Mockup lama dibuang, field nyata + read-only faskes/nomor_sipa | ✅ Selesai |
+
+> [!note] Keputusan implementasi — lihat [[DECISIONS#ADR-013]] untuk detail lengkap
+> - `telepon`/`alamat` ditambahkan via `sequelize.sync({ alter: true })`, pola sama ADR-002/ADR-012.
+> - `updated_at` **bukan** opsi otomatis `updatedAt` Sequelize — percobaan pertama gagal karena
+>   Postgres menolak `ALTER TABLE ... NOT NULL` untuk baris seed yang sudah ada tanpa nilai. Diganti
+>   kolom nullable, di-set manual (`user.updated_at = new Date()`) di `updateProfile()`.
+> - Mockup lama (`nickname`, `firstName`/`lastName`, `city`, `district`, `village`, `state`,
+>   `postcode`, `street`) dibuang total — tidak ada padanan di skema `pengguna` manapun.
+> - Avatar upload ("Ganti foto") tetap dekoratif — tidak ada endpoint upload, di luar scope.
+
+**Verifikasi end-to-end:**
+- curl `GET /api/auth/me` dan `PUT /api/pengguna/profile` langsung — sukses, validasi nama kosong
+  → 400, tanpa auth → 401
+- Backend & frontend Docker di-rebuild, `npm run seed:all` dijalankan ulang untuk apply alter table
+- Playwright (diinstal on-the-fly di sesi ini — tidak ada MCP browser tool tersedia) login manajer
+  → `/settings` → field terisi data real (cocok dengan curl `GET /me`) → edit nama/telepon/alamat
+  → simpan → reload → nilai baru persisten → coba kosongkan nama → error "Nama wajib diisi." benar
+  → data dikembalikan ke nilai seed semula lewat UI yang sama setelah verifikasi
 
 ---
 
@@ -211,11 +243,13 @@ Yang sebenarnya terjadi:
 
 ---
 
-## Pending Todos (setelah Phase 8, 9)
+## Pending Todos (setelah Phase 10 — semua 10 phase milestone v1.0 selesai)
 
-- **Phase 10 (berikutnya):** Settings — edit profil + halaman /settings dari data real. Belum dimulai di branch manapun. Branch baru untuk ini dibuat dari `merge-feat-dashboard` (sudah berisi Phase 8 & 9 hasil rekonsiliasi).
 - **F33** (update status SP draf→disetujui→dikirim→diterima) — di luar scope Phase 9, belum ada endpoint.
 - **`GET /api/logistic/summary`** (AiBanner nyata untuk `/logistik`) — di luar scope Phase 9, `AiBanner` masih pakai teks default.
+- **F37** (pilih/ganti cabang untuk admin multi-faskes) — belum ada di FE maupun BE, di luar scope semua phase sejauh ini.
+- **FA5–FA7** (CRUD obat/stok admin + prediksi AI dari admin panel) — sengaja di-exclude dari merge 2026-07-06, belum direncanakan ke phase manapun.
+- Belum ada milestone v1.1/v2.0 berikutnya yang direncanakan — semua 10 phase roadmap v1.0 sudah selesai.
 
 ---
 
@@ -238,6 +272,7 @@ Yang sebenarnya terjadi:
 | 7. Early Warning System | 3/3 | ~85 min | ~28 min |
 | 8. Forecasting & Proyeksi | 3/3 | ~60 min | ~20 min |
 | 9. Logistik & Pengadaan | 3/3 | ~75 min | ~25 min |
+| 10. Profile & Settings | 2/2 | ~30 min | ~15 min |
 
 ---
 
@@ -251,6 +286,7 @@ Yang sebenarnya terjadi:
 | `20260706-merge-admin-dashboard` | Merge selektif branch teman (`feat/admin-system-and-ai-update`, TonyKeys) ke `merge-feat-dashboard` — ambil 4 dari 6 fitur (admin dashboard layout, guard role, CRUD user, registrasi admin-only), exclude CRUD obat/stok admin & prediksi AI (jadi FA5–FA7 pending, lihat [[FEATURES-MAP#Domain 8 — Admin Panel]]). Ditambah `requireAdmin` middleware di commit terpisah setelah user minta proteksi API-level, bukan cuma UI. Sudah di-push, belum diverifikasi end-to-end di browser. | 2026-07-06 |
 | `20260707-verify-admin-dashboard` | Verifikasi end-to-end di browser (Playwright) untuk merge admin dashboard sesi sebelumnya — login admin & manajer, guard redirect FA2 kedua arah, CRUD pengguna FA3 (create/edit/nonaktifkan). Ditemukan & diperbaiki bug: `updateUser` gagal total (500, invalid UUID) kalau `faskes_id` dikosongkan karena tidak ada fallback `\|\| null` seperti di `createUser`. Backend di-rebuild, `npm run test:tps` 100% lulus. | 2026-07-07 |
 | `20260707-phase9-logistik-pengadaan` | Phase 9 penuh (bukan Quick Task, tapi dicatat di sini karena dikerjakan sebagai satu sesi bukan 3 Plan formal) — lihat bagian "Phase 9 — Selesai Penuh" di atas untuk detail lengkap. Branch baru `feat/logistik-pengadaan`. | 2026-07-07 |
+| `20260708-phase10-profile-settings` | Phase 10 penuh (bukan Quick Task, tapi dicatat di sini karena dikerjakan sebagai satu sesi bukan 2 Plan formal) — lihat bagian "Phase 10 — Selesai Penuh" di atas untuk detail lengkap. Branch `feat/profile-settings`. | 2026-07-08 |
 
 > [!note] Observasi (bukan tindakan) — `alert_ews` dan `RekamMedis` sedikit lebih besar dari baseline
 > Saat verifikasi Quick Task di atas, `alert_ews` menunjukkan 7 baris (bukan 5) dan `RekamMedis`
@@ -264,5 +300,5 @@ Yang sebenarnya terjadi:
 ## Session Continuity
 
 Last session: 2026-07-08
-Stopped at: Phase 8 (Forecasting & Proyeksi, branch `feat/forecasting-proyeksi`) dan Phase 9 (Logistik & Pengadaan, branch `feat/logistik-pengadaan`) masing-masing selesai penuh secara paralel pada 2026-07-07 — lihat bagian "Phase 8 — Selesai Penuh" dan "Phase 9 — Selesai Penuh" di atas untuk detail lengkap masing-masing. Pada 2026-07-08, Phase 9 di-commit & di-push, lalu kedua branch direkonsiliasi: `feat/forecasting-proyeksi` di-merge ke `merge-feat-dashboard` (fast-forward, tanpa konflik), lalu `feat/logistik-pengadaan` di-merge (konflik di 6 dokumen `.planning/*.md` — API-SPEC, CHANGELOG, DECISIONS, FEATURES-MAP, ROADMAP, STATE — diselesaikan manual; `backend/src/seedAll.ts` auto-merge bersih tanpa konflik). `ADR-011` versi Phase 9 (pbf_id/pergerakan_stok) di-renumber jadi `ADR-012` karena bentrok nomor dengan `ADR-011` versi Phase 8 (forecasting).
-Resume: Push `merge-feat-dashboard` yang sudah direkonsiliasi, lalu mulai Phase 10 (Settings) di branch baru yang di-checkout dari `merge-feat-dashboard` — endpoint `PUT /api/pengguna/profile` + sambungkan halaman `/settings` ke data real (F04, F35, F36). FA5–FA7 (CRUD obat/stok admin + prediksi AI) masih pending kalau diminta terpisah.
+Stopped at: Phase 10 (Profile & Settings, branch `feat/profile-settings`) selesai penuh — lihat bagian "Phase 10 — Selesai Penuh" di atas untuk detail lengkap. Ini menyelesaikan semua 10 phase milestone v1.0 (31/31 plan, 100%).
+Resume: Commit + push branch `feat/profile-settings`. Belum ada milestone v1.1/v2.0 berikutnya yang direncanakan — kandidat kerja lanjutan (di luar scope milestone ini): F33 (status SP), F37 (multi-faskes admin), FA5–FA7 (CRUD obat/stok admin + prediksi AI dari admin panel).

@@ -13,6 +13,50 @@ tags:
 
 ---
 
+## 2026-07-08 — Session: Phase 10 (Profile & Settings)
+
+### ✅ Diselesaikan (F04, F35, F36)
+
+Endpoint profil pengguna baru + halaman `/settings` disambungkan penuh ke data real, mengganti
+mockup yang sebelumnya punya field yang tidak ada padanannya di skema `pengguna` sama sekali.
+
+**Backend:**
+- `backend/src/models/Pengguna.ts` — kolom baru `telepon` (nullable), `alamat` (nullable, TEXT),
+  `updated_at` (nullable, di-set manual oleh controller, bukan opsi `updatedAt` otomatis Sequelize).
+- `backend/src/controllers/auth.ts → me()` — diperluas: sertakan `nomor_sipa`, `telepon`, `alamat`,
+  dan `include` join `faskes` (nama/tipe/alamat).
+- `backend/src/controllers/pengguna.ts` (baru) + `backend/src/routes/pengguna.ts` (baru) —
+  `PUT /api/pengguna/profile`, validasi `nama` wajib, update `nama`/`telepon`/`alamat` milik
+  pengguna yang login, mounted di `/api/pengguna`.
+- `backend/src/seedAll.ts` + `seedAuth.ts` — tambah `telepon`/`alamat` contoh untuk ke-4 akun demo.
+
+**Frontend:**
+- `frontend/src/app/(dashboard)/settings/page.tsx` — ditulis ulang total. Fetch profil dari
+  `GET /api/auth/me` saat mount, field mockup lama (`nickname`, `firstName`/`lastName`, `city`,
+  `district`, `village`, `state`, `postcode`, `street`) dibuang karena tidak ada di skema manapun,
+  diganti field nyata: `nama`/`telepon`/`alamat` (editable), `email`/`nomor_sipa`/`peran`/`faskes`
+  (read-only). Simpan lewat `PUT /api/pengguna/profile`.
+- `frontend/src/lib/api.ts` — tambah `putJson()` di samping `postJson()` yang sudah ada (generalisasi
+  ke helper `sendJson()` bersama, method sebagai parameter).
+
+**Keputusan penting (lihat [[DECISIONS#ADR-013]] untuk detail lengkap):**
+- `telepon`/`alamat` ditambahkan via `sequelize.sync({ alter: true })` — sama seperti pola
+  ADR-002/ADR-012, spec `API-SPEC.md` sudah lama minta field ini tapi kolomnya belum pernah ada.
+- `updated_at` awalnya dicoba pakai opsi otomatis `updatedAt: 'updated_at'` Sequelize, tapi
+  `alter: true` **gagal** — Postgres menolak `NOT NULL` tanpa default untuk 4 baris seed yang sudah
+  ada. Diganti kolom nullable biasa, di-set manual di controller.
+- Avatar upload ("Ganti foto") tetap dekoratif — tidak ada endpoint upload, di luar scope F04/F35/F36.
+
+**Verifikasi:** curl `GET /api/auth/me` dan `PUT /api/pengguna/profile` (sukses, validasi nama
+kosong → 400, tanpa auth → 401), backend & frontend Docker di-rebuild, `npm run seed:all` dijalankan
+ulang untuk apply alter table. Playwright (diinstal on-the-fly, tidak ada MCP browser tool tersedia
+sesi ini) login manajer → `/settings` → field terisi data real (cocok dengan curl) → edit
+nama/telepon/alamat → simpan → reload → nilai baru persisten → coba kosongkan nama → error "Nama
+wajib diisi." muncul benar (400) → data dikembalikan ke nilai seed semula lewat UI yang sama setelah
+verifikasi selesai.
+
+---
+
 ## 2026-07-07 — Session: Phase 8 (Forecasting & Proyeksi)
 
 ### ✅ Diselesaikan (F20–F23)

@@ -28,8 +28,12 @@ tags:
 > **Phase 8 (Forecasting)** selesai penuh (2026-07-07): `/proyeksi-tren` sekarang hidup dari
 > `GET /api/forecasting/{projection,stats,alerts}` (F20–F23) — chart historis+proyeksi mingguan
 > (garis putus-putus untuk bagian proyeksi), 3 stat card, dan maks. 3 alert card rekomendasi.
-> Sisa yang masih hardcoded di sistem: `/settings` (F35, F36 — Phase 10) dan
-> logistik/pengadaan (F24–F34 — Phase 9).
+> **Phase 9 (Logistik)** selesai penuh (2026-07-07): `/logistik` + sisa `/peringatan-dini` hidup
+> dari `GET /api/logistic/*` (F17, F19, F24–F32, F34).
+> **Phase 10 (Settings)** selesai penuh (2026-07-08): `/settings` sekarang hidup dari
+> `GET /api/auth/me` (diperluas dengan `nomor_sipa`/`telepon`/`alamat`/`faskes`) dan
+> `PUT /api/pengguna/profile` (F04, F35, F36) — lihat [[DECISIONS#ADR-013]].
+> Sisa pending: F33 (status SP) dan F37 (multi-faskes admin), keduanya di luar scope Phase 10.
 
 ---
 
@@ -94,7 +98,7 @@ tags:
 **Controller:** `src/controllers/auth.ts → me()`
 **Middleware:** `requireAuth`
 **Tabel:** `pengguna`, `fasilitas_kesehatan`
-**FE:** `AuthContext` on mount (terhubung sejak Phase 6 Plan 06-03 — F03 ✅), `/settings` load profil (F35 🟡 — belum, menunggu Phase 10)
+**FE:** `AuthContext` on mount (terhubung sejak Phase 6 Plan 06-03 — F03 ✅), `/settings` load profil (F35 ✅ — Phase 10)
 
 **Response 200:**
 ```json
@@ -104,6 +108,8 @@ tags:
   "email": "string",
   "peran": "manajer",
   "nomor_sipa": "string | null",
+  "telepon": "string | null",
+  "alamat": "string | null",
   "faskes_id": "uuid | null",
   "faskes": {
     "nama": "string",
@@ -115,12 +121,12 @@ tags:
 
 ---
 
-### 🆕 PUT `/api/pengguna/profile`
+### ✅ PUT `/api/pengguna/profile`
 
 **Controller:** `src/controllers/pengguna.ts → updateProfile()`
 **Middleware:** `requireAuth`
 **Tabel:** `pengguna`
-**FE:** `/settings` tombol "Simpan Perubahan" (F36)
+**FE:** `/settings` tombol "Simpan Perubahan" (F36 ✅ — Phase 10)
 
 **Request Body:**
 ```json
@@ -137,6 +143,8 @@ tags:
   "id": "uuid",
   "nama": "string",
   "email": "string",
+  "telepon": "string | null",
+  "alamat": "string | null",
   "updated_at": "ISO8601"
 }
 ```
@@ -923,7 +931,7 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 | 1 | POST | `/api/auth/login` | Auth | `/login` | ✅ |
 | 2 | POST | `/api/auth/logout` | Auth | Sidebar | ✅ |
 | 3 | GET | `/api/auth/me` | Auth | Semua | ✅ |
-| 4 | PUT | `/api/pengguna/profile` | Auth | `/settings` | 🆕 |
+| 4 | PUT | `/api/pengguna/profile` | Auth | `/settings` | ✅ |
 | 5 | GET | `/api/cases/spatial` | Cases | `/` | ✅ |
 | 6 | GET | `/api/cases/region/:name` | Cases | `/` | ✅ |
 | 7 | GET | `/api/cases/temporal` | Cases | `/proyeksi-tren` | ✅ |
@@ -948,7 +956,7 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 | 26 | GET | `/api/logistic/surat-pesanan` | SP | `/logistik` | ✅ |
 | 27 | POST | `/api/logistic/surat-pesanan` | SP | `/logistik` | ✅ |
 
-**Total MIS: 26/27 selesai (backend + FE, atau backend-only by design) · 1 belum dibuat (`PUT /api/pengguna/profile` — Phase 10)**
+**Total MIS: 27/27 selesai (backend + FE, atau backend-only by design)**
 **Total TPS: 10/10 endpoint selesai (lihat [[TPS-API-SPEC]])**
 **Grand total seluruh sistem: 37 endpoint — 36 selesai (BE+FE atau backend-only) · 1 belum dibuat (Phase 10)**
 
@@ -977,7 +985,7 @@ Task #6  GET /api/cases/summary                            ✅
 F02  Sidebar logout → POST /api/auth/logout                       ✅
 F03  AuthContext → GET /api/auth/me saat app mount                ✅
 F08  /proyeksi-tren → GET /api/cases/temporal (chart)              ✅
-F35  /settings → GET /api/auth/me (ganti hardcoded form values)   🔜 Phase 10
+F35  /settings → GET /api/auth/me (ganti hardcoded form values)   ✅ Phase 10 (2026-07-08)
 ```
 
 ### ✅ Tahap 2 — Dashboard Utama (Phase 6 Plan 06-01)
@@ -1036,9 +1044,9 @@ F30  POST /api/stok/retur         → retur dari logistik
 > Fitur tambahan di luar 37 fitur map: `POST /api/ai/analyze` (ringkasan LLM via Groq, butuh
 > `GROQ_API_KEY`) dan `POST /api/auth/register` (backend-only, FE sengaja tidak disambungkan).
 
-### Tahap 6 — Profile & Settings
+### ✅ Tahap 6 — Profile & Settings (Phase 10 — selesai 2026-07-08)
 ```
-F36  PUT /api/pengguna/profile    → simpan perubahan profil
+F04, F36  PUT /api/pengguna/profile → simpan perubahan profil   ✅
 ```
 
 ---

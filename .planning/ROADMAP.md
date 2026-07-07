@@ -25,7 +25,7 @@ Stack: Next.js 15 (frontend) · Express.js + Sequelize (backend) · PostgreSQL �
 - [x] **Phase 7: Early Warning System (EWS)** — Endpoint alert, Z-score detection engine, halaman /peringatan-dini dari data real.
 - [x] **Phase 8: Forecasting & Proyeksi** — Double exponential smoothing, endpoint forecasting, halaman /proyeksi-tren dari data real.
 - [x] **Phase 9: Logistik & Pengadaan** — Endpoint stok, near-expiry, slow-moving, surat pesanan, halaman /logistik dari data real. *(sebagian endpoint GET sudah ada lebih awal lewat merge 2026-07-03, lihat detail Phase 9 di bawah)*
-- [ ] **Phase 10: Profile & Settings** — Edit profil pengguna, PUT /api/pengguna/profile, halaman /settings dari data real.
+- [x] **Phase 10: Profile & Settings** — Edit profil pengguna, PUT /api/pengguna/profile, halaman /settings dari data real.
 
 ---
 
@@ -170,13 +170,25 @@ nyata di DB) → data uji dibersihkan, tidak ada console error.
 
 ---
 
-### 🔜 Phase 10: Profile & Settings
-**Status:** Pending
+### ✅ Phase 10: Profile & Settings
+**Selesai:** 2026-07-08 (branch `feat/profile-settings`)
 **Goal:** Pengguna bisa edit profil sendiri, halaman /settings dari data real.
 
 Plans:
-- [ ] 10-01: Endpoint `PUT /api/pengguna/profile`
-- [ ] 10-02: Sambungkan halaman /settings → `GET /api/auth/me` (F35) + `PUT /api/pengguna/profile` (F36)
+- [x] 10-01: Endpoint `PUT /api/pengguna/profile` — kolom baru `telepon`/`alamat`/`updated_at` di `Pengguna`, `GET /api/auth/me` diperluas (nomor_sipa, telepon, alamat, faskes)
+- [x] 10-02: Sambungkan halaman /settings → `GET /api/auth/me` (F35) + `PUT /api/pengguna/profile` (F36) — mockup lama (nickname/city/district/village/postcode/street) dibuang, diganti field nyata
+
+> [!note] Keputusan implementasi — lihat [[DECISIONS#ADR-013]] untuk detail lengkap
+> `telepon`/`alamat` ditambahkan via `sequelize.sync({ alter: true })` (pola sama ADR-002/ADR-012).
+> `updated_at` **tidak** pakai opsi otomatis `updatedAt` Sequelize — `alter: true` gagal karena
+> Postgres menolak `NOT NULL` tanpa default untuk baris seed yang sudah ada; diganti kolom nullable
+> yang di-set manual di controller. Avatar upload tetap dekoratif, di luar scope.
+
+**Verifikasi end-to-end:** curl `GET /api/auth/me` + `PUT /api/pengguna/profile` (sukses, validasi
+nama kosong → 400, tanpa auth → 401); backend+frontend Docker di-rebuild, `npm run seed:all`
+dijalankan ulang untuk apply alter table; Playwright (diinstal on-the-fly, sesi ini tidak punya
+MCP browser tool) login manajer → `/settings` → data real termuat → edit → simpan → reload →
+persisten → probe nama kosong → error benar → data dikembalikan ke nilai seed via UI.
 
 ---
 
@@ -195,15 +207,14 @@ Plans:
 | 7. Early Warning System | 3/3 | ✅ Selesai | 2026-07-02 |
 | 8. Forecasting & Proyeksi | 3/3 | ✅ Selesai | 2026-07-07 |
 | 9. Logistik & Pengadaan | 3/3 | ✅ Selesai | 2026-07-07 |
-| 10. Profile & Settings | 0/2 | 🔜 Pending | — |
-| **Total** | **29/31** | **94%** | |
+| 10. Profile & Settings | 2/2 | ✅ Selesai | 2026-07-08 |
+| **Total** | **31/31** | **100%** | |
 
 ```
 Progress keseluruhan:
-Phase 1-9 (selesai)  ███████████████████░  94%  ← posisi sekarang (direkonsiliasi di merge-feat-dashboard)
-Phase 10 (pending)   ░░░░░░░░░░░░░░░░░░░░   6%
+Phase 1-10 (selesai)  ████████████████████  100%
 ```
 
 ---
 
-*Diperbarui 2026-07-08 — Phase 8 (Forecasting, branch `feat/forecasting-proyeksi`) dan Phase 9 (Logistik, branch `feat/logistik-pengadaan`) direkonsiliasi ke `merge-feat-dashboard`; sisa Phase 10 (Settings)*
+*Diperbarui 2026-07-08 — Phase 10 (Profile & Settings, branch `feat/profile-settings`) selesai penuh. Semua 10 phase milestone v1.0 selesai.*
