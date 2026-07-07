@@ -33,6 +33,7 @@ export async function loginWithApi(
         name: data.user.nama,
         displayName: data.user.nama,
         peran: data.user.peran,
+        faskes_id: data.user.faskes_id,
       },
     };
   } catch {
@@ -55,6 +56,7 @@ export async function getMe(): Promise<{ ok: true; user: User } | { ok: false }>
         name: data.user.nama,
         displayName: data.user.nama,
         peran: data.user.peran,
+        faskes_id: data.user.faskes_id,
       },
     };
   } catch {

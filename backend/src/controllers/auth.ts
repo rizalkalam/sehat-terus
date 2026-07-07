@@ -40,7 +40,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
     // Readable — dibaca getUserFromCookie() di frontend untuk tampilkan nama/avatar.
     // Tidak perlu pre-encode: Express sudah memanggil encodeURIComponent secara default.
-    const userInfo = { email: user.email, name: user.nama, displayName: user.nama, peran: user.peran };
+    const userInfo = { email: user.email, name: user.nama, displayName: user.nama, peran: user.peran, faskes_id: user.faskes_id };
     res.cookie('st_user', JSON.stringify(userInfo), {
       httpOnly: false,
       sameSite: 'lax',

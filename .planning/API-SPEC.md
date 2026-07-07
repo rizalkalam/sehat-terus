@@ -609,203 +609,139 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 
 ---
 
-## 📦 Domain Stok — `/api/stok`
+## 📦 Domain Stok & Logistik — `/api/logistic` + `/api/stok`
 
-> [!note] Sumber Data
-> Tabel `stok` (15 baris) + `pergerakan_stok` (15 baris).
-> Item kritis: CTM < stok minimum, Antasida exp. Des 2026.
+> [!note] Dua prefix, bukan satu — dan draft awal domain ini banyak salah
+> Draft awal dokumen ini menaruh semua endpoint stok di bawah `GET /api/stok/*`. Yang sebenarnya
+> terjadi: 5 endpoint GET (`stok`, `stok/chart`, `stats`, `near-expiry`, `surat-pesanan` list) masuk
+> lebih dulu lewat merge parsial dari branch teman (2026-07-03) di bawah prefix
+> **`/api/logistic/*`** (lihat [[DECISIONS#ADR-010]]), dan Phase 9 (2026-07-07) menambah
+> `defekta`, `slow-moving`, `POST surat-pesanan` di prefix yang sama supaya tidak terpecah dua.
+> Hanya `POST /api/stok/{realokasi,retur}` (Phase 7) yang tetap di prefix `/api/stok/*` — controller
+> `src/controllers/stok.ts` yang sebenarnya, bukan `src/controllers/logistic.ts` seperti disebut di
+> draft awal untuk endpoint lain.
+>
+> **Perbaikan lain dari draft awal:**
+> - `obat.pbf_id` **tidak ada di skema asli** — kolom ini ditambahkan khusus di Phase 9 (nullable
+>   FK, di-seed round-robin ke 3 PBF) supaya defekta bisa benar-benar dikelompokkan per PBF.
+>   Lihat [[DECISIONS#ADR-011]].
+> - `tren_harian`/`kebutuhan_prediksi`/`ketahanan_hari` dihitung dari rata-rata nyata
+>   `pergerakan_stok` tipe `'keluar'` 30 hari terakhir — bukan dari `prediksi_kebutuhan` (draft
+>   awal salah menyebut tabel ini; isinya untuk kebutuhan per faskes hasil forecasting AI, konsep
+>   berbeda) dan bukan asumsi tetap seperti "stok / 10" yang sempat dipakai `getStats` sebelum
+>   diperbaiki di Phase 9.
+> - `sp_item` **tidak punya kolom harga** di skema manapun — `harga_satuan`/`subtotal` di response
+>   `POST /api/surat-pesanan` dihitung dari `obat.harga_beli` saat itu, bukan disimpan.
+>
+> **Belum dikerjakan di Phase 9:** `GET /api/logistic/summary` (AiBanner ringkasan AI di
+> `/logistik`, draft awal menyebutnya F16) — di luar scope Phase 9 yang disepakati. `AiBanner` di
+> `/logistik` masih pakai teks default hardcoded komponennya, bukan endpoint nyata.
 
-### 🆕 GET `/api/stok/stats`
+### ✅ GET `/api/logistic/stats`
 
-**Controller:** `src/controllers/stok.ts → getStokStats()`
+**Controller:** `src/controllers/logistic.ts → getStats()`
 **Tabel:** `stok`, `obat`, `pergerakan_stok`, `fasilitas_kesehatan`
 **FE:** `/logistik` → 4 InfoStatCards (F26)
-
-**Query Params:** `faskes_id` (opsional — jika kosong, agregat semua faskes)
 
 **Response 200:**
 ```json
 {
-  "nilai_deadstock": {
-    "nominal": 42500000,
-    "label": "Dead-stock",
-    "badges": ["9 item", "17% nilai stok"]
-  },
-  "risiko_stockout": {
-    "nominal": 88000000,
-    "label": "Risiko stockout",
-    "badges": ["7 item kritis"]
-  },
-  "ketahanan_hari": {
-    "nilai": 2,
-    "label": "Ketahanan terpendek",
-    "badges": ["Oralit", "Cabang Sleman"]
-  },
-  "cabang_terdampak": {
-    "jumlah": 3,
-    "total": 13,
-    "label": "Cabang berisiko",
-    "badges": ["Sleman, Bantul, Kota"]
+  "success": true,
+  "data": {
+    "deadStock": { "modal": 5100000, "count": 5 },
+    "stockout": { "risiko": 401000, "count": 4 },
+    "ketahanan": { "hari": 3, "item": "Amoxicillin 500mg", "faskes": "Apotek Sehat Terus Depok" },
+    "cabangBerisiko": { "count": 2, "total": 2 }
   }
 }
 ```
 
 **Logic:**
-- `nilai_deadstock` = SUM(`jumlah_tersedia * harga_satuan`) WHERE `tanggal_kedaluwarsa < NOW() + 90 days` ATAU `hari_tidak_bergerak > 90`
-- `risiko_stockout` = SUM nilai obat WHERE `jumlah_tersedia < stok_minimum`
-- `ketahanan_hari` = MIN(`jumlah_tersedia / rata_harian_keluar`) per obat per faskes
-- `cabang_terdampak` = COUNT DISTINCT faskes WHERE ada stok kritis
+- `deadStock` = obat dengan `jumlah_tersedia > stok_minimum * 3`
+- `stockout` = obat dengan `jumlah_tersedia < stok_minimum`
+- `ketahanan.hari` = MIN(`jumlah_tersedia / tren_harian`) di seluruh obat+faskes yang punya `tren_harian > 0` (obat tanpa riwayat `keluar` tidak ikut dibandingkan, bukan dianggap "tak terbatas")
+- `cabangBerisiko` = COUNT DISTINCT faskes yang punya minimal 1 obat stockout
 
 ---
 
-### 🆕 GET `/api/stok/summary`
+### ✅ GET `/api/logistic/stok/chart`
 
-**Controller:** `src/controllers/stok.ts → getStokSummary()`
-**Tabel:** `stok`, `alert_ews`
-**FE:** `/logistik` → AiBanner (F16)
-
-**Response 200:**
-```json
-{
-  "teks": "7 item stok kritis di 3 cabang. Oralit di Sleman habis dalam 2 hari. Dead-stock Rp 42,5jt perlu segera diretur atau direlokasi.",
-  "generated_at": "2026-06-30T08:00:00.000Z"
-}
-```
-
----
-
-### 🆕 GET `/api/stok/chart`
-
-**Controller:** `src/controllers/stok.ts → getStokChart()`
-**Tabel:** `stok`, `obat`, `prediksi_kebutuhan`
+**Controller:** `src/controllers/logistic.ts → getStokChart()`
+**Tabel:** `stok`, `obat`, `pergerakan_stok`
 **FE:** `/logistik` → bar chart sisa vs kebutuhan (F24) · `/peringatan-dini` → line chart stok vs kebutuhan (F19)
 
 **Query Params:**
 | Param | Tipe | Default | Keterangan |
 |-------|------|---------|------------|
-| `faskes_id` | uuid | — | Wajib untuk line chart EWS |
-| `obat_id` | uuid | — | Untuk line chart per obat spesifik |
-| `months` | number | 7 | Rentang bulan (line chart) |
-| `limit` | number | 5 | Top N obat (bar chart) |
-| `mode` | `bar\|line` | `bar` | Tipe output |
+| `mode` | `bar\|line` | `bar` | — |
+| `faskes_id` | uuid | — | Wajib untuk `mode=line` |
+| `obat_id` | uuid | — | Wajib untuk `mode=line` |
+| `months` | number | 7 | Rentang bulan (`mode=line`) |
+| `limit` | number | 6 | Top N obat (`mode=bar`) |
 
 **Response 200 (mode=bar):**
 ```json
-[
-  {
-    "nama_obat": "Amoksisilin 500mg",
-    "obat_id": "uuid",
-    "jumlah_tersedia": 80,
-    "stok_minimum": 30,
-    "kebutuhan_prediksi": 112
-  }
-]
+{ "success": true, "data": [{ "drug": "Oralit", "sisaStock": 300, "kebutuhan": 60 }] }
 ```
 
-**Response 200 (mode=line):**
+**Response 200 (mode=line)** — direkonstruksi mundur dari stok saat ini + riwayat `keluar` nyata; bulan di luar jangkauan riwayat (>45 hari, sesuai seed) tampil datar karena memang belum ada sinyal pergerakan sejauh itu, bukan dipaksakan turun:
 ```json
-[
-  {
-    "bulan": "Jan",
-    "jumlah_tersedia": 300,
-    "kebutuhan_prediksi": 95
-  },
-  {
-    "bulan": "Jul",
-    "jumlah_tersedia": 50,
-    "kebutuhan_prediksi": 310
-  }
-]
+{ "success": true, "data": [{ "bulan": "Mar", "jumlah_tersedia": 280, "kebutuhan_prediksi": 0 }, { "bulan": "Jul", "jumlah_tersedia": 192, "kebutuhan_prediksi": 16 }] }
 ```
 
 ---
 
-### 🆕 GET `/api/stok/defekta`
+### ✅ GET `/api/logistic/defekta`
 
-**Controller:** `src/controllers/stok.ts → getDefekta()`
-**Tabel:** `stok`, `obat`, `pbf`, `fasilitas_kesehatan`
+**Controller:** `src/controllers/logistic.ts → getDefekta()`
+**Tabel:** `stok`, `obat`, `pbf`, `surat_pesanan`
 **FE:** `/logistik` tab Pengadaan → DefektaTable (F25)
 
 **Query Params:** `faskes_id` (opsional)
 
 **Response 200:**
 ```json
-[
-  {
-    "pbf": {
-      "id": "uuid",
-      "nama": "Kimia Farma",
-      "tipe_sp": "reguler"
-    },
-    "locked": false,
-    "items": [
-      {
-        "obat_id": "uuid",
-        "nama": "Amoksisilin 500mg",
-        "satuan": "strip",
-        "ketahanan_hari": 3,
-        "tren_harian": 80,
-        "jumlah_tersedia": 5,
-        "stok_minimum": 30,
-        "jumlah_kekurangan": 25,
-        "usulan_pesanan": 140,
-        "harga_satuan": 15000
-      }
-    ]
-  }
-]
+{
+  "success": true,
+  "data": [
+    {
+      "pbf": { "id": "uuid", "nama": "PT Enseval Putera Megatrading" },
+      "tipe": "npp",
+      "locked": false,
+      "items": [
+        { "obat_id": "uuid", "nama": "Codein 10mg", "jenis": "obat_jadi", "satuan": "strip", "ketahanan_hari": null, "tren_harian": 0, "jumlah_tersedia": 8, "stok_minimum": 10, "jumlah_kekurangan": 2, "usulan_pesanan": 2, "harga_satuan": 25000 }
+      ]
+    }
+  ]
+}
 ```
 
 **Logic:**
-- Hanya obat dengan `jumlah_tersedia < stok_minimum`
-- Group berdasar `obat.pbf_id`
-- `locked = true` jika ada SP aktif (status `dikirim` atau `diterima`) untuk PBF tersebut
-- `usulan_pesanan` = `kebutuhan_prediksi_30hari - jumlah_tersedia`
+- Hanya obat dengan total `jumlah_tersedia` (lintas faskes, atau di faskes tertentu kalau `faskes_id` diisi) `< stok_minimum`
+- Group berdasar **`(obat.pbf_id, tipe)`** — bukan cuma `pbf_id`, karena satu PBF bisa memasok obat reguler & npp sekaligus dan item npp wajib SP terpisah (lihat catatan skema `sp_item`). Setiap grup selalu valid dikirim langsung sebagai satu `POST /api/surat-pesanan`.
+- `locked = true` kalau ada SP berstatus `disetujui|dikirim|diterima` untuk `(pbf_id, tipe)` yang sama — SP `draf` tidak mengunci
+- `usulan_pesanan` = `max(jumlah_kekurangan, kebutuhan_30hari - jumlah_tersedia)`, dengan `kebutuhan_30hari` dari `tren_harian` nyata
 
 ---
 
-### 🆕 GET `/api/stok/near-expiry`
+### ✅ GET `/api/logistic/near-expiry`
 
-**Controller:** `src/controllers/stok.ts → getNearExpiry()`
-**Tabel:** `stok`, `obat`
+**Controller:** `src/controllers/logistic.ts → getNearExpiry()`
+**Tabel:** `stok`, `obat`, `fasilitas_kesehatan`
 **FE:** `/logistik` tab Dead-stock → near-expiry list (F27)
-
-**Query Params:**
-| Param | Tipe | Default | Keterangan |
-|-------|------|---------|------------|
-| `faskes_id` | uuid | — | opsional |
-| `days` | number | 90 | Ambang batas hari menuju kedaluwarsa |
 
 **Response 200:**
 ```json
-[
-  {
-    "stok_id": "uuid",
-    "obat": {
-      "id": "uuid",
-      "nama": "Cetirizine 10mg",
-      "satuan": "strip"
-    },
-    "batch": "B2024-03",
-    "jumlah_tersedia": 120,
-    "tanggal_kedaluwarsa": "2026-08-31",
-    "hari_tersisa": 62,
-    "nilai_rp": 3200000,
-    "faskes": {
-      "id": "uuid",
-      "nama": "Puskesmas Sleman"
-    }
-  }
-]
+{ "success": true, "data": [{ "nama": "Chlorpheniramine (CTM) 4mg", "qty": "6 strip", "nilai": "Rp 0.0 jt tertahan", "expired": "Expired 1 bln lagi" }] }
 ```
 
 ---
 
-### 🆕 GET `/api/stok/slow-moving`
+### ✅ GET `/api/logistic/slow-moving`
 
-**Controller:** `src/controllers/stok.ts → getSlowMoving()`
+**Controller:** `src/controllers/logistic.ts → getSlowMoving()`
 **Tabel:** `stok`, `pergerakan_stok`, `obat`, `fasilitas_kesehatan`
-**FE:** `/logistik` tab Dead-stock → slow-moving list (F28)
+**FE:** `/logistik` tab Dead-stock → slow-moving list (F28) · `/peringatan-dini` → Tindakan Darurat (F17)
 
 **Query Params:**
 | Param | Tipe | Default | Keterangan |
@@ -815,26 +751,27 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 
 **Response 200:**
 ```json
-[
-  {
-    "stok_id": "uuid",
-    "obat": {
-      "id": "uuid",
-      "nama": "Vitamin B Kompleks",
-      "satuan": "tablet"
-    },
-    "jumlah_tersedia": 500,
-    "hari_tidak_bergerak": 45,
-    "nilai_modal_rp": 6200000,
-    "nilai_tertahan_rp": 3200000,
-    "saran": "Sarankan realokasi",
-    "faskes_surplus": {
-      "id": "uuid",
-      "nama": "Apotek Bantul"
+{
+  "success": true,
+  "data": [
+    {
+      "stok_id": "uuid",
+      "obat": { "id": "uuid", "nama": "Vitamin C 250mg" },
+      "faskes": { "id": "uuid", "nama": "Klinik Sehat Terus Sleman" },
+      "jumlah_tersedia": 250,
+      "hari_tidak_bergerak": null,
+      "nilai_modal_rp": 1000000,
+      "saran": "retur",
+      "faskes_tujuan_realokasi": null
     }
-  }
-]
+  ]
+}
 ```
+
+**Logic:**
+- Obat dengan `jumlah_tersedia > 0` DAN tidak ada `pergerakan_stok` tipe `keluar` dalam `days` hari terakhir
+- `hari_tidak_bergerak` = `null` kalau obat itu memang belum pernah tercatat bergerak sama sekali (bukan 0 atau angka fiktif)
+- `saran = "realokasi"` **hanya** kalau ada faskes lain yang secara nyata kekurangan obat yang sama (`jumlah_tersedia < stok_minimum` di faskes itu) — perbandingan lintas-faskes nyata, bukan tebakan. Kalau tidak ada, `saran = "retur"`.
 
 ---
 
@@ -843,7 +780,7 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 **Controller:** `src/controllers/stok.ts → createRealokasi()`
 **Middleware:** `requireAuth`
 **Tabel:** `stok`, `pergerakan_stok`
-**FE:** `/peringatan-dini` tombol "Pindahkan" (F17 🟡 — BE selesai Plan 07-02, "Tindakan Darurat" tetap hardcoded — tidak ada endpoint sumber saran faskes surplus, butuh `GET /api/stok/*` Phase 9) · `/logistik` tab Dead-stock (F29)
+**FE:** `/peringatan-dini` tombol "Pindahkan" (F17 — disambungkan penuh Phase 9, saran dari `GET /api/logistic/slow-moving`) · `/logistik` tab Dead-stock (F29)
 
 > [!warning] Deviasi dari spec: 1 baris `pergerakan_stok`, bukan 2
 > Side effect di bawah ("Insert 2 baris keluar+masuk") **tidak diikuti persis**. Implementasi
@@ -888,7 +825,7 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 **Controller:** `src/controllers/stok.ts → createRetur()`
 **Middleware:** `requireAuth`
 **Tabel:** `stok`, `pergerakan_stok`
-**FE:** `/peringatan-dini` tombol "Tanda Retur" (F17 🟡 — BE selesai Plan 07-02, sama seperti realokasi — belum tersambung, lihat catatan di atas) · `/logistik` tab Dead-stock (F30)
+**FE:** `/peringatan-dini` tombol "Tanda Retur" (F17 — disambungkan penuh Phase 9) · `/logistik` tab Dead-stock (F30)
 
 **Request Body:**
 ```json
@@ -913,46 +850,38 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 
 ---
 
-## 🧾 Domain Surat Pesanan — `/api/surat-pesanan`
+## 🧾 Domain Surat Pesanan — `/api/logistic/surat-pesanan`
 
-### 🆕 GET `/api/surat-pesanan`
+> Prefix `/api/logistic/*`, bukan `/api/surat-pesanan` seperti draft awal — konsisten dengan
+> ADR-010 (endpoint GET sudah lebih dulu ada di prefix itu lewat merge 2026-07-03).
 
-**Controller:** `src/controllers/suratPesanan.ts → listSuratPesanan()`
+### ✅ GET `/api/logistic/surat-pesanan`
+
+**Controller:** `src/controllers/logistic.ts → getSuratPesanan()`
 **Middleware:** `requireAuth`
-**Tabel:** `surat_pesanan`, `sp_item`, `pbf`, `fasilitas_kesehatan`
-**FE:** `/logistik` → status SP di DefektaTable (F31)
+**Tabel:** `surat_pesanan`, `sp_item`, `pbf`, `fasilitas_kesehatan`, `obat`
+**FE:** `/logistik` → status SP (F31)
 
-**Query Params:**
-| Param | Tipe | Default | Keterangan |
-|-------|------|---------|------------|
-| `faskes_id` | uuid | dari JWT | — |
-| `status` | string | semua | `draf\|disetujui\|dikirim\|diterima` |
+**Query Params:** `faskes_id`, `status` (`draf|disetujui|dikirim|diterima|batal`), keduanya opsional
 
 **Response 200:**
 ```json
-[
-  {
-    "id": "uuid",
-    "pbf": {
-      "id": "uuid",
-      "nama": "Kimia Farma"
-    },
-    "status": "draf",
-    "tipe": "reguler",
-    "dibuat_pada": "2026-06-30T08:00:00.000Z",
-    "total_item": 2,
-    "total_nilai_rp": 3500000
-  }
-]
+{
+  "success": true,
+  "data": [
+    { "id": "uuid", "pbf": { "id": "uuid", "nama": "PT Rajawali Nusindo" }, "status": "draf", "tipe": "reguler", "dibuat_pada": "2026-07-07T09:47:16.749Z", "total_item": 2, "total_nilai_rp": 279000 }
+  ]
+}
 ```
+`total_nilai_rp` dihitung dari `jumlah_usulan * obat.harga_beli` saat ini — `sp_item` tidak menyimpan harga sendiri.
 
 ---
 
-### 🆕 POST `/api/surat-pesanan`
+### ✅ POST `/api/logistic/surat-pesanan`
 
-**Controller:** `src/controllers/suratPesanan.ts → createSuratPesanan()`
+**Controller:** `src/controllers/logistic.ts → createSuratPesanan()`
 **Middleware:** `requireAuth`
-**Tabel:** `surat_pesanan`, `sp_item`
+**Tabel:** `surat_pesanan`, `sp_item`, `obat`, `pengguna`
 **FE:** `/logistik` tombol "Buat Pesanan" di DefektaTable (F32)
 
 **Request Body:**
@@ -961,15 +890,10 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
   "faskes_id": "uuid",
   "pbf_id": "uuid",
   "tipe": "reguler | npp",
-  "items": [
-    {
-      "obat_id": "uuid",
-      "jumlah_usulan": 140,
-      "harga_satuan": 15000
-    }
-  ]
+  "items": [{ "obat_id": "uuid", "jumlah_usulan": 140 }]
 }
 ```
+`harga_satuan` di body request (kalau dikirim) diabaikan — dihitung ulang dari `obat.harga_beli` di response.
 
 **Response 201:**
 ```json
@@ -978,22 +902,17 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
   "status": "draf",
   "pbf_id": "uuid",
   "tipe": "reguler",
-  "dibuat_pada": "2026-06-30T10:00:00.000Z",
-  "items": [
-    {
-      "id": "uuid",
-      "obat_id": "uuid",
-      "jumlah_usulan": 140,
-      "harga_satuan": 15000,
-      "subtotal": 2100000
-    }
-  ]
+  "dibuat_pada": "2026-07-07T09:47:16.749Z",
+  "items": [{ "obat_id": "uuid", "jumlah_usulan": 140, "harga_satuan": 15000, "subtotal": 2100000 }]
 }
 ```
 
 **Validasi:**
-- Jika `tipe = npp` → cek `pengguna.nomor_sipa` tidak null (hanya apoteker)
-- Jika `tipe = npp` dan ada obat non-NPP di `items` → return 400
+- `tipe = npp` → `req.user` harus punya `pengguna.nomor_sipa` (hanya apoteker), else 403
+- `tipe = npp` dengan item non-npp, atau `tipe = reguler` dengan item npp → 400 (satu SP tidak boleh campur golongan)
+- `obat_id` yang tidak ditemukan → 400
+
+**Diverifikasi:** dibuat sebagai `reguler` oleh manajer (berhasil), dicoba `npp` oleh manajer (403 — benar, bukan apoteker), dicoba `npp` oleh apoteker (berhasil), dicoba item npp di SP reguler (400).
 
 ---
 
@@ -1018,20 +937,20 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 | 15 | GET | `/api/forecasting/projection` | Forecasting | `/proyeksi-tren` | ✅ |
 | 16 | GET | `/api/forecasting/stats` | Forecasting | `/proyeksi-tren` | ✅ |
 | 17 | GET | `/api/forecasting/alerts` | Forecasting | `/proyeksi-tren` | ✅ |
-| 18 | GET | `/api/stok/stats` | Stok | `/logistik` | 🆕 |
-| 19 | GET | `/api/stok/summary` | Stok | `/logistik` | 🆕 |
-| 20 | GET | `/api/stok/chart` | Stok | `/logistik`, `/peringatan-dini` | 🆕 |
-| 21 | GET | `/api/stok/defekta` | Stok | `/logistik` | 🆕 |
-| 22 | GET | `/api/stok/near-expiry` | Stok | `/logistik` | 🆕 |
-| 23 | GET | `/api/stok/slow-moving` | Stok | `/logistik` | 🆕 |
-| 24 | POST | `/api/stok/realokasi` | Stok | `/peringatan-dini`, `/logistik` | ✅ 🟡 |
-| 25 | POST | `/api/stok/retur` | Stok | `/peringatan-dini`, `/logistik` | ✅ 🟡 |
-| 26 | GET | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
-| 27 | POST | `/api/surat-pesanan` | SP | `/logistik` | 🆕 |
+| 18 | GET | `/api/logistic/stats` | Stok | `/logistik` | ✅ |
+| 19 | GET | `/api/logistic/stok` | Stok | `/logistik` | ✅ |
+| 20 | GET | `/api/logistic/stok/chart` | Stok | `/logistik`, `/peringatan-dini` | ✅ |
+| 21 | GET | `/api/logistic/defekta` | Stok | `/logistik` | ✅ |
+| 22 | GET | `/api/logistic/near-expiry` | Stok | `/logistik` | ✅ |
+| 23 | GET | `/api/logistic/slow-moving` | Stok | `/logistik`, `/peringatan-dini` | ✅ |
+| 24 | POST | `/api/stok/realokasi` | Stok | `/peringatan-dini`, `/logistik` | ✅ |
+| 25 | POST | `/api/stok/retur` | Stok | `/peringatan-dini`, `/logistik` | ✅ |
+| 26 | GET | `/api/logistic/surat-pesanan` | SP | `/logistik` | ✅ |
+| 27 | POST | `/api/logistic/surat-pesanan` | SP | `/logistik` | ✅ |
 
-**Total MIS: 13 selesai (backend + FE, atau backend-only by design) · 2 backend selesai, FE belum tersambung (realokasi/retur "Tindakan Darurat" — butuh Phase 9) · 12 perlu dibuat (Phase 8–9–10)**
+**Total MIS: 26/27 selesai (backend + FE, atau backend-only by design) · 1 belum dibuat (`PUT /api/pengguna/profile` — Phase 10)**
 **Total TPS: 10/10 endpoint selesai (lihat [[TPS-API-SPEC]])**
-**Grand total seluruh sistem: 37 endpoint — 23 selesai penuh (BE+FE atau backend-only) · 2 backend selesai (FE pending) · 12 belum dibuat**
+**Grand total seluruh sistem: 37 endpoint — 36 selesai (BE+FE atau backend-only) · 1 belum dibuat (Phase 10)**
 
 ---
 

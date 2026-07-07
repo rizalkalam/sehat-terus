@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 8 completed in full (08-01, 08-02, 08-03); Phase 9 has a backend head start from an earlier partial merge; Phase 9 pending
-last_updated: "2026-07-07T00:00:00.000Z"
-last_activity: 2026-07-07 -- Phase 8 (Forecasting & Proyeksi) executed end-to-end
+stopped_at: Phase 8 (feat/forecasting-proyeksi) and Phase 9 (feat/logistik-pengadaan) reconciled into merge-feat-dashboard; Phase 10 pending
+last_updated: "2026-07-08T00:00:00.000Z"
+last_activity: 2026-07-08 -- Merged feat/forecasting-proyeksi and feat/logistik-pengadaan into merge-feat-dashboard, resolved .planning/*.md conflicts
 progress:
   total_phases: 10
-  completed_phases: 8
-  total_plans: 28
-  completed_plans: 27
-  percent: 96
+  completed_phases: 9
+  total_plans: 31
+  completed_plans: 29
+  percent: 94
 ---
 
 # Project State
@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Menyediakan early warning spasial dan temporal untuk wabah penyakit berbasis data yang dapat dipertanggungjawabkan per faskes.
-**Current focus:** Phase 09 — Logistik & Pengadaan
+**Current focus:** Phase 10 — Profile & Settings (Phase 8 & 9 sudah direkonsiliasi ke `merge-feat-dashboard`)
 
 ---
 
 ## Current Position
 
-**Phase:** 09 (logistik-pengadaan) — NOT STARTED (backend sebagian sudah ada dari merge 2026-07-03)
-**Plan:** 0 of 3
-**Status:** Phase 8 (Forecasting & Proyeksi) selesai penuh pada 2026-07-07, semua 3 plan diverifikasi (curl, `npm run test:tps`, Playwright end-to-end). Siap mulai Phase 9.
+**Phase:** 08 & 09 — SELESAI, direkonsiliasi ke `merge-feat-dashboard` pada 2026-07-08
+**Plan:** Phase 8: 3 of 3 · Phase 9: 3 of 3 (setara — dikerjakan sebagai satu sesi, bukan 3 plan formal terpisah)
+**Status:** Phase 8 (Forecasting & Proyeksi, branch `feat/forecasting-proyeksi`) dan Phase 9 (Logistik & Pengadaan, branch `feat/logistik-pengadaan`) selesai penuh secara paralel pada 2026-07-07, masing-masing diverifikasi penuh (curl, `npm run test:tps`, Playwright end-to-end). Kedua branch direkonsiliasi ke `merge-feat-dashboard` pada 2026-07-08 — konflik di `.planning/*.md` (API-SPEC, CHANGELOG, DECISIONS, FEATURES-MAP, ROADMAP, STATE) diselesaikan manual; `ADR-011` (Phase 9, pbf_id/pergerakan_stok) di-renumber jadi `ADR-012` karena bentrok nomor dengan `ADR-011` (Phase 8, forecasting). Tidak ada konflik kode (`seedAll.ts` auto-merge bersih). Siap mulai Phase 10.
 
-Progress: `[███████████████████░]` 96%
+Progress: `[███████████████████░]` 94% (29/31 plan)
 
 ---
 
-## Apa yang Sudah Selesai (Phase 1–8)
+## Apa yang Sudah Selesai (Phase 1–9)
 
 | Phase | Yang Dibangun | Tanggal |
 |-------|--------------|---------|
@@ -47,6 +47,7 @@ Progress: `[███████████████████░]` 96%
 | 6 | Dashboard (tabel/donut/stat card) → `/api/cases/summary`, chart `/proyeksi-tren` → `/api/cases/temporal`, AuthContext logout/profil real via `/api/auth/logout` & `/me` | 2026-07-02 |
 | 7 | Alert EWS API (7 endpoint) + Z-score detection engine + `/peringatan-dini` disambungkan penuh (stat cards, AI banner, list, modal, tangani/selesai) | 2026-07-02 |
 | 8 | Forecasting API (3 endpoint, Holt's linear trend/double exp. smoothing dihitung on-the-fly dari `RekamMedis`) + `/proyeksi-tren` disambungkan penuh (chart dengan garis putus-putus proyeksi, stat cards, alert cards rekomendasi obat) | 2026-07-07 |
+| 9 | Logistik API (`defekta`, `slow-moving`, `POST surat-pesanan`, `stats`/`stok/chart` diperbaiki) + `obat.pbf_id` baru + riwayat `pergerakan_stok` sintetis + `/logistik` & sisa `/peringatan-dini` (F17, F19) disambungkan penuh | 2026-07-07 |
 
 ---
 
@@ -84,6 +85,47 @@ Progress: `[███████████████████░]` 96%
   alert cards (3 kartu dengan urgensi/rekomendasi obat real) → ganti dropdown penyakit di chart
   ke "Diare & Gastroenteritis" → chart re-fetch dan render benar — tidak ada console error di
   semua langkah
+
+---
+
+## Phase 9 — Selesai Penuh
+
+**Goal:** Endpoint stok/logistik yang tersisa (defekta, slow-moving, buat SP) dibangun, dan
+`/logistik` + sisa hardcoded `/peringatan-dini` (F17, F19) disambungkan ke data real.
+
+| Endpoint / Fitur | Deskripsi | Status |
+|----------|-------|--------|
+| `GET /api/logistic/defekta` | F25 — obat di bawah minimum, dikelompokkan per (PBF, tipe) | ✅ Selesai, FE tersambung |
+| `GET /api/logistic/slow-moving` | F28 — obat tak bergerak, saran realokasi/retur nyata | ✅ Selesai, FE tersambung (`/logistik` + `/peringatan-dini` F17) |
+| `POST /api/logistic/surat-pesanan` | F32/F34 — buat SP, validasi npp/reguler tak boleh campur | ✅ Selesai, FE tersambung |
+| `GET /api/logistic/stok/chart?mode=line` | F19 — chart stok vs kebutuhan per obat kritis | ✅ Selesai, FE tersambung (`/peringatan-dini`) |
+| `GET /api/logistic/stats` (diperbaiki) | F26 — ketahanan pakai rata-rata pemakaian nyata | ✅ Selesai |
+| `obat.pbf_id` (kolom baru) | Fondasi grouping defekta per PBF | ✅ Selesai |
+
+> [!note] Keputusan implementasi — lihat [[DECISIONS#ADR-012]] untuk detail lengkap
+> - `obat.pbf_id` ditambahkan via `sequelize.sync({ alter: true })` — skema asli tidak punya
+>   pemasok tetap per obat, cuma per Surat Pesanan.
+> - Defekta dikelompokkan per **(pbf_id, tipe)**, bukan cuma pbf_id — item npp wajib SP terpisah.
+> - `seedAll.ts` ditambah ~150 baris riwayat `pergerakan_stok` 'keluar' sintetis (45 hari) untuk
+>   obat fast/medium-mover — sebelumnya nyaris tidak ada data 'keluar' nyata untuk menghitung
+>   tren_harian/ketahanan_hari secara berarti.
+> - `sp_item` tidak punya kolom harga — `harga_satuan` di response `POST` dihitung dari
+>   `obat.harga_beli` saat itu.
+> - `GET /api/logistic/summary` (AiBanner `/logistik`) **tidak dikerjakan** — di luar scope.
+
+**Verifikasi end-to-end:**
+- curl semua endpoint baru langsung — nilai tren_harian/usulan_pesanan/saran masuk akal
+- `npm run test:tps` di-re-run tiap rebuild backend — 100% lulus, tidak ada regresi
+- Playwright: login manajer → `/logistik` (tab Pengadaan + Dead-stock) dan `/peringatan-dini` →
+  screenshot semua bagian dengan data real → eksekusi nyata "Buat Pesanan" (SP baru tercatat di
+  DB, dihapus lagi setelah verifikasi) dan "Tanda retur" (stok Vitamin C 250→0, dikembalikan lagi
+  setelah verifikasi) → tidak ada console error
+
+> [!success] Bug ditemukan & diperbaiki saat verifikasi Playwright
+> Percobaan "Buat Pesanan" untuk grup npp sebagai manajer (bukan apoteker) kena 403 dari backend
+> (benar — validasi bekerja), tapi FE tidak menunjukkan apa-apa ke user karena `fetch()` tidak
+> reject di respons 4xx/5xx. Diperbaiki dengan helper `postJson()` baru (`frontend/src/lib/api.ts`)
+> yang cek `res.ok` dan `alert()` pesan error kalau gagal, dipakai di semua 5 titik POST aksi.
 
 ---
 
@@ -169,10 +211,11 @@ Yang sebenarnya terjadi:
 
 ---
 
-## Pending Todos (setelah Phase 8)
+## Pending Todos (setelah Phase 8, 9)
 
-- **Phase 9 (berikutnya):** Logistik — stok endpoints + surat pesanan + halaman /logistik dari data real. Ini juga akan mengaktifkan "Tindakan Darurat" (F17) di `/peringatan-dini` yang masih hardcoded karena butuh endpoint stok lintas-faskes. **Update 2026-07-03:** sebagian endpoint GET (`stok/chart`, `stats`, `near-expiry`, `surat-pesanan`) sudah ada duluan lewat merge parsial dari branch teman, di bawah prefix `/api/logistic/*` bukan `/api/stok/*` yang direncanakan — lihat [[DECISIONS#ADR-010]]. Masih perlu: `defekta`, `slow-moving`, `POST /api/surat-pesanan`, dan seluruh Plan 09-03 (FE `/logistik` belum disambungkan sama sekali).
-- **Phase 10:** Settings — edit profil + halaman /settings dari data real
+- **Phase 10 (berikutnya):** Settings — edit profil + halaman /settings dari data real. Belum dimulai di branch manapun. Branch baru untuk ini dibuat dari `merge-feat-dashboard` (sudah berisi Phase 8 & 9 hasil rekonsiliasi).
+- **F33** (update status SP draf→disetujui→dikirim→diterima) — di luar scope Phase 9, belum ada endpoint.
+- **`GET /api/logistic/summary`** (AiBanner nyata untuk `/logistik`) — di luar scope Phase 9, `AiBanner` masih pakai teks default.
 
 ---
 
@@ -194,6 +237,7 @@ Yang sebenarnya terjadi:
 | 6. MIS Dashboard Integration | 3/3 | ~40 min | ~13 min |
 | 7. Early Warning System | 3/3 | ~85 min | ~28 min |
 | 8. Forecasting & Proyeksi | 3/3 | ~60 min | ~20 min |
+| 9. Logistik & Pengadaan | 3/3 | ~75 min | ~25 min |
 
 ---
 
@@ -206,6 +250,7 @@ Yang sebenarnya terjadi:
 | `20260703-merge-disease-api-integration` | Merge parsial branch teman (`feat/disease-api-integration`) ke branch baru `feat/logistic-ai-integration` — ambil `POST /api/ai/analyze` + 5 endpoint `GET /api/logistic/*` (mengisi gap F24/F26/F27/F31), buang duplikat & docs usang. Lihat [[DECISIONS#ADR-010]]. | 2026-07-03 |
 | `20260706-merge-admin-dashboard` | Merge selektif branch teman (`feat/admin-system-and-ai-update`, TonyKeys) ke `merge-feat-dashboard` — ambil 4 dari 6 fitur (admin dashboard layout, guard role, CRUD user, registrasi admin-only), exclude CRUD obat/stok admin & prediksi AI (jadi FA5–FA7 pending, lihat [[FEATURES-MAP#Domain 8 — Admin Panel]]). Ditambah `requireAdmin` middleware di commit terpisah setelah user minta proteksi API-level, bukan cuma UI. Sudah di-push, belum diverifikasi end-to-end di browser. | 2026-07-06 |
 | `20260707-verify-admin-dashboard` | Verifikasi end-to-end di browser (Playwright) untuk merge admin dashboard sesi sebelumnya — login admin & manajer, guard redirect FA2 kedua arah, CRUD pengguna FA3 (create/edit/nonaktifkan). Ditemukan & diperbaiki bug: `updateUser` gagal total (500, invalid UUID) kalau `faskes_id` dikosongkan karena tidak ada fallback `\|\| null` seperti di `createUser`. Backend di-rebuild, `npm run test:tps` 100% lulus. | 2026-07-07 |
+| `20260707-phase9-logistik-pengadaan` | Phase 9 penuh (bukan Quick Task, tapi dicatat di sini karena dikerjakan sebagai satu sesi bukan 3 Plan formal) — lihat bagian "Phase 9 — Selesai Penuh" di atas untuk detail lengkap. Branch baru `feat/logistik-pengadaan`. | 2026-07-07 |
 
 > [!note] Observasi (bukan tindakan) — `alert_ews` dan `RekamMedis` sedikit lebih besar dari baseline
 > Saat verifikasi Quick Task di atas, `alert_ews` menunjukkan 7 baris (bukan 5) dan `RekamMedis`
@@ -218,6 +263,6 @@ Yang sebenarnya terjadi:
 
 ## Session Continuity
 
-Last session: 2026-07-07
-Stopped at: Phase 8 (Forecasting & Proyeksi) selesai penuh — 3 endpoint forecasting baru, `holtSmoothing.ts` (Holt's linear trend, alpha/beta fitted via grid search), seed data resep contoh untuk rekomendasi obat, `/proyeksi-tren` disambungkan penuh (stat cards, chart dengan garis putus-putus proyeksi, alert cards). Backend + frontend Docker sudah di-rebuild, `npm run test:tps` 100% lulus, Playwright end-to-end lulus tanpa console error. Belum di-commit/push.
-Resume: Commit Phase 8 (belum di-commit), lalu lanjut Phase 9 (Logistik & Pengadaan) — sudah ada head start backend dari merge 2026-07-03 (lihat catatan Phase 9 di ROADMAP.md), atau FA5–FA7 (CRUD obat/stok admin + prediksi AI) kalau diminta.
+Last session: 2026-07-08
+Stopped at: Phase 8 (Forecasting & Proyeksi, branch `feat/forecasting-proyeksi`) dan Phase 9 (Logistik & Pengadaan, branch `feat/logistik-pengadaan`) masing-masing selesai penuh secara paralel pada 2026-07-07 — lihat bagian "Phase 8 — Selesai Penuh" dan "Phase 9 — Selesai Penuh" di atas untuk detail lengkap masing-masing. Pada 2026-07-08, Phase 9 di-commit & di-push, lalu kedua branch direkonsiliasi: `feat/forecasting-proyeksi` di-merge ke `merge-feat-dashboard` (fast-forward, tanpa konflik), lalu `feat/logistik-pengadaan` di-merge (konflik di 6 dokumen `.planning/*.md` — API-SPEC, CHANGELOG, DECISIONS, FEATURES-MAP, ROADMAP, STATE — diselesaikan manual; `backend/src/seedAll.ts` auto-merge bersih tanpa konflik). `ADR-011` versi Phase 9 (pbf_id/pergerakan_stok) di-renumber jadi `ADR-012` karena bentrok nomor dengan `ADR-011` versi Phase 8 (forecasting).
+Resume: Push `merge-feat-dashboard` yang sudah direkonsiliasi, lalu mulai Phase 10 (Settings) di branch baru yang di-checkout dari `merge-feat-dashboard` — endpoint `PUT /api/pengguna/profile` + sambungkan halaman `/settings` ke data real (F04, F35, F36). FA5–FA7 (CRUD obat/stok admin + prediksi AI) masih pending kalau diminta terpisah.
