@@ -12,6 +12,7 @@ import stokRouter from './routes/stok';
 import aiRouter from './routes/ai';
 import logisticRouter from './routes/logistic';
 import adminRouter from './routes/admin';
+import forecastingRouter from './routes/forecasting';
 
 dotenv.config();
 
@@ -41,5 +42,6 @@ app.use('/api/stok', stokRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/logistic', logisticRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/forecasting', forecastingRouter);
 
 export default app;

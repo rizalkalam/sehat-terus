@@ -13,6 +13,46 @@ tags:
 
 ---
 
+## 2026-07-07 — Session: Phase 8 (Forecasting & Proyeksi)
+
+### ✅ Diselesaikan (F20–F23)
+
+Endpoint forecasting baru + halaman `/proyeksi-tren` disambungkan penuh ke data real,
+menyelesaikan bagian terakhir yang masih hardcoded di halaman itu (stat cards, alert cards,
+dan bagian proyeksi chart).
+
+**Backend:**
+- `backend/src/utils/holtSmoothing.ts` — Holt's linear trend method (double exponential
+  smoothing), alpha/beta di-fit per penyakit lewat grid search (0.1–0.9, minimasi SSE).
+- `backend/src/controllers/forecasting.ts` + `backend/src/routes/forecasting.ts` —
+  `GET /api/forecasting/{projection,stats,alerts}`, mounted di `/api/forecasting`.
+- `backend/src/seedAll.ts` — tambah beberapa baris `resep`/`resep_item` contoh (satu per
+  penyakit utama: ISPA→Amoxicillin, Flu→Paracetamol, Diare→Oralit, DBD→Paracetamol,
+  Hipertensi→Amlodipine) supaya `rekomendasi_obat` (F23) punya sinyal data nyata untuk fallback
+  join — sebelumnya DB cuma punya 1 baris resep manual dari testing.
+
+**Frontend:** `frontend/src/app/(dashboard)/proyeksi-tren/page.tsx` ditulis ulang total —
+stat cards & alert cards dari hardcoded jadi fetch API real, chart diganti dari
+`/api/cases/temporal` (bulanan) ke `/api/forecasting/projection` (mingguan) dengan segmen
+proyeksi digambar garis putus-putus (`strokeDasharray`) menyambung dari titik historis terakhir.
+
+**Keputusan penting (lihat [[DECISIONS#ADR-011]] untuk detail lengkap):**
+- `prediksi_kebutuhan` **tidak dipakai** — schema-nya untuk kebutuhan obat per faskes (Phase 9),
+  bukan proyeksi kasus penyakit. Draft `API-SPEC.md` sebelumnya salah soal ini.
+- Granularitas **mingguan**, bukan bulanan — sesuai horizon 14-30 hari di `REQUIREMENTS.md`
+  ANL-01. Minggu yang sedang berjalan dikeluarkan dari data historis supaya tidak jadi penurunan
+  palsu di ujung seri.
+- `rekomendasi_obat` (F23) dari riwayat `resep_item` nyata, fallback `alert_ews.obat_terdampak_id`,
+  atau kosong — tidak ada pemetaan penyakit→obat fabrikasi, konsisten dengan keputusan Phase 7.
+- Caption stat card diganti dari klaim tak berdasar data ("Terbanyak di Sleman") jadi generik
+  ("Proyeksi minggu depan").
+
+**Verifikasi:** curl ketiga endpoint langsung, `npm run test:tps` 100% lulus (tidak ada regresi),
+Playwright login manajer → `/proyeksi-tren` → stat cards/chart/alert cards render dengan data
+real, ganti dropdown penyakit di chart → re-fetch dan render benar, tidak ada console error.
+
+---
+
 ## 2026-07-07 — Session: Verifikasi End-to-End Admin Dashboard
 
 ### ✅ Diverifikasi (menyelesaikan pending dari sesi 2026-07-06)

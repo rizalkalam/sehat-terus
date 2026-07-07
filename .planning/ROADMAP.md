@@ -23,7 +23,7 @@ Stack: Next.js 15 (frontend) · Express.js + Sequelize (backend) · PostgreSQL �
 - [x] **Phase 5: TPS — Pencatatan Kunjungan Pasien** — Backend TPS API agar staf klinik bisa input data kunjungan yang terlacak ke faskes + pengguna.
 - [x] **Phase 6: MIS Dashboard Integration** — Sambungkan komponen dashboard yang masih hardcoded ke endpoint API real.
 - [x] **Phase 7: Early Warning System (EWS)** — Endpoint alert, Z-score detection engine, halaman /peringatan-dini dari data real.
-- [ ] **Phase 8: Forecasting & Proyeksi** — Double exponential smoothing, endpoint forecasting, halaman /proyeksi-tren dari data real.
+- [x] **Phase 8: Forecasting & Proyeksi** — Double exponential smoothing, endpoint forecasting, halaman /proyeksi-tren dari data real.
 - [ ] **Phase 9: Logistik & Pengadaan** — Endpoint stok, near-expiry, slow-moving, surat pesanan, halaman /logistik dari data real. *(sebagian endpoint GET sudah ada lebih awal lewat merge 2026-07-03, lihat detail Phase 9 di bawah)*
 - [ ] **Phase 10: Profile & Settings** — Edit profil pengguna, PUT /api/pengguna/profile, halaman /settings dari data real.
 
@@ -114,14 +114,34 @@ Plans:
 
 ---
 
-### 🔜 Phase 8: Forecasting & Proyeksi
-**Status:** Pending
+### ✅ Phase 8: Forecasting & Proyeksi
+**Selesai:** 2026-07-07
 **Goal:** Proyeksi 14-30 hari ke depan dari double exponential smoothing, halaman /proyeksi-tren dari data real.
 
 Plans:
-- [ ] 08-01: Endpoint `GET /api/forecasting/projection` — gabungkan historis `rekam_medis` + tabel `prediksi_kebutuhan`
-- [ ] 08-02: Endpoint `GET /api/forecasting/stats` + `GET /api/forecasting/alerts`
-- [ ] 08-03: Algoritma double exponential smoothing + sambungkan halaman /proyeksi-tren ke API
+- [x] 08-01: Endpoint `GET /api/forecasting/projection` — historis+proyeksi mingguan langsung dari `RekamMedis` (bukan `prediksi_kebutuhan` — schema tabel itu untuk kebutuhan obat per faskes Phase 9, bukan proyeksi kasus; lihat [[DECISIONS#ADR-011]])
+- [x] 08-02: Endpoint `GET /api/forecasting/stats` + `GET /api/forecasting/alerts`
+- [x] 08-03: Algoritma Holt's linear trend (double exponential smoothing, alpha/beta fitted via grid search) + sambungkan halaman /proyeksi-tren ke API (stat cards, chart dengan garis putus-putus untuk proyeksi, alert cards)
+
+> [!note] Keputusan implementasi (deviasi dari draft awal API-SPEC.md)
+> - Granularitas **mingguan**, bukan bulanan — `REQUIREMENTS.md` ANL-01 minta horizon 14-30 hari
+>   dengan garis tren putus-putus, terlalu presisi untuk bucket bulanan.
+>   Minggu yang sedang berjalan (belum penuh 7 hari) dikeluarkan dari data historis supaya tidak
+>   jadi penurunan palsu di akhir seri.
+> - `rekomendasi_obat` (F23) diambil dari riwayat `resep_item` nyata (join `RekamMedis`→`resep`→
+>   `resep_item`), fallback ke `alert_ews.obat_terdampak_id`, atau array kosong — tidak ada
+>   pemetaan penyakit→obat yang difabrikasi (konsisten dengan keputusan Phase 7 di `/alerts/detect`).
+>   `seedAll.ts` ditambah beberapa baris `resep`/`resep_item` contoh (satu per penyakit utama) agar
+>   fallback ini punya sinyal nyata untuk diuji — sebelumnya DB cuma punya 1 resep manual.
+> - Stat card caption diganti dari klaim spesifik yang tidak bisa diturunkan dari data
+>   ("Terbanyak di Sleman", "Kampanye Sanitasi Berhasil") jadi caption generik ("Proyeksi minggu
+>   depan"). `penurunan_terbesar` bisa `null` kalau tidak ada tren menurun saat itu.
+
+**Verifikasi end-to-end:** curl ketiga endpoint langsung (nilai persen_change & rekomendasi_obat
+dicek masuk akal), `npm run test:tps` tetap 100% lulus, Playwright login manajer → `/proyeksi-tren`
+→ screenshot stat cards/chart (garis putus-putus proyeksi terlihat menyambung dari titik historis
+terakhir)/alert cards cocok dengan API, ganti dropdown penyakit di chart → data re-fetch dan
+render benar, tidak ada console error di semua langkah.
 
 ---
 
@@ -167,17 +187,17 @@ Plans:
 | 5. TPS — Pencatatan Kunjungan | 6/6 | ✅ Selesai | 2026-07-02 |
 | 6. MIS Dashboard Integration | 3/3 | ✅ Selesai | 2026-07-02 |
 | 7. Early Warning System | 3/3 | ✅ Selesai | 2026-07-02 |
-| 8. Forecasting & Proyeksi | 0/3 | 🔜 Pending | — |
+| 8. Forecasting & Proyeksi | 3/3 | ✅ Selesai | 2026-07-07 |
 | 9. Logistik & Pengadaan | 0/3 | 🔜 Pending | — |
 | 10. Profile & Settings | 0/2 | 🔜 Pending | — |
-| **Total** | **24/28** | **86%** | |
+| **Total** | **27/28** | **96%** | |
 
 ```
 Progress keseluruhan:
-Phase 1-7 (selesai)  █████████████████░░░  86%  ← posisi sekarang
-Phase 8-10 (pending) ░░░░░░░░░░░░░░░░░░░░  14%
+Phase 1-8 (selesai)  ███████████████████░  96%  ← posisi sekarang
+Phase 9-10 (pending) ░░░░░░░░░░░░░░░░░░░░   4%
 ```
 
 ---
 
-*Diperbarui 2026-07-02 — scope update: TPS system ditambahkan, Phase 4 (Auth) dikerjakan di luar urutan*
+*Diperbarui 2026-07-07 — Phase 8 (Forecasting) selesai; sisa Phase 9 (Logistik) & Phase 10 (Settings)*

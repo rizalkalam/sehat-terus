@@ -57,17 +57,17 @@ tags:
 
 | Status | Jumlah | Persentase |
 |--------|--------|------------|
-| ✅ Selesai | 16 | 43% |
+| ✅ Selesai | 20 | 54% |
 | 🟡 Integrasi Pending | 8 | 22% |
-| 🟠 BE Pending | 10 | 27% |
+| 🟠 BE Pending | 6 | 16% |
 | ❌ Belum Ada | 3 | 8% |
 | **Total** | **37** | |
 
 ```
 Progress keseluruhan:
-Selesai          ████████░░░░░░░░░░░░  43%
+Selesai          ███████████░░░░░░░░░  54%
 Integrasi        ████░░░░░░░░░░░░░░░░  22%
-BE Pending       █████░░░░░░░░░░░░░░░  27%
+BE Pending       ███░░░░░░░░░░░░░░░░░  16%
 Belum Ada        ██░░░░░░░░░░░░░░░░░░   8%
 ```
 
@@ -142,6 +142,11 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 > `GET /api/tps/referensi/penyakit`, 10 penyakit) supaya manajer bisa pilih sendiri 2 penyakit
 > yang mau dibandingkan — bukan cuma ISPA/DBD terus-menerus. Diverifikasi: ganti dropdown ke
 > "Influenza / Flu" langsung update chart + tooltip dengan angka real dari API.
+>
+> **Update 2026-07-07 (Phase 8):** Chart diganti total ke `GET /api/forecasting/projection`
+> (mingguan, bukan bulanan) supaya bagian proyeksi bisa digambar garis putus-putus menyambung
+> dari titik historis terakhir. Stat cards & alert cards yang disebut di atas sebagai "masih
+> hardcoded" sekarang hidup dari `/api/forecasting/{stats,alerts}` — lihat [[#Domain 4]] F20–F23.
 >
 > **Update 2026-07-02 — Responsive layout:** Halaman `/proyeksi-tren` sebelumnya 100% fixed-pixel
 > (tidak ada breakpoint Tailwind sama sekali di seluruh area dashboard). Stat cards & alert cards
@@ -264,19 +269,24 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 ## 📈 Domain 4 — Proyeksi & Forecasting
 
 > [!info] Konteks
-> Prediksi kebutuhan 14–30 hari ke depan dengan double exponential smoothing.
-> Output disimpan di `prediksi_kebutuhan` agar tidak dihitung ulang tiap request.
+> Prediksi kasus 14–30 hari ke depan dengan double exponential smoothing (Holt's linear trend).
+> **Update 2026-07-07:** `prediksi_kebutuhan` ternyata bukan untuk ini — schema-nya `obat_id`/
+> `faskes_id`/`jumlah_prediksi` (kebutuhan obat per faskes, dipakai Phase 9), bukan proyeksi kasus
+> penyakit. Dihitung on-the-fly dari `RekamMedis` tiap request (mingguan, minggu berjalan
+> dikeluarkan dari fit). Lihat [[DECISIONS#ADR-011]] dan [[API-SPEC#Domain Forecasting]].
 
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
-| F20 | Algoritma proyeksi 14–30 hari (double exp. smoothing) | 🟠 | `RekamMedis`, `prediksi_kebutuhan` | — (backend logic) |
-| F21 | Area chart proyeksi tren (ISPA vs DBD) | 🟠 | `prediksi_kebutuhan` | `/proyeksi-tren` |
-| F22 | Stat cards proyeksi (peningkatan/penurunan tertinggi) | 🟠 | `prediksi_kebutuhan` | `/proyeksi-tren` |
-| F23 | Alert cards rekomendasi obat dari proyeksi | 🟠 | `prediksi_kebutuhan`, `alert_ews`, `obat` | `/proyeksi-tren` |
+| F20 | Algoritma proyeksi 14–30 hari (double exp. smoothing) | ✅ | `RekamMedis` | — (backend logic) |
+| F21 | Area chart proyeksi tren, garis putus-putus untuk proyeksi | ✅ | `RekamMedis` | `/proyeksi-tren` |
+| F22 | Stat cards proyeksi (peningkatan/penurunan tertinggi) | ✅ | `RekamMedis` | `/proyeksi-tren` |
+| F23 | Alert cards rekomendasi obat dari proyeksi | ✅ | `RekamMedis`, `resep`, `resep_item`, `obat`, `alert_ews` | `/proyeksi-tren` |
 
-> [!note] Data Sudah Tersedia
-> Tabel `prediksi_kebutuhan` sudah di-seed dengan 6 prediksi untuk periode `2026-07`.
-> Yang belum ada: endpoint GET + algoritma kalkulasi otomatis.
+> [!note] rekomendasi_obat (F23) — tidak ada pemetaan penyakit→obat fabrikasi
+> Diambil dari riwayat `resep_item` nyata untuk penyakit itu, fallback ke `alert_ews.
+> obat_terdampak_id` kalau riwayat resep kosong, atau array kosong kalau tidak ada sumber data
+> nyata sama sekali. Beberapa baris `resep`/`resep_item` contoh ditambahkan ke `seedAll.ts` (satu
+> per penyakit utama) supaya fallback ini punya sinyal nyata untuk diuji.
 
 ---
 
@@ -399,6 +409,9 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | `/api/admin/users` | GET/POST | ✅ (2026-07-06 merge) | FA3 |
 | `/api/admin/users/:id` | PUT/DELETE | ✅ (2026-07-06 merge) | FA3 |
 | `/api/admin/faskes` | GET | ✅ (2026-07-06 merge) | FA3 |
+| `/api/forecasting/projection` | GET | ✅ (2026-07-07) | F21 |
+| `/api/forecasting/stats` | GET | ✅ (2026-07-07) | F22 |
+| `/api/forecasting/alerts` | GET | ✅ (2026-07-07) | F23 |
 
 ---
 
@@ -409,15 +422,16 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 | `wilayah` | 17 | F05, F06, F07, F09, F13 |
 | `fasilitas_kesehatan` | 2 | F01–F04, F24–F26, F29, F31–F32, F35–F37 |
 | `pengguna` | 4 | F01–F04, F35–F36 |
-| `RekamMedis` | 5.500 | F05–F12, F20 |
+| `RekamMedis` | 5.532 | F05–F12, F20–F22 |
+| `resep` / `resep_item` | 5 / 6 | F23 (rekomendasi obat, sumber utama) |
 | `obat` | 14 | F14, F19, F23–F32 |
 | `pbf` | 3 | F31–F32, F34 |
 | `formula_racikan` | 2 | (racikan resep — fase berikutnya) |
 | `formula_komponen` | 4 | (racikan resep — fase berikutnya) |
 | `stok` | 15 | F15, F19, F24–F32 |
 | `pergerakan_stok` | 15 | F26, F28–F30 |
-| `alert_ews` | 5 | F12–F19, F23 |
-| `prediksi_kebutuhan` | 6 | F20–F23 |
+| `alert_ews` | 7 | F12–F19, F23 (fallback rekomendasi obat) |
+| `prediksi_kebutuhan` | 6 | Phase 9 (kebutuhan obat per faskes, bukan F20–F23 — lihat [[DECISIONS#ADR-011]]) |
 | `surat_pesanan` | 1 | F31–F34 |
 | `sp_item` | 2 | F31–F34 |
 
@@ -453,10 +467,15 @@ F25      GET /api/stok/defekta
 F31–F32  GET/POST /api/surat-pesanan
 ```
 
-### Terakhir — Forecasting & NPP
+### Forecasting — ✅ Selesai (Phase 8, 2026-07-07)
 
 ```
-F20–F23  GET /api/forecasting/:disease
+F20–F23  GET /api/forecasting/{projection,stats,alerts} — ✅ Selesai (Phase 8)
+```
+
+### Terakhir — NPP
+
+```
 F34      SP NPP logic
 ```
 

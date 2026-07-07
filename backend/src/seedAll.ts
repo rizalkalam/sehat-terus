@@ -11,7 +11,7 @@ import {
   Obat, Pbf, FormulaRacikan, FormulaKomponen,
   Stok, PergerakanStok,
   AlertEws, PrediksiKebutuhan, SuratPesanan, SpItem,
-  RekamMedis,
+  RekamMedis, Resep, ResepItem,
 } from './models';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -365,6 +365,40 @@ async function seedAll() {
       log('rekam_medis', `15 kunjungan awal dibuat`);
     } else {
       log('rekam_medis', `EXISTS  (${rmCount} kunjungan)`);
+    }
+
+    // ── 9.6. RESEP CONTOH PER PENYAKIT (untuk rekomendasi obat forecasting) ────
+    // Menghubungkan penyakit → obat lewat resep_item nyata (bukan pemetaan fabrikasi),
+    // dipakai fallback kosong-aman oleh GET /api/forecasting/alerts kalau tidak ada.
+    console.log('\n▸ [9.6] Seeding resep contoh per penyakit...');
+    const apotekerUser = penggunaMap['apoteker@sehatterus.id'];
+    const diseaseObatMap: { code: string; obatNama: string }[] = [
+      { code: 'J06.9', obatNama: 'Amoxicillin 500mg' },
+      { code: 'J11', obatNama: 'Paracetamol 500mg' },
+      { code: 'A09', obatNama: 'Oralit Sachet' },
+      { code: 'A90', obatNama: 'Paracetamol 500mg' },
+      { code: 'I10', obatNama: 'Amlodipine 5mg' },
+    ];
+
+    for (const { code, obatNama } of diseaseObatMap) {
+      const obat = obatMap[obatNama];
+      if (!obat) continue;
+
+      const existing = await Resep.findOne({
+        include: [{ model: RekamMedis, as: 'rekam_medis', where: { kode_icd10: code }, attributes: [] }],
+      });
+      if (existing) continue;
+
+      const kunjungan = await RekamMedis.findOne({ where: { kode_icd10: code }, order: [['tanggal_kunjungan', 'DESC']] });
+      if (!kunjungan) continue;
+
+      const resep = await Resep.create({
+        rekam_medis_id: kunjungan.get('id'),
+        dibuat_oleh: apotekerUser?.id || null,
+        tanggal: kunjungan.get('tanggal_kunjungan'),
+      });
+      await ResepItem.create({ resep_id: resep.get('id'), obat_id: obat.id, jumlah: 10 });
+      log('resep', `Contoh resep ${obatNama} untuk ${code} dibuat`);
     }
 
     // ── Summary ───────────────────────────────────────────────────────────────

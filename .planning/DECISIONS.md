@@ -274,4 +274,51 @@ harus pakai prefix `/api/logistic/*`, bukan `/api/stok/*` seperti di spec lama.
 
 ---
 
+## ADR-011 — Forecasting Dihitung On-the-fly dari `RekamMedis`, Bukan `prediksi_kebutuhan`
+
+**Tanggal:** 2026-07-07
+**Status:** Aktif
+
+**Keputusan:**
+Ketiga endpoint `GET /api/forecasting/{projection,stats,alerts}` menghitung proyeksi kasus
+langsung dari `RekamMedis` tiap request (Holt's linear trend / double exponential smoothing,
+granularitas mingguan), bukan membaca dari tabel `prediksi_kebutuhan` seperti disebutkan di
+draft awal `API-SPEC.md`.
+
+**Alasan:**
+`prediksi_kebutuhan` schema-nya `obat_id` + `faskes_id` + `jumlah_prediksi` — itu untuk kebutuhan
+obat per faskes (dipakai `logistic.ts` di Phase 9), bukan proyeksi kasus per penyakit. Tidak ada
+kolom `kode_icd10`/`nama_penyakit` di tabel itu sama sekali, dan tidak ada tabel `penyakit` atau
+proyeksi-kasus lain di schema manapun. Draft `API-SPEC.md` sebelumnya salah mengira tabel ini bisa
+dipakai untuk keduanya.
+
+**Deviasi lain dari draft `API-SPEC.md`:**
+- **Granularitas mingguan, bukan bulanan.** `REQUIREMENTS.md` ANL-01 minta "proyeksi 14-30 hari
+  ke depan" dengan garis tren putus-putus — bucket bulanan (contoh di draft lama) terlalu kasar
+  untuk horizon itu dan tidak mendukung tampilan garis putus-putus yang jelas. Minggu yang sedang
+  berjalan (belum penuh 7 hari, karena query selalu sampai "sekarang") dikeluarkan dari data
+  historis — kalau tidak, minggu itu selalu under-count dan mencemari fit + perbandingan
+  persen_change sebagai penurunan palsu.
+- **`rekomendasi_obat` (F23) tidak pakai pemetaan penyakit→obat statis.** Draft awal mencontohkan
+  `{"ISPA": ["Ibu Profen", "Masker Medis"]}` yang tidak bisa diturunkan dari data manapun. Diambil
+  dari riwayat `resep_item` nyata (join `RekamMedis`→`resep`→`resep_item`→`obat`/`formula_racikan`
+  filter `kode_icd10`), fallback ke `alert_ews.obat_terdampak_id` untuk kode ICD-10 yang sama,
+  atau array kosong kalau tidak ada sumber data nyata sama sekali — konsisten dengan keputusan
+  yang sama di `POST /api/alerts/detect` (Phase 7): "tidak ada pemetaan penyakit→obat di skema".
+  Karena DB cuma punya 1 baris `resep` manual sebelum ini, `seedAll.ts` ditambah beberapa baris
+  `resep`/`resep_item` contoh (satu per penyakit utama di `seed.ts`: ISPA→Amoxicillin,
+  Flu→Paracetamol, Diare→Oralit, DBD→Paracetamol, Hipertensi→Amlodipine) supaya fallback nyata
+  ini punya sinyal untuk diuji, bukan selalu kosong.
+- **Stat card caption diganti jadi generik.** Draft lama punya caption seperti "Terbanyak di
+  Sleman" / "Kampanye Sanitasi Berhasil" yang tidak bisa dihitung dari data manapun. Diganti jadi
+  "Proyeksi minggu depan" untuk keduanya. `penurunan_terbesar` bisa `null` kalau tidak ada
+  penyakit dengan tren menurun saat itu — tidak dipaksakan jadi kartu palsu.
+
+**Konsekuensi:** persentase perubahan (`persen_change`) bisa terlihat volatil untuk penyakit
+dengan volume kasus mingguan kecil (mis. Hipertensi, ~3-4 kasus/minggu) karena data seed
+(`seed.ts`) memakai bobot acak tanpa musiman yang direkayasa — ini karakteristik data asli yang
+diharapkan, bukan bug.
+
+---
+
 *Diperbarui oleh Claude Code setiap ada keputusan arsitektur baru*

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 completed in full (07-01, 07-02, 07-03); partial merge from teammate branch adds Phase 9 backend head start; Phase 8 pending
-last_updated: "2026-07-06T00:00:00.000Z"
-last_activity: 2026-07-06 -- Quick Task merge-admin-dashboard (branch merge-feat-dashboard, pushed)
+stopped_at: Phase 8 completed in full (08-01, 08-02, 08-03); Phase 9 has a backend head start from an earlier partial merge; Phase 9 pending
+last_updated: "2026-07-07T00:00:00.000Z"
+last_activity: 2026-07-07 -- Phase 8 (Forecasting & Proyeksi) executed end-to-end
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 28
-  completed_plans: 24
-  percent: 86
+  completed_plans: 27
+  percent: 96
 ---
 
 # Project State
@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md`
 
 **Core value:** Menyediakan early warning spasial dan temporal untuk wabah penyakit berbasis data yang dapat dipertanggungjawabkan per faskes.
-**Current focus:** Phase 08 — Forecasting & Proyeksi
+**Current focus:** Phase 09 — Logistik & Pengadaan
 
 ---
 
 ## Current Position
 
-**Phase:** 08 (forecasting-proyeksi) — NOT STARTED
+**Phase:** 09 (logistik-pengadaan) — NOT STARTED (backend sebagian sudah ada dari merge 2026-07-03)
 **Plan:** 0 of 3
-**Status:** Phase 7 (Early Warning System) selesai penuh pada 2026-07-02, semua 3 plan diverifikasi (curl, query Postgres langsung, Playwright end-to-end). Siap mulai Phase 8.
+**Status:** Phase 8 (Forecasting & Proyeksi) selesai penuh pada 2026-07-07, semua 3 plan diverifikasi (curl, `npm run test:tps`, Playwright end-to-end). Siap mulai Phase 9.
 
-Progress: `[██████████████████░░]` 86%
+Progress: `[███████████████████░]` 96%
 
 ---
 
-## Apa yang Sudah Selesai (Phase 1–7)
+## Apa yang Sudah Selesai (Phase 1–8)
 
 | Phase | Yang Dibangun | Tanggal |
 |-------|--------------|---------|
@@ -46,6 +46,44 @@ Progress: `[██████████████████░░]` 86%
 | 5 | Database schema update (`dicatat_oleh`), lookup reference endpoints, CRUD Kunjungan, Resep & Stock FEFO deduction in DB transaction, MIS summary endpoint, test suite | 2026-07-02 |
 | 6 | Dashboard (tabel/donut/stat card) → `/api/cases/summary`, chart `/proyeksi-tren` → `/api/cases/temporal`, AuthContext logout/profil real via `/api/auth/logout` & `/me` | 2026-07-02 |
 | 7 | Alert EWS API (7 endpoint) + Z-score detection engine + `/peringatan-dini` disambungkan penuh (stat cards, AI banner, list, modal, tangani/selesai) | 2026-07-02 |
+| 8 | Forecasting API (3 endpoint, Holt's linear trend/double exp. smoothing dihitung on-the-fly dari `RekamMedis`) + `/proyeksi-tren` disambungkan penuh (chart dengan garis putus-putus proyeksi, stat cards, alert cards rekomendasi obat) | 2026-07-07 |
+
+---
+
+## Phase 8 — Selesai Penuh (3/3 Plan)
+
+**Goal:** Proyeksi 14-30 hari ke depan dari double exponential smoothing, halaman `/proyeksi-tren` dari data real.
+
+| Endpoint / Fitur | Deskripsi | Status |
+|----------|-------|--------|
+| `GET /api/forecasting/projection` | F21 — historis+proyeksi kasus mingguan per penyakit | ✅ Selesai, FE tersambung |
+| `GET /api/forecasting/stats` | F22 — 3 stat card proyeksi | ✅ Selesai, FE tersambung |
+| `GET /api/forecasting/alerts` | F23 — maks. 3 alert card rekomendasi obat | ✅ Selesai, FE tersambung |
+| `backend/src/utils/holtSmoothing.ts` | F20 — Holt's linear trend, alpha/beta fitted via grid search | ✅ Selesai |
+
+> [!note] Keputusan implementasi (lihat [[DECISIONS#ADR-011]] untuk detail lengkap)
+> - **`prediksi_kebutuhan` tidak dipakai** — schema-nya `obat_id`+`faskes_id`+`jumlah_prediksi`
+>   (kebutuhan obat per faskes, Phase 9), bukan proyeksi kasus penyakit. Proyeksi dihitung
+>   on-the-fly dari `RekamMedis` tiap request.
+> - **Granularitas mingguan**, bukan bulanan seperti draft awal `API-SPEC.md` — `REQUIREMENTS.md`
+>   ANL-01 minta horizon 14-30 hari dengan garis putus-putus, terlalu presisi untuk bucket bulanan.
+>   Minggu yang sedang berjalan (belum penuh 7 hari) dikeluarkan dari data historis.
+> - **`rekomendasi_obat` (F23)** dari riwayat `resep_item` nyata, fallback ke
+>   `alert_ews.obat_terdampak_id`, atau array kosong — tidak ada pemetaan penyakit→obat fabrikasi.
+>   `seedAll.ts` ditambah beberapa baris `resep`/`resep_item` contoh (satu per penyakit utama)
+>   supaya fallback ini punya sinyal nyata — sebelumnya DB cuma punya 1 resep manual.
+> - **Stat card caption** diganti dari klaim spesifik tak berdasar data ("Terbanyak di Sleman")
+>   jadi caption generik ("Proyeksi minggu depan"). `penurunan_terbesar` bisa `null`.
+
+**Verifikasi end-to-end:**
+- curl ketiga endpoint langsung — nilai persen_change & rekomendasi_obat masuk akal (mis. Diare
+  → Oralit Sachet, Flu → Paracetamol, Hipertensi → Amlodipine, semua dari resep seed nyata)
+- `npm run test:tps` di-re-run setelah rebuild backend — 100% lulus, tidak ada regresi
+- Playwright: login manajer → `/proyeksi-tren` → screenshot stat cards (nilai real, bukan
+  hardcoded) + chart (garis solid historis menyambung mulus ke garis putus-putus proyeksi) +
+  alert cards (3 kartu dengan urgensi/rekomendasi obat real) → ganti dropdown penyakit di chart
+  ke "Diare & Gastroenteritis" → chart re-fetch dan render benar — tidak ada console error di
+  semua langkah
 
 ---
 
@@ -131,10 +169,9 @@ Yang sebenarnya terjadi:
 
 ---
 
-## Pending Todos (setelah Phase 7)
+## Pending Todos (setelah Phase 8)
 
-- **Phase 8 (berikutnya):** Forecasting — double exp. smoothing + endpoints; sisa hardcoded di `/proyeksi-tren`: 3 stat cards (F22) + 3 alert cards rekomendasi (F23). Area chart ISPA/DBD sudah live sejak Plan 06-02.
-- **Phase 9:** Logistik — stok endpoints + surat pesanan + halaman /logistik dari data real. Ini juga akan mengaktifkan "Tindakan Darurat" (F17) di `/peringatan-dini` yang masih hardcoded karena butuh endpoint stok lintas-faskes. **Update 2026-07-03:** sebagian endpoint GET (`stok/chart`, `stats`, `near-expiry`, `surat-pesanan`) sudah ada duluan lewat merge parsial dari branch teman, di bawah prefix `/api/logistic/*` bukan `/api/stok/*` yang direncanakan — lihat [[DECISIONS#ADR-010]]. Masih perlu: `defekta`, `slow-moving`, `POST /api/surat-pesanan`, dan seluruh Plan 09-03 (FE `/logistik` belum disambungkan sama sekali).
+- **Phase 9 (berikutnya):** Logistik — stok endpoints + surat pesanan + halaman /logistik dari data real. Ini juga akan mengaktifkan "Tindakan Darurat" (F17) di `/peringatan-dini` yang masih hardcoded karena butuh endpoint stok lintas-faskes. **Update 2026-07-03:** sebagian endpoint GET (`stok/chart`, `stats`, `near-expiry`, `surat-pesanan`) sudah ada duluan lewat merge parsial dari branch teman, di bawah prefix `/api/logistic/*` bukan `/api/stok/*` yang direncanakan — lihat [[DECISIONS#ADR-010]]. Masih perlu: `defekta`, `slow-moving`, `POST /api/surat-pesanan`, dan seluruh Plan 09-03 (FE `/logistik` belum disambungkan sama sekali).
 - **Phase 10:** Settings — edit profil + halaman /settings dari data real
 
 ---
@@ -156,6 +193,7 @@ Yang sebenarnya terjadi:
 | 5. TPS | 6/6 | ~45 min | 7.5 min |
 | 6. MIS Dashboard Integration | 3/3 | ~40 min | ~13 min |
 | 7. Early Warning System | 3/3 | ~85 min | ~28 min |
+| 8. Forecasting & Proyeksi | 3/3 | ~60 min | ~20 min |
 
 ---
 
@@ -181,5 +219,5 @@ Yang sebenarnya terjadi:
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Verifikasi end-to-end admin dashboard selesai (lihat Quick Tasks di atas) — login admin/manajer, guard redirect FA2 dua arah, CRUD pengguna FA3 semua terkonfirmasi jalan di browser sungguhan. 1 bug ditemukan & diperbaiki (`updateUser` gagal kalau `faskes_id` kosong), backend di-rebuild, `npm run test:tps` 100% lulus, data uji sudah dibersihkan dari DB. Belum di-commit/push.
-Resume: Commit fix `updateUser` (belum di-commit), lalu lanjut FA5–FA7 (CRUD obat/stok admin + prediksi AI) kalau diminta, atau lanjut Phase 8 (Forecasting & Proyeksi) — endpoint `GET /api/forecasting/projection`, `/stats`, `/alerts` (Plan 08-01). Phase 9 sudah punya head start backend (lihat catatan Phase 9 di ROADMAP.md).
+Stopped at: Phase 8 (Forecasting & Proyeksi) selesai penuh — 3 endpoint forecasting baru, `holtSmoothing.ts` (Holt's linear trend, alpha/beta fitted via grid search), seed data resep contoh untuk rekomendasi obat, `/proyeksi-tren` disambungkan penuh (stat cards, chart dengan garis putus-putus proyeksi, alert cards). Backend + frontend Docker sudah di-rebuild, `npm run test:tps` 100% lulus, Playwright end-to-end lulus tanpa console error. Belum di-commit/push.
+Resume: Commit Phase 8 (belum di-commit), lalu lanjut Phase 9 (Logistik & Pengadaan) — sudah ada head start backend dari merge 2026-07-03 (lihat catatan Phase 9 di ROADMAP.md), atau FA5–FA7 (CRUD obat/stok admin + prediksi AI) kalau diminta.

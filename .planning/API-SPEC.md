@@ -16,7 +16,7 @@ tags:
 >
 > **Konvensi:** Semua endpoint butuh Swagger JSDoc di route file + data seeder idempotent.
 
-> [!success] Phase 5, 6 & 7 Selesai
+> [!success] Phase 5, 6, 7 & 8 Selesai
 > **Phase 5 (TPS)** sudah selesai 2026-07-02 — staf klinik input data via `POST /api/tps/kunjungan`,
 > jadi `rekam_medis` bisa dipertanggungjawabkan per faskes/staf (lihat [[TPS-API-SPEC]]).
 > **Phase 6** menyambungkan dashboard ke data itu: `/api/cases/summary` (F09–F11) dan
@@ -25,8 +25,11 @@ tags:
 > `GET /api/alerts*` (F13–F16), `PATCH /api/alerts/:id` (F18), dan Z-score detection engine
 > `POST /api/alerts/detect` (F12). Yang masih hardcoded di halaman itu: kartu "Tindakan Darurat"
 > (F17, butuh `GET /api/stok/*` Phase 9 untuk saran realokasi) dan chart stok-vs-kebutuhan (F19).
-> Sisa yang masih hardcoded di sistem: `/settings` (F35, F36 — Phase 10), forecasting
-> (F20–F23 — Phase 8), dan logistik/pengadaan (F24–F34 — Phase 9).
+> **Phase 8 (Forecasting)** selesai penuh (2026-07-07): `/proyeksi-tren` sekarang hidup dari
+> `GET /api/forecasting/{projection,stats,alerts}` (F20–F23) — chart historis+proyeksi mingguan
+> (garis putus-putus untuk bagian proyeksi), 3 stat card, dan maks. 3 alert card rekomendasi.
+> Sisa yang masih hardcoded di sistem: `/settings` (F35, F36 — Phase 10) dan
+> logistik/pengadaan (F24–F34 — Phase 9).
 
 ---
 
@@ -490,40 +493,54 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 
 ## 📈 Domain Forecasting — `/api/forecasting`
 
-> [!note] Sumber Data
-> Tabel `prediksi_kebutuhan` di-seed dengan 6 prediksi untuk periode `2026-07`.
-> Algoritma double exponential smoothing (F20) mengisi tabel ini — untuk MVP, pakai data seed.
+> [!note] Sumber Data — dihitung on-the-fly, bukan dari `prediksi_kebutuhan`
+> Draft awal dokumen ini mengira `prediksi_kebutuhan` bisa dipakai untuk proyeksi kasus per
+> penyakit. Ternyata schema tabel itu adalah `obat_id` + `faskes_id` + `jumlah_prediksi` —
+> kebutuhan obat per faskes untuk Phase 9 (logistik), bukan proyeksi kasus penyakit. Tidak ada
+> tabel `penyakit` atau proyeksi-kasus di schema sama sekali. Jadi proyeksi kasus (F20-F21)
+> dihitung langsung dari `RekamMedis` tiap request, bukan dibaca dari tabel tersimpan — lihat
+> [[DECISIONS#ADR-011]].
+>
+> **Granularitas mingguan, bukan bulanan.** `REQUIREMENTS.md` ANL-01 minta proyeksi 14-30 hari
+> ke depan dengan garis tren putus-putus — granularitas bulanan (contoh awal di draft ini) terlalu
+> kasar untuk itu. Semua endpoint di bawah pakai bucket mingguan (`DATE_TRUNC('week', ...)`),
+> dan minggu yang sedang berjalan (belum penuh 7 hari) selalu dikeluarkan dari data historis
+> supaya tidak mencemari fit/perbandingan sebagai penurunan palsu.
+>
+> **Algoritma:** Holt's linear trend method (= double exponential smoothing, F20). Konstanta
+> `alpha`/`beta` di-fit per penyakit lewat grid search (0.1–0.9, minimasi SSE one-step-ahead),
+> bukan konstanta tetap.
 
-### 🆕 GET `/api/forecasting/projection`
+### ✅ GET `/api/forecasting/projection`
 
 **Controller:** `src/controllers/forecasting.ts → getProjection()`
-**Tabel:** `prediksi_kebutuhan`, `RekamMedis`
-**FE:** `/proyeksi-tren` → area chart gabungan historis + proyeksi (F21)
+**Tabel:** `RekamMedis`
+**FE:** `/proyeksi-tren` → area chart gabungan historis (solid) + proyeksi (dashed) (F21)
 
 **Query Params:**
 | Param | Tipe | Default | Keterangan |
 |-------|------|---------|------------|
 | `diseases` | string | `J06.9,A90` | Kode ICD-10 dipisah koma |
-| `months_back` | number | 6 | Bulan historis sebelum proyeksi |
-| `days_ahead` | number | 30 | Hari proyeksi ke depan |
+| `months_back` | number | 6 | Bulan historis sebelum proyeksi (dikonversi ke minggu) |
+| `days_ahead` | number | 30 | Hari proyeksi ke depan (dikonversi ke minggu) |
 
-**Response 200:**
+**Response 200 (melt format, satu baris per minggu per penyakit):**
 ```json
 [
   {
-    "tanggal": "2026-01-01",
+    "tanggal": "2026-06-01",
     "nama_penyakit": "ISPA",
     "kode_icd10": "J06.9",
-    "kasus_aktual": 80,
+    "kasus_aktual": 29,
     "kasus_prediksi": null,
     "tipe": "historis"
   },
   {
-    "tanggal": "2026-07-01",
+    "tanggal": "2026-07-13",
     "nama_penyakit": "ISPA",
     "kode_icd10": "J06.9",
     "kasus_aktual": null,
-    "kasus_prediksi": 160,
+    "kasus_prediksi": 24,
     "tipe": "proyeksi"
   }
 ]
@@ -531,64 +548,64 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 
 ---
 
-### 🆕 GET `/api/forecasting/stats`
+### ✅ GET `/api/forecasting/stats`
 
 **Controller:** `src/controllers/forecasting.ts → getForecastingStats()`
-**Tabel:** `prediksi_kebutuhan`, `RekamMedis`
+**Tabel:** `RekamMedis`
 **FE:** `/proyeksi-tren` → 3 stat cards (F22)
 
 **Response 200:**
 ```json
 {
   "peningkatan_tertinggi": {
-    "nama_penyakit": "DBD",
-    "kode_icd10": "A90",
-    "persen_change": 18.2,
-    "kasus_prediksi": 142,
-    "label": "Terbanyak di Sleman"
+    "nama_penyakit": "Diare & Gastroenteritis",
+    "kode_icd10": "A09",
+    "persen_change": 150,
+    "kasus_prediksi": 5,
+    "label": "Proyeksi minggu depan"
   },
   "penurunan_terbesar": {
-    "nama_penyakit": "Diare",
-    "kode_icd10": "A09",
-    "persen_change": -12.5,
-    "kasus_prediksi": 88,
-    "label": "Kampanye Sanitasi Berhasil"
+    "nama_penyakit": "Demam Berdarah Dengue (DBD)",
+    "kode_icd10": "A90",
+    "persen_change": -60,
+    "kasus_prediksi": 10,
+    "label": "Proyeksi minggu depan"
   },
-  "total_kasus_proyeksi": 605
+  "total_kasus_proyeksi": 176
 }
 ```
+> `penurunan_terbesar` bisa `null` kalau tidak ada penyakit dengan tren menurun saat itu — tidak
+> dipaksakan. `label` sengaja generik ("Proyeksi minggu depan"), bukan klaim spesifik seperti
+> "Terbanyak di Sleman" yang tidak bisa diturunkan dari data manapun (lihat draft lama di atas).
 
 ---
 
-### 🆕 GET `/api/forecasting/alerts`
+### ✅ GET `/api/forecasting/alerts`
 
 **Controller:** `src/controllers/forecasting.ts → getForecastingAlerts()`
-**Tabel:** `prediksi_kebutuhan`, `alert_ews`, `obat`
-**FE:** `/proyeksi-tren` → 3 alert cards rekomendasi obat (F23)
+**Tabel:** `RekamMedis`, `resep`, `resep_item`, `obat`, `formula_racikan`, `alert_ews`
+**FE:** `/proyeksi-tren` → maks. 3 alert cards rekomendasi (F23)
 
 **Response 200:**
 ```json
 [
   {
-    "jenis_penyakit": "ISPA",
-    "kode_icd10": "J06.9",
+    "jenis_penyakit": "Diare & Gastroenteritis",
+    "kode_icd10": "A09",
     "urgensi": "tinggi",
-    "persen_change": 45,
-    "deskripsi": "Tren ISPA menanjak signifikan bulan depan",
-    "rekomendasi_obat": ["Ibu Profen", "Masker Medis"],
-    "rekomendasi_tindakan": "Segera tambah stok"
-  },
-  {
-    "jenis_penyakit": "DBD",
-    "kode_icd10": "A90",
-    "urgensi": "sedang",
-    "persen_change": 32,
-    "deskripsi": "Tren DBD meningkat pasca hujan",
-    "rekomendasi_obat": ["Abate", "Fogging Kit"],
-    "rekomendasi_tindakan": "Koordinasi dinkes"
+    "persen_change": 150,
+    "deskripsi": "Tren Diare & Gastroenteritis diproyeksikan naik 150% minggu depan berdasarkan data historis.",
+    "rekomendasi_obat": ["Oralit Sachet"],
+    "rekomendasi_tindakan": "Segera tambah stok obat terkait dan siapkan kapasitas layanan tambahan."
   }
 ]
 ```
+> Hanya penyakit dengan `persen_change` positif yang muncul, maks. 3, diurutkan tertinggi dulu —
+> bisa kurang dari 3 (atau kosong) kalau tidak ada tren naik saat itu. `rekomendasi_obat` diambil
+> dari riwayat `resep_item` nyata untuk penyakit itu (join lewat `RekamMedis` → `resep` →
+> `resep_item`), fallback ke `alert_ews.obat_terdampak_id` kalau riwayat resep kosong, atau array
+> kosong kalau tidak ada sumber data nyata sama sekali — **tidak ada pemetaan penyakit→obat yang
+> difabrikasi**, konsisten dengan keputusan yang sama di `POST /api/alerts/detect` (Phase 7).
 
 ---
 
@@ -998,9 +1015,9 @@ adalah konstanta di kode, **belum configurable dari UI** (REQUIREMENTS.md ADM-02
 | 12 | GET | `/api/alerts/:id` | Alerts | `/peringatan-dini` | ✅ |
 | 13 | PATCH | `/api/alerts/:id` | Alerts | `/peringatan-dini` | ✅ |
 | 14 | POST | `/api/alerts/detect` | Alerts | — (cron/trigger) | ✅ |
-| 15 | GET | `/api/forecasting/projection` | Forecasting | `/proyeksi-tren` | 🆕 |
-| 16 | GET | `/api/forecasting/stats` | Forecasting | `/proyeksi-tren` | 🆕 |
-| 17 | GET | `/api/forecasting/alerts` | Forecasting | `/proyeksi-tren` | 🆕 |
+| 15 | GET | `/api/forecasting/projection` | Forecasting | `/proyeksi-tren` | ✅ |
+| 16 | GET | `/api/forecasting/stats` | Forecasting | `/proyeksi-tren` | ✅ |
+| 17 | GET | `/api/forecasting/alerts` | Forecasting | `/proyeksi-tren` | ✅ |
 | 18 | GET | `/api/stok/stats` | Stok | `/logistik` | 🆕 |
 | 19 | GET | `/api/stok/summary` | Stok | `/logistik` | 🆕 |
 | 20 | GET | `/api/stok/chart` | Stok | `/logistik`, `/peringatan-dini` | 🆕 |
