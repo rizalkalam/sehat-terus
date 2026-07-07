@@ -361,7 +361,7 @@ Belum Ada        ██░░░░░░░░░░░░░░░░░░   
 |----|-------|--------|----------|------------|
 | FA1 | Admin dashboard layout + sidebar navigasi (`/admin`) | ✅ | — | `/admin` |
 | FA2 | Guard peran admin — FE (`middleware.ts`) + BE (`requireAdmin`) | ✅ | `pengguna` | `/admin/*` (redirect non-admin), admin diblokir total dari semua halaman MIS |
-| FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
+| FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ (diverifikasi browser 2026-07-07, 1 bug diperbaiki — lihat [[CHANGELOG]]) | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
 | FA4 | Registrasi mandiri dinonaktifkan, akun baru cuma lewat admin | ✅ (sudah ada sebelum merge ini) | `pengguna` | `/register` (pesan error tetap), `/admin/users` (jalur resmi buat akun) |
 | FA5 | CRUD master obat dari admin panel | ❌ | `obat` | Belum ada —**sengaja di-exclude** dari merge 2026-07-06, direncanakan phase berikutnya |
 | FA6 | CRUD stok dari admin panel | ❌ | `stok` | Belum ada — sama seperti FA5, phase berikutnya |

@@ -13,6 +13,38 @@ tags:
 
 ---
 
+## 2026-07-07 — Session: Verifikasi End-to-End Admin Dashboard
+
+### ✅ Diverifikasi (menyelesaikan pending dari sesi 2026-07-06)
+
+Login sungguhan di browser (Playwright) sebagai `admin` dan `manajer` (carmen) untuk memastikan
+merge selektif admin dashboard sesi lalu benar-benar berfungsi, bukan cuma lulus `tsc`/`build`:
+
+- Login admin → landing `/admin` (FA8), layout + sidebar render dengan data real (FA1)
+- Admin coba akses `/` dan `/peringatan-dini` → di-redirect balik ke `/admin` (guard FA2 aktif di FE)
+- Logout admin → login manajer (carmen) → landing `/` (dashboard MIS, FA8), coba akses `/admin` →
+  di-redirect ke `/` (guard FA2 blokir non-admin dari admin panel)
+- Tidak ada console error di sepanjang alur
+
+### 🐛 Bug ditemukan & diperbaiki — Edit Pengguna gagal total kalau `faskes_id` kosong
+
+`updateUser` di `backend/src/controllers/admin.ts` meneruskan `faskes_id` mentah-mentah ke
+`user.update()`. FE mengirim string kosong `''` saat opsi "— Tidak ada —" dipilih (misalnya untuk
+akun `admin` yang memang tidak terikat faskes manapun), lalu Postgres menolak dengan
+`invalid input syntax for type uuid: ""` — modal gagal simpan, tidak ada indikasi lain selain
+pesan error mentah dari DB. `createUser` sudah benar (`faskes_id: faskes_id || null`), tapi
+`updateUser` tidak punya fallback yang sama. Diperbaiki dengan menambahkan `|| null` yang sama
+persis (plus `nomor_sipa`, yang punya masalah serupa tapi tidak fatal karena kolomnya bertipe text).
+
+Diverifikasi ulang setelah fix: create → edit (ganti nama) → nonaktifkan (dengan `confirm()`
+dialog) tiga-tiganya berhasil untuk user tanpa faskes, status list ter-refresh benar
+(`Aktif` → `Nonaktif`). Data uji dihapus lagi dari DB setelah verifikasi. `npm run test:tps`
+di-re-run setelah rebuild backend — 100% lulus, tidak ada regresi.
+
+**File diubah:** `backend/src/controllers/admin.ts` (`updateUser`). Docker backend di-rebuild 1x.
+
+---
+
 ## 2026-07-06 — Session: Merge Selektif Admin Dashboard (`feat/admin-system-and-ai-update`)
 
 ### ✅ Diselesaikan

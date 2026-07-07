@@ -167,6 +167,7 @@ Yang sebenarnya terjadi:
 | `20260702-responsive-trend-page` | Grid responsif untuk stat cards/chart/alert cards di `/proyeksi-tren` (breakpoint `md`/`xl`, dihitung ulang karena sidebar fixed 349px) — diverifikasi 4 lebar viewport via Playwright, lalu di-rebuild ulang ke Docker (build ke-2 yang sukses hari ini) | 2026-07-02 |
 | `20260703-merge-disease-api-integration` | Merge parsial branch teman (`feat/disease-api-integration`) ke branch baru `feat/logistic-ai-integration` — ambil `POST /api/ai/analyze` + 5 endpoint `GET /api/logistic/*` (mengisi gap F24/F26/F27/F31), buang duplikat & docs usang. Lihat [[DECISIONS#ADR-010]]. | 2026-07-03 |
 | `20260706-merge-admin-dashboard` | Merge selektif branch teman (`feat/admin-system-and-ai-update`, TonyKeys) ke `merge-feat-dashboard` — ambil 4 dari 6 fitur (admin dashboard layout, guard role, CRUD user, registrasi admin-only), exclude CRUD obat/stok admin & prediksi AI (jadi FA5–FA7 pending, lihat [[FEATURES-MAP#Domain 8 — Admin Panel]]). Ditambah `requireAdmin` middleware di commit terpisah setelah user minta proteksi API-level, bukan cuma UI. Sudah di-push, belum diverifikasi end-to-end di browser. | 2026-07-06 |
+| `20260707-verify-admin-dashboard` | Verifikasi end-to-end di browser (Playwright) untuk merge admin dashboard sesi sebelumnya — login admin & manajer, guard redirect FA2 kedua arah, CRUD pengguna FA3 (create/edit/nonaktifkan). Ditemukan & diperbaiki bug: `updateUser` gagal total (500, invalid UUID) kalau `faskes_id` dikosongkan karena tidak ada fallback `\|\| null` seperti di `createUser`. Backend di-rebuild, `npm run test:tps` 100% lulus. | 2026-07-07 |
 
 > [!note] Observasi (bukan tindakan) — `alert_ews` dan `RekamMedis` sedikit lebih besar dari baseline
 > Saat verifikasi Quick Task di atas, `alert_ews` menunjukkan 7 baris (bukan 5) dan `RekamMedis`
@@ -179,6 +180,6 @@ Yang sebenarnya terjadi:
 
 ## Session Continuity
 
-Last session: 2026-07-06
-Stopped at: Merge selektif admin dashboard (`feat/admin-system-and-ai-update` → `merge-feat-dashboard`) selesai dan di-push (bukan Plan formal — lihat Quick Tasks di atas dan [[FEATURES-MAP#Domain 8 — Admin Panel]]). `npx tsc --noEmit` dan `npm run build` lulus di kedua workspace. **Belum diverifikasi end-to-end di browser** — belum login sungguhan sebagai admin/non-admin untuk cek redirect guard & CRUD user beneran jalan.
-Resume: Verifikasi manual admin dashboard (lihat instruksi tes di respons chat 2026-07-06), lalu lanjut FA5–FA7 (CRUD obat/stok admin + prediksi AI) kalau diminta, atau lanjut Phase 8 (Forecasting & Proyeksi) — endpoint `GET /api/forecasting/projection`, `/stats`, `/alerts` (Plan 08-01). Phase 9 sudah punya head start backend (lihat catatan Phase 9 di ROADMAP.md).
+Last session: 2026-07-07
+Stopped at: Verifikasi end-to-end admin dashboard selesai (lihat Quick Tasks di atas) — login admin/manajer, guard redirect FA2 dua arah, CRUD pengguna FA3 semua terkonfirmasi jalan di browser sungguhan. 1 bug ditemukan & diperbaiki (`updateUser` gagal kalau `faskes_id` kosong), backend di-rebuild, `npm run test:tps` 100% lulus, data uji sudah dibersihkan dari DB. Belum di-commit/push.
+Resume: Commit fix `updateUser` (belum di-commit), lalu lanjut FA5–FA7 (CRUD obat/stok admin + prediksi AI) kalau diminta, atau lanjut Phase 8 (Forecasting & Proyeksi) — endpoint `GET /api/forecasting/projection`, `/stats`, `/alerts` (Plan 08-01). Phase 9 sudah punya head start backend (lihat catatan Phase 9 di ROADMAP.md).

@@ -46,7 +46,11 @@ export async function updateUser(req: Request, res: Response) {
     const user = await Pengguna.findByPk(id);
     if (!user) return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
 
-    const updates: Record<string, unknown> = { nama, email, peran, faskes_id, nomor_sipa, aktif };
+    const updates: Record<string, unknown> = {
+      nama, email, peran, aktif,
+      faskes_id: faskes_id || null,
+      nomor_sipa: nomor_sipa || null,
+    };
     if (password) updates.password_hash = await bcrypt.hash(password, 10);
 
     await user.update(updates);
