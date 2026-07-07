@@ -13,6 +13,7 @@ export class Obat extends Model {
   declare harga_beli: number;
   declare stok_minimum: number;
   declare kode_atc: string | null;
+  declare pbf_id: string | null;
   declare readonly created_at: Date;
 }
 
@@ -26,6 +27,7 @@ Obat.init(
     harga_beli: { type: DataTypes.DECIMAL(14, 2), allowNull: false, defaultValue: 0 },
     stok_minimum: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
     kode_atc: { type: DataTypes.STRING(20), allowNull: true },
+    pbf_id: { type: DataTypes.UUID, allowNull: true },
   },
   {
     sequelize,

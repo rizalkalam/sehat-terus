@@ -274,4 +274,43 @@ harus pakai prefix `/api/logistic/*`, bukan `/api/stok/*` seperti di spec lama.
 
 ---
 
+## ADR-011 — `obat.pbf_id` Ditambahkan + Riwayat `pergerakan_stok` Sintetis untuk Phase 9
+
+**Tanggal:** 2026-07-07
+**Status:** Aktif
+
+**Keputusan:**
+1. Kolom nullable `pbf_id` (FK ke `pbf`) ditambahkan ke tabel/model `Obat` via `sequelize.sync({
+   alter: true })` (pola yang sama dengan ADR-002), di-seed round-robin ke 3 PBF yang ada.
+2. `seedAll.ts` ditambah ~150 baris `pergerakan_stok` tipe `'keluar'` sintetis (45 hari riwayat,
+   ditandai `referensi='SEED-KELUAR-HIST'`) untuk obat "fast" dan "medium mover"; obat lain
+   sengaja tidak diberi riwayat sama sekali — itulah kandidat slow-moving yang jujur.
+
+**Alasan:**
+- `API-SPEC.md` draft awal Domain Stok bilang defekta harus "group by `obat.pbf_id`", tapi kolom
+  itu **tidak ada** di skema manapun — `pbf_id` cuma ada di `surat_pesanan` (dipilih per-order,
+  bukan properti tetap katalog obat). Tanpa kolom ini, endpoint defekta (Phase 9) tidak bisa
+  mengelompokkan obat per PBF sama sekali.
+- Sebelum Phase 9, 38 dari 38 baris `pergerakan_stok` yang ada semuanya `tipe='masuk'` (penerimaan
+  awal dari seeder Phase 1) — nyaris tidak ada baris `'keluar'` nyata (cuma dari beberapa kali
+  `test-tps.ts` dijalankan). `getStats` (F26) sebelumnya menutupi ini dengan asumsi tetap
+  "`jumlah_tersedia / 10`" untuk `ketahanan_hari` — sekarang diganti pakai rata-rata nyata, tapi
+  itu perlu ADA data pergerakan nyata dulu untuk berarti apa-apa.
+
+**Alternatif yang ditolak:**
+- Membiarkan defekta tidak dikelompokkan sama sekali (flat list) — ditolak karena bertentangan
+  dengan alur kerja yang diminta ("Buat Pesanan" per grup PBF di UI, satu SP per PBF per skema).
+- Memakai data `pergerakan_stok` yang ada apa adanya (nyaris kosong) — ditolak karena `tren_harian`/
+  `ketahanan_hari`/`slow-moving` semuanya akan menunjukkan nol/tak terhingga untuk hampir semua
+  obat, membuat fitur terlihat tidak berfungsi walau logikanya benar.
+
+**Konsekuensi:**
+- `usulan_pesanan`, `tren_harian`, dan `ketahanan_hari` di endpoint defekta/stats sekarang
+  mencerminkan pola konsumsi **buatan** (bukan data TPS nyata) untuk obat "fast"/"medium mover" —
+  ini seed data historis sintetis, bukan fabrikasi runtime di response API. Kalau nanti data TPS
+  nyata (`resep_item` via alur kunjungan) terkumpul cukup banyak, riwayat sintetis ini idealnya
+  digantikan/diabaikan, tinggal filter `referensi != 'SEED-KELUAR-HIST'` di query terkait.
+
+---
+
 *Diperbarui oleh Claude Code setiap ada keputusan arsitektur baru*

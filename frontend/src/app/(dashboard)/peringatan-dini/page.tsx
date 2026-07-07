@@ -17,6 +17,8 @@ import InfoStatCards, { type StatCardItem } from "@/components/InfoStatCards";
 import ConfirmModal from "@/components/ConfirmModal";
 import AlertDetailModal, { type AlertDetailData } from "@/components/AlertDetailModal";
 import { ContentSkeleton } from "@/components/Skeleton";
+import { useAuth } from "@/contexts/AuthContext";
+import { postJson } from "@/lib/api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -117,39 +119,21 @@ function toDetailData(d: AlertDetailResponse): AlertDetailData {
   };
 }
 
-// Line chart (sisa stok vs kebutuhan) and the relokasi/retur quick-action
-// suggestions below stay hardcoded — there's no endpoint yet to discover
-// *which* faskes has surplus stock to suggest a sensible source (that needs
-// GET /api/stok/* from Phase 9). POST /api/stok/realokasi and /retur
-// themselves are already live (Plan 07-02); wiring a real recommendation
-// engine here is future work, not guesswork we should fake now.
-const chartData = [
-  { month: "Jan", sisaStock: 300, kebutuhan: 95 },
-  { month: "Feb", sisaStock: 270, kebutuhan: 120 },
-  { month: "Mar", sisaStock: 230, kebutuhan: 145 },
-  { month: "Apr", sisaStock: 185, kebutuhan: 180 },
-  { month: "May", sisaStock: 140, kebutuhan: 220 },
-  { month: "Jun", sisaStock: 90, kebutuhan: 270 },
-  { month: "Jul", sisaStock: 50, kebutuhan: 310 },
-];
+interface ChartPoint {
+  bulan: string;
+  jumlah_tersedia: number;
+  kebutuhan_prediksi: number;
+}
 
-const tindakanItems = [
-  {
-    type: "relokasi",
-    drug: "Amoksilin",
-    from: "Bantul",
-    to: "Sleman",
-    desc: "Pindah 90 unit tutup kebutuhan 5 hari",
-    action: "Pindahkan",
-  },
-  {
-    type: "retur",
-    drug: "Antasida tablet",
-    detail1: "Rp 2,1 jt",
-    detail2: "Rp 3,2 jt tertahan",
-    action: "Tanda retur",
-  },
-];
+interface SlowMovingItem {
+  stok_id: string;
+  obat: { id: string; nama: string };
+  faskes: { id: string; nama: string } | null;
+  jumlah_tersedia: number;
+  nilai_modal_rp: number;
+  saran: "realokasi" | "retur";
+  faskes_tujuan_realokasi: { id: string; nama: string } | null;
+}
 
 // --- Modal state type ---
 
@@ -173,10 +157,14 @@ const closedModal: ModalState = {
 
 function AlertAndChart({
   alerts,
+  chartData,
+  chartTitle,
   onAlertClick,
   onAction,
 }: {
   alerts: AlertItem[];
+  chartData: ChartPoint[];
+  chartTitle: string | null;
   onAlertClick: (item: AlertItem) => void;
   onAction: (id: string, status: "ditangani" | "selesai") => void;
 }) {
@@ -251,14 +239,24 @@ function AlertAndChart({
         </div>
 
         {/* Line chart — right column */}
-        <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[18px] p-[24px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.08)] w-full xl:w-[460px] xl:shrink-0">
-          <ResponsiveContainer width="100%" height={240}>
+        <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[18px] p-[24px] shadow-[0px_0px_10px_0px_rgba(0,0,0,0.08)] w-full xl:w-[460px] xl:shrink-0 flex flex-col gap-[8px]">
+          {chartTitle && (
+            <span className="font-josefin font-semibold text-[13px] text-[#0c818a] truncate">
+              Stok vs Kebutuhan: {chartTitle}
+            </span>
+          )}
+          {chartData.length === 0 ? (
+            <div className="h-[220px] flex items-center justify-center text-[#0c818a]/60 font-josefin text-[13px] text-center px-[10px]">
+              Tidak ada obat kritis untuk ditampilkan saat ini.
+            </div>
+          ) : (
+          <ResponsiveContainer width="100%" height={220}>
             <LineChart
               data={chartData}
               margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
             >
               <XAxis
-                dataKey="month"
+                dataKey="bulan"
                 axisLine={false}
                 tickLine={false}
                 tick={{ fontFamily: "Josefin Sans, sans-serif", fontSize: 12, fontWeight: 500, fill: "#454459" }}
@@ -280,7 +278,7 @@ function AlertAndChart({
               />
               <Line
                 type="monotone"
-                dataKey="sisaStock"
+                dataKey="jumlah_tersedia"
                 name="Sisa stock"
                 stroke="#0C818A"
                 strokeWidth={2.5}
@@ -289,7 +287,7 @@ function AlertAndChart({
               />
               <Line
                 type="monotone"
-                dataKey="kebutuhan"
+                dataKey="kebutuhan_prediksi"
                 name="Kebutuhan bulan depan"
                 stroke="#84C6CB"
                 strokeWidth={2.5}
@@ -298,6 +296,7 @@ function AlertAndChart({
               />
             </LineChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>
@@ -307,6 +306,7 @@ function AlertAndChart({
 // --- Main Page ---
 
 export default function EarlyWarningPage() {
+  const { user } = useAuth();
   const [loaded, setLoaded] = useState(false);
   const [modal, setModal] = useState<ModalState>(closedModal);
   const [detailItem, setDetailItem] = useState<AlertItem | null>(null);
@@ -315,6 +315,9 @@ export default function EarlyWarningPage() {
   const [statsData, setStatsData] = useState<AlertsStatsResponse | null>(null);
   const [summaryData, setSummaryData] = useState<AlertsSummaryResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [chartData, setChartData] = useState<ChartPoint[]>([]);
+  const [chartTitle, setChartTitle] = useState<string | null>(null);
+  const [tindakanItems, setTindakanItems] = useState<SlowMovingItem[]>([]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -329,16 +332,87 @@ export default function EarlyWarningPage() {
         const raw: AlertRecord[] = await alertsRes.json();
         setAlerts(raw.map(toAlertItem));
       }
+
+      // Tindakan Darurat (F17) — obat slow-moving nyata di faskes user, dengan saran
+      // realokasi (kalau ada faskes lain yang benar-benar defisit) atau retur.
+      if (user?.faskes_id) {
+        const slowMovingRes = await fetch(
+          `${API_BASE}/api/logistic/slow-moving?faskes_id=${user.faskes_id}`,
+          { credentials: "include" }
+        );
+        if (slowMovingRes.ok) {
+          const items: SlowMovingItem[] = (await slowMovingRes.json()).data;
+          setTindakanItems(items.slice(0, 3));
+        }
+
+        // Line chart (F19) — obat paling kritis (defekta pertama) di faskes user.
+        const defektaRes = await fetch(
+          `${API_BASE}/api/logistic/defekta?faskes_id=${user.faskes_id}`,
+          { credentials: "include" }
+        );
+        if (defektaRes.ok) {
+          const groups: { items: { obat_id: string; nama: string }[] }[] = (await defektaRes.json()).data;
+          const firstItem = groups[0]?.items[0];
+          if (firstItem) {
+            setChartTitle(firstItem.nama);
+            const chartRes = await fetch(
+              `${API_BASE}/api/logistic/stok/chart?mode=line&faskes_id=${user.faskes_id}&obat_id=${firstItem.obat_id}`,
+              { credentials: "include" }
+            );
+            if (chartRes.ok) setChartData((await chartRes.json()).data);
+          }
+        }
+      }
     } catch (err) {
       console.error("Error fetching EWS data:", err);
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [user?.faskes_id]);
 
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  async function handleTindakanRealokasi(item: SlowMovingItem) {
+    if (!item.faskes || !item.faskes_tujuan_realokasi) return;
+    openModal({
+      title: "Konfirmasi Relokasi",
+      description: `Pindahkan seluruh sisa stok ${item.obat.nama} (${item.jumlah_tersedia} unit) dari ${item.faskes.nama} ke ${item.faskes_tujuan_realokasi.nama}?`,
+      confirmLabel: "Pindahkan",
+      onConfirm: async () => {
+        const result = await postJson("/api/stok/realokasi", {
+          obat_id: item.obat.id,
+          faskes_asal_id: item.faskes!.id,
+          faskes_tujuan_id: item.faskes_tujuan_realokasi!.id,
+          jumlah: item.jumlah_tersedia,
+        });
+        if (!result.ok) alert(result.error);
+        closeModal();
+        fetchAll();
+      },
+    });
+  }
+
+  async function handleTindakanRetur(item: SlowMovingItem) {
+    if (!item.faskes) return;
+    openModal({
+      title: "Konfirmasi Retur",
+      description: `Tandai ${item.obat.nama} (${item.jumlah_tersedia} unit) sebagai retur slow-moving? Modal Rp ${(item.nilai_modal_rp / 1000000).toFixed(1)}jt akan diproses kembali.`,
+      confirmLabel: "Tanda Retur",
+      onConfirm: async () => {
+        const result = await postJson("/api/stok/retur", {
+          obat_id: item.obat.id,
+          faskes_id: item.faskes!.id,
+          jumlah: item.jumlah_tersedia,
+          alasan: "slow_moving",
+        });
+        if (!result.ok) alert(result.error);
+        closeModal();
+        fetchAll();
+      },
+    });
+  }
 
   const openModal = (config: Omit<ModalState, "open">) =>
     setModal({ open: true, ...config });
@@ -401,13 +475,18 @@ export default function EarlyWarningPage() {
         <>
           <InfoStatCards items={statCards} />
           <AiBanner text={summaryData?.teks} updatedAt={summaryData ? timeAgo(summaryData.generated_at) : undefined} />
-          <AlertAndChart alerts={alerts} onAlertClick={handleAlertClick} onAction={handleAction} />
+          <AlertAndChart alerts={alerts} chartData={chartData} chartTitle={chartTitle} onAlertClick={handleAlertClick} onAction={handleAction} />
 
           {/* Tindakan Darurat */}
           <div className="flex flex-col gap-[10px]">
             <h2 className="font-josefin font-bold text-[22px] text-black">
               Tindakan Darurat
             </h2>
+            {tindakanItems.length === 0 && (
+              <div className="rounded-[18px] px-[14px] py-[20px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md text-center text-black/50 font-josefin">
+                Tidak ada obat slow-moving yang butuh tindakan saat ini.
+              </div>
+            )}
             <div className="flex flex-col gap-[10px]">
               {tindakanItems.map((item, i) => (
                 <div
@@ -415,60 +494,46 @@ export default function EarlyWarningPage() {
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-[12px] rounded-[18px] px-[14px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)]"
                 >
                   <div className="flex items-center gap-[16px] min-w-0">
-                    {item.type === "relokasi" ? (
+                    {item.saran === "realokasi" ? (
                       <ArrowLeftRight className="size-[28px] text-[#0c818a] shrink-0" />
                     ) : (
                       <Package className="size-[32px] text-[#0c818a] shrink-0" />
                     )}
                     <div className="flex flex-col gap-[4px] min-w-0">
-                      {item.type === "relokasi" ? (
+                      {item.saran === "realokasi" ? (
                         <>
                           <div className="flex items-center gap-[12px] flex-wrap">
                             <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
-                              {item.drug}
+                              {item.obat.nama}
                             </span>
-                            <span className="font-josefin text-[20px] text-black leading-none">{item.from}</span>
+                            <span className="font-josefin text-[20px] text-black leading-none">{item.faskes?.nama}</span>
                             <span className="text-black">→</span>
-                            <span className="font-josefin text-[20px] text-black leading-none">{item.to}</span>
+                            <span className="font-josefin text-[20px] text-black leading-none">{item.faskes_tujuan_realokasi?.nama}</span>
                           </div>
-                          <span className="font-josefin text-[16px] text-black leading-none">{item.desc}</span>
+                          <span className="font-josefin text-[16px] text-black leading-none">
+                            Pindah {item.jumlah_tersedia} unit stok yang tidak bergerak
+                          </span>
                         </>
                       ) : (
                         <>
                           <span className="font-josefin font-semibold text-[24px] text-black leading-tight">
-                            {item.drug}
+                            {item.obat.nama}
                           </span>
                           <div className="flex items-center gap-[8px] font-josefin text-[16px] text-black">
-                            <span>{item.detail1}</span>
+                            <span>{item.jumlah_tersedia} unit</span>
                             <span className="text-black/40">|</span>
-                            <span>{item.detail2}</span>
+                            <span>Rp {(item.nilai_modal_rp / 1000000).toFixed(1)}jt tertahan</span>
                           </div>
                         </>
                       )}
                     </div>
                   </div>
                   <button
-                    onClick={() =>
-                      openModal(
-                        item.type === "relokasi"
-                          ? {
-                              title: "Konfirmasi Relokasi",
-                              description: `Pindahkan 90 unit ${item.drug} dari ${item.from} ke ${item.to}? Stok akan tutup kebutuhan 5 hari.`,
-                              confirmLabel: "Pindahkan",
-                              onConfirm: () => closeModal(),
-                            }
-                          : {
-                              title: "Konfirmasi Retur",
-                              description: `Tandai ${item.drug} sebagai retur? Nilai ${item.detail2} akan diproses.`,
-                              confirmLabel: "Tanda Retur",
-                              onConfirm: () => closeModal(),
-                            }
-                      )
-                    }
+                    onClick={() => (item.saran === "realokasi" ? handleTindakanRealokasi(item) : handleTindakanRetur(item))}
                     className="font-josefin font-medium text-[18px] text-white rounded-[8px] px-[14px] py-[10px] transition-opacity hover:opacity-80 cursor-pointer shrink-0 self-start sm:self-auto sm:ml-[16px]"
                     style={{ backgroundColor: "#0c818a" }}
                   >
-                    {item.action}
+                    {item.saran === "realokasi" ? "Pindahkan" : "Tanda retur"}
                   </button>
                 </div>
               ))}

@@ -13,6 +13,62 @@ tags:
 
 ---
 
+## 2026-07-07 — Session: Phase 9 (Logistik & Pengadaan)
+
+### ✅ Diselesaikan (F17, F19, F24–F32, F34)
+
+Endpoint logistik yang tersisa dibangun + `/logistik` dan sisa bagian hardcoded `/peringatan-dini`
+(F17 Tindakan Darurat, F19 chart stok vs kebutuhan) disambungkan penuh ke data real.
+
+**Backend:**
+- `backend/src/models/Obat.ts` — kolom baru `pbf_id` (nullable FK ke `pbf`), lihat [[DECISIONS#ADR-011]].
+- `backend/src/controllers/logistic.ts` — `getDefekta`, `getSlowMoving`, `createSuratPesanan` baru;
+  `getStats` diperbaiki (ketahanan pakai rata-rata pemakaian nyata, bukan asumsi tetap "/10");
+  `getStokChart` ditambah `mode=line` untuk chart EWS.
+- `backend/src/routes/logistic.ts` — routes baru + Swagger JSDoc.
+- `backend/src/seedAll.ts` — assign `pbf_id` round-robin ke semua obat, tambah ~150 baris riwayat
+  `pergerakan_stok` tipe `'keluar'` sintetis (45 hari, fast/medium mover) — lihat [[DECISIONS#ADR-011]].
+- `backend/src/controllers/auth.ts` — `st_user` cookie & response login sekarang bawa `faskes_id`
+  (dibutuhkan FE untuk tahu faskes manajer sendiri saat submit SP/realokasi/retur).
+
+**Frontend:**
+- `frontend/src/app/(dashboard)/logistik/page.tsx` — ditulis ulang total, semua array hardcoded
+  (`stockData`, `statCards`, `defektaGroups`, `nearExpiryItems`, `slowMovingItems`, `relokasiItems`)
+  diganti fetch API real. Tombol "Buat Pesanan"/"Sarankan realokasi"/"Tanda retur" tersambung ke
+  `POST /api/logistic/surat-pesanan` dan `POST /api/stok/{realokasi,retur}`.
+- `frontend/src/app/(dashboard)/peringatan-dini/page.tsx` — `chartData` (F19) dan `tindakanItems`
+  (F17) yang tadinya hardcoded sekarang dari `GET /api/logistic/{stok/chart,slow-moving,defekta}`.
+- `frontend/src/lib/api.ts` (baru) — helper `postJson()` yang cek `res.ok`, dipakai di semua
+  tombol aksi — lihat catatan bug di bawah.
+- `frontend/src/lib/auth.ts` / `auth.client.ts` — `User` type + mapping ditambah `faskes_id`.
+
+**Keputusan penting (lihat [[DECISIONS#ADR-011]] untuk detail):**
+- Defekta dikelompokkan per **`(pbf_id, tipe)`**, bukan cuma `pbf_id` — satu PBF bisa memasok
+  obat reguler & npp sekaligus, dan item npp wajib SP terpisah (skema `sp_item`). Tanpa split ini,
+  klik "Buat Pesanan" pada grup campuran akan selalu ditolak backend.
+- `sp_item` tidak punya kolom harga — `harga_satuan`/`subtotal` di response `POST` dihitung dari
+  `obat.harga_beli` saat itu, input `harga_satuan` dari client diabaikan.
+- `GET /api/logistic/summary` (AiBanner `/logistik`) **tidak dikerjakan** — di luar scope yang
+  disepakati; `AiBanner` di halaman itu masih pakai teks default komponennya.
+
+### 🐛 Bug ditemukan & diperbaiki saat verifikasi — Error POST disilent-swallow oleh FE
+
+`fetch()` tidak reject di respons 4xx/5xx (cuma reject kalau network error), jadi percobaan
+"Buat Pesanan" untuk grup npp sebagai manajer (bukan apoteker, sengaja diklik saat testing) kena
+403 dari backend — tapi UI tidak menunjukkan apa-apa, `fetchAll()` tetap terpanggil seolah sukses.
+Ditemukan lewat Playwright (`console --errors` menangkap 403 yang tidak pernah sampai ke user).
+Diperbaiki dengan `postJson()` helper yang cek `res.ok` dan `alert()` pesan error dari body kalau
+gagal, dipakai di semua 5 titik POST di kedua halaman. Diverifikasi ulang: SP reguler oleh manajer
+sukses tanpa dialog, SP npp oleh manajer nolak dengan alert 403, SP npp oleh apoteker sukses.
+
+**Verifikasi end-to-end:** curl semua endpoint baru, `npm run test:tps` 100% lulus tiap rebuild,
+Playwright login manajer → `/logistik` (kedua tab) + `/peringatan-dini` → screenshot semua
+bagian dengan data real → eksekusi nyata "Buat Pesanan" (SP baru tercatat di DB) dan "Tanda retur"
+(stok Vitamin C 250→0 di DB) → data uji dibersihkan lagi setelah verifikasi, tidak ada console
+error tersisa.
+
+---
+
 ## 2026-07-07 — Session: Verifikasi End-to-End Admin Dashboard
 
 ### ✅ Diverifikasi (menyelesaikan pending dari sesi 2026-07-06)
