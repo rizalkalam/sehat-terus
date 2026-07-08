@@ -11,6 +11,20 @@ async function validatePbfId(pbf_id: string): Promise<string | null> {
   return null;
 }
 
+async function validateFaskesId(faskes_id: string): Promise<string | null> {
+  if (!UUID_RE.test(faskes_id)) return `faskes_id '${faskes_id}' bukan UUID yang valid.`;
+  const faskes = await FasilitasKesehatan.findByPk(faskes_id);
+  if (!faskes) return `Fasilitas kesehatan dengan ID '${faskes_id}' tidak ditemukan.`;
+  return null;
+}
+
+async function validateObatId(obat_id: string): Promise<string | null> {
+  if (!UUID_RE.test(obat_id)) return `obat_id '${obat_id}' bukan UUID yang valid.`;
+  const obat = await Obat.findByPk(obat_id);
+  if (!obat) return `Obat dengan ID '${obat_id}' tidak ditemukan.`;
+  return null;
+}
+
 // ── USER MANAGEMENT ───────────────────────────────────────────────────────────
 
 export async function getUsers(req: Request, res: Response) {
@@ -158,6 +172,96 @@ export async function deleteObat(req: Request, res: Response) {
 
     await obat.destroy();
     res.json({ success: true, message: 'Obat dihapus.' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+// ── STOK MANAGEMENT ───────────────────────────────────────────────────────────
+// Override admin langsung ke tabel stok (koreksi inventaris) — beda dari
+// POST /api/stok/realokasi & /retur (stok.ts) yang FEFO + tercatat di
+// pergerakan_stok. Endpoint ini TIDAK membuat baris pergerakan_stok.
+
+export async function getStokAdmin(req: Request, res: Response) {
+  try {
+    const stok = await Stok.findAll({
+      include: [
+        { association: 'obat', attributes: ['nama', 'satuan'] },
+        { association: 'faskes', attributes: ['nama'] },
+      ],
+      order: [['tanggal_kedaluwarsa', 'ASC']],
+    });
+    res.json({ success: true, data: stok });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function createStok(req: Request, res: Response) {
+  try {
+    const { faskes_id, obat_id, jumlah_tersedia, tanggal_kedaluwarsa, batch } = req.body;
+    if (!faskes_id || !obat_id) {
+      return res.status(400).json({ error: 'faskes_id dan obat_id wajib diisi.' });
+    }
+    if (jumlah_tersedia !== undefined && Number(jumlah_tersedia) < 0) {
+      return res.status(400).json({ error: 'jumlah_tersedia tidak boleh negatif.' });
+    }
+    const faskesErr = await validateFaskesId(faskes_id);
+    if (faskesErr) return res.status(400).json({ error: faskesErr });
+    const obatErr = await validateObatId(obat_id);
+    if (obatErr) return res.status(400).json({ error: obatErr });
+
+    const stok = await Stok.create({
+      faskes_id, obat_id,
+      jumlah_tersedia: jumlah_tersedia ?? 0,
+      tanggal_kedaluwarsa: tanggal_kedaluwarsa || null,
+      batch: batch || null,
+    });
+    res.status(201).json({ success: true, data: stok });
+  } catch (err: any) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ error: 'Sudah ada baris stok dengan kombinasi faskes, obat, batch, dan tanggal kedaluwarsa yang sama.' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function updateStok(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const stok = await Stok.findByPk(id);
+    if (!stok) return res.status(404).json({ error: 'Stok tidak ditemukan.' });
+
+    const { faskes_id, obat_id, jumlah_tersedia, tanggal_kedaluwarsa, batch } = req.body;
+    if (jumlah_tersedia !== undefined && Number(jumlah_tersedia) < 0) {
+      return res.status(400).json({ error: 'jumlah_tersedia tidak boleh negatif.' });
+    }
+    if (faskes_id) {
+      const err = await validateFaskesId(faskes_id);
+      if (err) return res.status(400).json({ error: err });
+    }
+    if (obat_id) {
+      const err = await validateObatId(obat_id);
+      if (err) return res.status(400).json({ error: err });
+    }
+
+    await stok.update({ faskes_id, obat_id, jumlah_tersedia, tanggal_kedaluwarsa, batch });
+    res.json({ success: true, data: stok });
+  } catch (err: any) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ error: 'Sudah ada baris stok dengan kombinasi faskes, obat, batch, dan tanggal kedaluwarsa yang sama.' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteStok(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const stok = await Stok.findByPk(id);
+    if (!stok) return res.status(404).json({ error: 'Stok tidak ditemukan.' });
+    await stok.destroy();
+    res.json({ success: true, message: 'Baris stok dihapus.' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

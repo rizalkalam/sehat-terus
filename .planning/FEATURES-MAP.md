@@ -400,7 +400,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ (diverifikasi browser 2026-07-07, 1 bug diperbaiki — lihat [[CHANGELOG]]) | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
 | FA4 | Registrasi mandiri dinonaktifkan, akun baru cuma lewat admin | ✅ (sudah ada sebelum merge ini) | `pengguna` | `/register` (pesan error tetap), `/admin/users` (jalur resmi buat akun) |
 | FA5 | CRUD master obat dari admin panel | ✅ (2026-07-08) | `obat` | `/admin/obat` |
-| FA6 | CRUD stok dari admin panel | ❌ | `stok` | Belum ada — sama seperti FA5 sebelumnya, phase berikutnya |
+| FA6 | CRUD stok dari admin panel | ✅ (2026-07-08) | `stok` | `/admin/stok` |
 | FA8 | Landing per peran setelah login (`middleware.ts`) | ✅ | `pengguna` | admin → `/admin`; manajer → `/` (dashboard MIS); apoteker & staf_logistik → **Swagger UI backend** (`/api/docs`), karena belum ada halaman FE untuk peran itu (lihat [[CHANGELOG]] 2026-07-06) |
 | FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ❌ | `stok`, `pergerakan_stok`, `alert_ews` | Belum ada — sama seperti FA6, phase berikutnya |
 
@@ -442,13 +442,42 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 > serta halaman di-fetch dengan cookie sesi admin — render 200 dengan judul "Kelola Obat" dan link
 > sidebar "Obat" muncul di HTML.
 
-> [!note] Kenapa FA6–FA7 masih exclude, bukan cuma "belum sempat"
-> Source branch punya `routes/admin.ts`+`controllers/admin.ts` yang menggabungkan CRUD user +
-> CRUD obat + CRUD stok jadi satu file. User eksplisit minta cuma 4 fitur (FA1–FA4) yang diambil
-> di merge 2026-07-06, jadi controller/route di-split manual — FA5 sekarang sudah dibangun ulang
-> (2026-07-08) dari referensi yang sama. FA6–FA7 kode aslinya (untuk referensi kalau mau dikerjakan
-> lagi) ada di branch `feat/admin-system-and-ai-update`, commit `6adaa31`, fungsi
-> `getStokAdmin/updateStok` di `admin.ts` + endpoint `GET /api/ai/predict-drugs`.
+> [!success] FA6 Selesai Penuh — Backend + FE (2026-07-08)
+> `getStokAdmin`/`createStok`/`updateStok`/`deleteStok` ditambah ke `admin.ts` (controller + route),
+> diadaptasi dari referensi lama commit `6adaa31` yang cuma punya `getStokAdmin`/`updateStok` —
+> `createStok` dan `deleteStok` ditulis baru, ikut pola validasi FK (`validateFaskesId`/
+> `validateObatId`, sama seperti `validatePbfId` di FA5). Halaman `/admin/stok`
+> (`frontend/src/app/admin/stok/page.tsx`) dibuat dengan pola sama persis `/admin/obat` — tabel
+> (obat, faskes, jumlah, satuan, kedaluwarsa, batch) + modal tambah/edit dengan dropdown obat
+> (reuse `GET /api/admin/obat`) dan faskes (reuse `GET /api/admin/faskes` yang sudah ada, tidak
+> perlu endpoint baru). Link "Stok" ditambah ke `AdminSidebar.tsx` (ikon `Boxes`).
+>
+> **Beda penting dari CRUD lain:** endpoint ini adalah **override admin langsung** ke tabel `stok`
+> (koreksi inventaris manual) — beda dari `POST /api/stok/realokasi`/`retur` (`stok.ts`, dipakai F17/
+> F29–F30) yang FEFO-aware dan selalu mencatat baris `pergerakan_stok`. CRUD admin ini **tidak**
+> membuat baris `pergerakan_stok` — perubahan `jumlah_tersedia` lewat sini tidak punya jejak audit,
+> sengaja karena ini jalur koreksi cepat, bukan transaksi bisnis. Kalau butuh audit trail, pakai
+> endpoint `stok.ts` yang sudah ada.
+>
+> `createStok`/`updateStok` juga menangani `SequelizeUniqueConstraintError` (index unik
+> `faskes_id+obat_id+batch+tanggal_kedaluwarsa`) jadi 409 dengan pesan jelas, bukan raw 500 —
+> diverifikasi dengan percobaan insert duplikat kombinasi yang sama persis. `deleteStok` hard-delete
+> polos tanpa guard (tidak ada tabel lain yang FK ke `stok.id`, beda dari `deleteObat`).
+>
+> Diverifikasi: `npx tsc --noEmit` bersih FE & BE, docker rebuild, curl end-to-end penuh
+> (create → duplicate 409 → jumlah negatif 400 → update → delete), dan halaman `/admin/stok`
+> di-fetch dengan cookie admin — render 200, judul "Kelola Stok" + link sidebar "Stok" ada di HTML.
+>
+> **Catatan:** asosiasi `Stok.belongsTo(FasilitasKesehatan)` / `FasilitasKesehatan.hasMany(Stok)`
+> masih **tidak** punya `onDelete` eksplisit (default Sequelize CASCADE untuk FK NOT NULL) — beda
+> dari `Obat.hasMany(Stok, { onDelete: 'RESTRICT' })` yang sudah diperbaiki FA5. Artinya hapus
+> `fasilitas_kesehatan` masih bisa diam-diam menghapus semua `stok` terkait. Di luar scope FA6 (tidak
+> ada CRUD faskes di admin panel), dicatat di sini kalau nanti ada fitur hapus faskes.
+
+> [!note] FA7 masih exclude
+> Source branch (`feat/admin-system-and-ai-update`, commit `6adaa31`) juga punya endpoint
+> `GET /api/ai/predict-drugs` (prediksi kebutuhan obat via Groq) yang belum diambil — di luar scope
+> sesi FA5/FA6 ini.
 
 ---
 
@@ -480,6 +509,8 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | `/api/admin/obat` | GET/POST | ✅ (2026-07-08 — baru) | FA5 |
 | `/api/admin/obat/:id` | PUT/DELETE | ✅ (2026-07-08 — baru) | FA5 |
 | `/api/admin/pbf` | GET | ✅ (2026-07-08 — baru) | FA5 (dropdown PBF di form obat) |
+| `/api/admin/stok` | GET/POST | ✅ (2026-07-08 — baru) | FA6 |
+| `/api/admin/stok/:id` | PUT/DELETE | ✅ (2026-07-08 — baru) | FA6 |
 | `/api/forecasting/projection` | GET | ✅ (2026-07-07) | F21 |
 | `/api/forecasting/stats` | GET | ✅ (2026-07-07) | F22 |
 | `/api/forecasting/alerts` | GET | ✅ (2026-07-07) | F23 |

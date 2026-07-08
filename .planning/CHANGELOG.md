@@ -13,6 +13,41 @@ tags:
 
 ---
 
+## 2026-07-08 — Session: CRUD Stok Admin Panel (FA6)
+
+### ✅ Diselesaikan (FA6)
+
+CRUD stok dari admin panel — override langsung ke tabel `stok` untuk koreksi inventaris manual,
+beda dari `POST /api/stok/realokasi`/`retur` (FEFO + audit trail `pergerakan_stok`).
+
+- `backend/src/controllers/admin.ts` — tambah `getStokAdmin`, `createStok`, `updateStok`,
+  `deleteStok`. Referensi lama (commit `6adaa31`, branch `feat/admin-system-and-ai-update`) cuma
+  punya `getStokAdmin`/`updateStok` — `createStok` dan `deleteStok` ditulis baru mengikuti pola FA5
+  (`validateFaskesId`/`validateObatId`, sama gaya `validatePbfId`).
+- `backend/src/routes/admin.ts` — `GET/POST /api/admin/stok`, `PUT/DELETE /api/admin/stok/:id` +
+  Swagger docs.
+- `frontend/src/app/admin/stok/page.tsx` (baru) — halaman `/admin/stok`, pola sama persis
+  `/admin/obat`. Dropdown obat & faskes reuse endpoint yang sudah ada (`/api/admin/obat`,
+  `/api/admin/faskes`) — tidak perlu endpoint dropdown baru.
+- `frontend/src/components/AdminSidebar.tsx` — tambah link nav "Stok" (ikon `Boxes`).
+
+**Keputusan implementasi:** `createStok`/`updateStok` menangani `SequelizeUniqueConstraintError`
+(index unik `faskes_id+obat_id+batch+tanggal_kedaluwarsa`) → 409 dengan pesan jelas, bukan raw 500.
+`deleteStok` hard-delete tanpa guard tambahan — tidak ada tabel lain yang FK ke `stok.id`, beda dari
+`deleteObat` yang perlu cek 6 tabel terkait. Validasi `jumlah_tersedia >= 0` di create & update.
+
+**Dicatat, di luar scope:** asosiasi `Stok.belongsTo(FasilitasKesehatan)` masih belum punya
+`onDelete: 'RESTRICT'` eksplisit (beda dari `Obat.hasMany(Stok, ...)` yang sudah diperbaiki FA5) —
+hapus faskes masih bisa cascade-delete stok terkait. Tidak relevan untuk FA6 karena admin panel
+belum punya CRUD faskes.
+
+**Verifikasi:** `npx tsc --noEmit` bersih FE & BE, docker image backend+frontend di-rebuild, curl
+end-to-end penuh (login admin → create → duplicate kombinasi unik → 409 → jumlah negatif → 400 →
+update → delete), dan halaman `/admin/stok` di-fetch dengan cookie sesi admin — render 200 dengan
+judul "Kelola Stok" + link sidebar "Stok" muncul di HTML.
+
+---
+
 ## 2026-07-08 — Session: Halaman FE Kelola Obat (FA5 selesai penuh)
 
 ### ✅ Diselesaikan (FA5 — FE)
