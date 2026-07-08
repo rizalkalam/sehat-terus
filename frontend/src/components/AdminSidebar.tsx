@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, LayoutDashboard, LogOut, Pill, Boxes } from "lucide-react";
+import { Users, LayoutDashboard, LogOut, Pill, Boxes, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -16,6 +16,7 @@ export default function AdminSidebar() {
     { name: "Pengguna", path: "/admin/users", icon: Users },
     { name: "Obat", path: "/admin/obat", icon: Pill },
     { name: "Stok", path: "/admin/stok", icon: Boxes },
+    { name: "Prediksi AI", path: "/admin/prediksi-obat", icon: Sparkles },
   ];
 
   return (

@@ -402,7 +402,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | FA5 | CRUD master obat dari admin panel | ✅ (2026-07-08) | `obat` | `/admin/obat` |
 | FA6 | CRUD stok dari admin panel | ✅ (2026-07-08) | `stok` | `/admin/stok` |
 | FA8 | Landing per peran setelah login (`middleware.ts`) | ✅ | `pengguna` | admin → `/admin`; manajer → `/` (dashboard MIS); apoteker & staf_logistik → **Swagger UI backend** (`/api/docs`), karena belum ada halaman FE untuk peran itu (lihat [[CHANGELOG]] 2026-07-06) |
-| FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ❌ | `stok`, `pergerakan_stok`, `alert_ews` | Belum ada — sama seperti FA6, phase berikutnya |
+| FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ✅ (2026-07-08 — kode selesai & guard terverifikasi, tapi `GROQ_API_KEY` belum diisi di `.env` jadi panggilan Groq sungguhan belum diverifikasi — sama seperti F16 sebelumnya) | `stok`, `pergerakan_stok` (via `computeDefekta`/`computeSlowMoving`) | `/admin/prediksi-obat` |
 
 > [!success] FA5 Selesai — Backend (2026-07-08)
 > `GET/POST /api/admin/obat`, `PUT/DELETE /api/admin/obat/:id` diimplementasi di `admin.ts`
@@ -474,10 +474,48 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 > `fasilitas_kesehatan` masih bisa diam-diam menghapus semua `stok` terkait. Di luar scope FA6 (tidak
 > ada CRUD faskes di admin panel), dicatat di sini kalau nanti ada fitur hapus faskes.
 
-> [!note] FA7 masih exclude
-> Source branch (`feat/admin-system-and-ai-update`, commit `6adaa31`) juga punya endpoint
-> `GET /api/ai/predict-drugs` (prediksi kebutuhan obat via Groq) yang belum diambil — di luar scope
-> sesi FA5/FA6 ini.
+> [!success] FA7 Selesai Penuh — Backend + FE (2026-07-08)
+> `GET /api/ai/predict-drugs` ditambah ke `ai.ts` (controller + route), tapi **desain sengaja beda**
+> dari referensi lama (commit `6adaa31`, `predictDrugNeeds`) — bukan cuma port langsung.
+>
+> **Kenapa didesain ulang, bukan di-port apa adanya:** referensi lama dump `stok`+`alert_ews` mentah
+> ke prompt dan minta LLM **mengarang sendiri** angka `prediksi_kebutuhan`/`total_estimasi_biaya` —
+> tidak deterministik, gampang halusinasi angka yang tidak match data asli. Referensi itu juga
+> query `pergerakan` (30 hari) tapi **tidak pernah dipakai** di prompt (dead code) dan tidak ada guard
+> kalau `GROQ_API_KEY` kosong.
+>
+> **Desain baru:** `computeDefekta`/`computeSlowMoving` — logika inti F25/F28 di `logistic.ts` yang
+> sudah battle-tested — diekstrak jadi fungsi terpisah dari handler HTTP-nya (`getDefekta`/
+> `getSlowMoving` sekarang cuma manggil lalu `res.json`, tidak ada perubahan hasil — diverifikasi
+> `diff` byte-identik response sebelum/sesudah refactor). `predictDrugNeeds` (di `ai.ts`) manggil
+> kedua fungsi itu untuk dapat angka pasti (`usulan_pesanan`, `ketahanan_hari`, `nilai_modal_rp`,
+> `saran` realokasi/retur — semua sudah dihitung sistem, bukan LLM), lalu Groq **cuma diminta
+> menulis ringkasan naratif + rekomendasi** dari angka itu (prompt eksplisit larang mengarang angka
+> sendiri). Response akhir menggabungkan narasi Groq (`summary`, `alert_status`, `rekomendasi`)
+> dengan angka asli dari `computeDefekta`/`computeSlowMoving` (`kebutuhan_mendesak`,
+> `stok_berlebih`) — hasil sekarang konsisten dengan angka yang dilihat manajer di `/logistik`.
+>
+> **Guard tambahan yang tidak ada di referensi lama:** kalau `GROQ_API_KEY` kosong → 500 dengan
+> pesan jelas (bukan diam-diam gagal parsing respons Groq yang tidak terautentikasi). Kalau tidak
+> ada obat defekta maupun slow-moving sama sekali → balik langsung tanpa panggil Groq (hemat biaya
+> API, tidak ada yang perlu diringkas). Route dipasang `requireAuth` **+ `requireAdmin`** (referensi
+> lama tidak ada guard auth sama sekali) — sesuai konteks "admin panel" di nama fitur.
+>
+> Halaman `/admin/prediksi-obat` (`frontend/src/app/admin/prediksi-obat/page.tsx`) — beda dari
+> FA5/FA6 (bukan tabel CRUD): dropdown pilih faskes (opsional, default semua) + tombol "Jalankan
+> Prediksi", lalu render badge status (Normal/Waspada/Bahaya), ringkasan, daftar rekomendasi, dan
+> 2 tabel (kebutuhan mendesak, stok berlebih). Link "Prediksi AI" ditambah ke `AdminSidebar.tsx`
+> (ikon `Sparkles`).
+>
+> **Diverifikasi:** `npx tsc --noEmit` bersih FE & BE, docker rebuild, refactor `computeDefekta`/
+> `computeSlowMoving` diverifikasi tidak mengubah hasil (`diff` byte-identik terhadap seed data asli
+> sebelum & sesudah rebuild), guard `requireAdmin` diverifikasi (403 login sebagai manajer), guard
+> `GROQ_API_KEY` kosong diverifikasi (500 pesan jelas), halaman `/admin/prediksi-obat` di-fetch
+> dengan cookie admin — render 200 + link sidebar "Prediksi AI" ada di HTML.
+>
+> **Belum diverifikasi:** panggilan Groq sungguhan (`GROQ_API_KEY` belum ada di `.env` lokal —
+> sama seperti `/api/ai/analyze`/F16 sebelumnya, yang juga belum pernah diverifikasi live). Isi key
+> asli sebelum dipakai produksi.
 
 ---
 
@@ -511,6 +549,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | `/api/admin/pbf` | GET | ✅ (2026-07-08 — baru) | FA5 (dropdown PBF di form obat) |
 | `/api/admin/stok` | GET/POST | ✅ (2026-07-08 — baru) | FA6 |
 | `/api/admin/stok/:id` | PUT/DELETE | ✅ (2026-07-08 — baru) | FA6 |
+| `/api/ai/predict-drugs` | GET | ✅ BE (2026-07-08 — baru, butuh `GROQ_API_KEY`, `requireAdmin`) | FA7 |
 | `/api/forecasting/projection` | GET | ✅ (2026-07-07) | F21 |
 | `/api/forecasting/stats` | GET | ✅ (2026-07-07) | F22 |
 | `/api/forecasting/alerts` | GET | ✅ (2026-07-07) | F23 |

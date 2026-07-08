@@ -13,6 +13,51 @@ tags:
 
 ---
 
+## 2026-07-08 — Session: Prediksi Kebutuhan Obat via AI (FA7) — domain Admin selesai
+
+### ✅ Diselesaikan (FA7 — terakhir dari Domain 8 Admin Panel)
+
+`GET /api/ai/predict-drugs` + halaman `/admin/prediksi-obat`. Didesain ulang dari referensi lama
+(commit `6adaa31`, `predictDrugNeeds`), bukan port langsung — referensi lama membiarkan LLM
+mengarang sendiri angka `prediksi_kebutuhan`, tidak deterministik dan rawan halusinasi.
+
+- **Refactor `backend/src/controllers/logistic.ts`:** logika inti F25 (`getDefekta`) dan F28
+  (`getSlowMoving`) diekstrak jadi `computeDefekta(faskesId)` / `computeSlowMoving(faskesId, days)`
+  yang return data langsung (bukan `res.json`) — kedua handler HTTP lama sekarang cuma memanggil
+  fungsi ini. Refactor murni (tidak ada perubahan logika), diverifikasi `diff` byte-identik pada
+  response `/api/logistic/defekta` dan `/api/logistic/slow-moving` sebelum vs sesudah refactor
+  (pakai data seed nyata dari `npm run seed:all`).
+- **`backend/src/controllers/ai.ts`** — `predictDrugNeeds` baru: panggil `computeDefekta`+
+  `computeSlowMoving` untuk angka pasti (`usulan_pesanan`, `ketahanan_hari`, `nilai_modal_rp`,
+  `saran` realokasi/retur), lalu Groq (`llama-3.1-8b-instant`, pola sama dengan `analyzeDiseaseData`
+  yang sudah ada) **cuma diminta menulis ringkasan naratif + rekomendasi** dari angka itu — prompt
+  eksplisit melarang LLM mengarang angka sendiri. Response gabungkan narasi Groq dengan angka asli,
+  supaya selalu konsisten dengan apa yang manajer lihat di `/logistik`.
+- **`backend/src/routes/ai.ts`** — `GET /predict-drugs` dengan `requireAuth` + `requireAdmin`
+  (referensi lama tidak ada guard auth sama sekali) + Swagger docs.
+- **`frontend/src/app/admin/prediksi-obat/page.tsx`** (baru) — beda dari FA5/FA6 (bukan tabel CRUD):
+  dropdown pilih faskes + tombol "Jalankan Prediksi", render badge alert status, ringkasan,
+  rekomendasi, dan 2 tabel (kebutuhan mendesak, stok berlebih).
+- **`frontend/src/components/AdminSidebar.tsx`** — tambah link "Prediksi AI" (ikon `Sparkles`).
+
+**Guard baru yang tidak ada di referensi lama:** `GROQ_API_KEY` kosong → 500 pesan jelas (bukan
+diam-diam gagal parsing respons Groq yang tidak terautentikasi). Tidak ada obat defekta/slow-moving
+sama sekali → balik langsung tanpa panggil Groq (hemat biaya API).
+
+**Verifikasi:** `npx tsc --noEmit` bersih FE & BE, docker rebuild, refactor `computeDefekta`/
+`computeSlowMoving` diverifikasi `diff` byte-identik, guard `requireAdmin` diverifikasi (403 login
+sebagai manajer), guard `GROQ_API_KEY` kosong diverifikasi (500 pesan jelas), halaman
+`/admin/prediksi-obat` di-fetch dengan cookie admin — render 200 + link sidebar ada di HTML.
+
+**Belum diverifikasi:** panggilan Groq sungguhan — `GROQ_API_KEY` belum ada di `.env` lokal (dicek
+langsung, memang kosong, bukan cuma belum dicoba), sama seperti `/api/ai/analyze`/F16 sebelumnya
+yang juga belum pernah diverifikasi live. Isi key asli sebelum dipakai produksi.
+
+**Domain 8 (Admin Panel) sekarang selesai penuh:** FA1–FA7 semua ✅ (FA8 juga sudah ✅ dari sesi
+sebelumnya).
+
+---
+
 ## 2026-07-08 — Session: CRUD Stok Admin Panel (FA6)
 
 ### ✅ Diselesaikan (FA6)

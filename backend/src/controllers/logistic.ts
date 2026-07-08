@@ -241,78 +241,154 @@ export async function getNearExpiry(req: Request, res: Response) {
   }
 }
 
+// Logika inti F25 (defekta) — dipakai handler HTTP di bawah maupun predictDrugNeeds (FA7, ai.ts)
+// supaya keduanya pakai satu sumber angka yang sama, bukan menghitung ulang secara terpisah.
+export async function computeDefekta(faskesId?: string) {
+  const stokWhere: any = {};
+  if (faskesId) stokWhere.faskes_id = faskesId;
+
+  const stok = await Stok.findAll({
+    where: stokWhere,
+    include: [{ model: Obat, as: 'obat', include: [{ model: Pbf, as: 'pbf' }] }],
+  });
+
+  const trenMap = await getTrenHarianMap(faskesId);
+
+  const perObat: Record<string, { obat: any; total: number }> = {};
+  for (const s of stok) {
+    const obat = (s as any).obat;
+    if (!obat) continue;
+    if (!perObat[obat.id]) perObat[obat.id] = { obat, total: 0 };
+    perObat[obat.id].total += s.jumlah_tersedia;
+  }
+
+  const defektaObat = Object.values(perObat).filter((e) => e.total < e.obat.stok_minimum);
+
+  // Cek SP aktif per (PBF, jenis), supaya UI bisa kunci grup yang sedang berjalan.
+  const activeSpWhere: any = { status: { [Op.in]: AKTIF_SP_STATUS } };
+  if (faskesId) activeSpWhere.faskes_id = faskesId;
+  const activeSp = await SuratPesanan.findAll({ where: activeSpWhere, attributes: ['pbf_id', 'jenis'], raw: true });
+  const lockedKeys = new Set(activeSp.map((sp: any) => `${sp.pbf_id}::${sp.jenis}`));
+
+  const groups: Record<string, { pbf: any; tipe: 'reguler' | 'npp'; locked: boolean; items: any[] }> = {};
+  for (const { obat, total } of defektaObat) {
+    const pbf = obat.pbf;
+    // Item npp WAJIB di SP terpisah (satu PBF bisa memasok reguler & npp sekaligus) —
+    // grup dipisah per (pbf, tipe), bukan cuma per pbf, supaya "Buat Pesanan" per grup
+    // selalu valid dikirim sebagai satu SP.
+    const tipe: 'reguler' | 'npp' = obat.golongan === 'npp' ? 'npp' : 'reguler';
+    const groupKey = `${pbf?.id || 'tanpa-pbf'}::${tipe}`;
+    if (!groups[groupKey]) {
+      groups[groupKey] = {
+        pbf: pbf ? { id: pbf.id, nama: pbf.nama } : { id: null, nama: 'Belum ada PBF' },
+        tipe,
+        locked: pbf ? lockedKeys.has(`${pbf.id}::${tipe}`) : false,
+        items: [],
+      };
+    }
+
+    const trenHarian = (faskesId ? trenMap[obat.id] : trenMap[`${obat.id}::_`]) || 0;
+    const kebutuhan30Hari = Math.round(trenHarian * 30);
+    const kekurangan = Math.max(0, obat.stok_minimum - total);
+    const usulan = Math.max(kekurangan, kebutuhan30Hari - total);
+
+    groups[groupKey].items.push({
+      obat_id: obat.id,
+      nama: obat.nama,
+      jenis: obat.jenis,
+      satuan: obat.satuan,
+      ketahanan_hari: trenHarian > 0 ? Math.floor(total / trenHarian) : null,
+      tren_harian: Math.round(trenHarian * 10) / 10,
+      jumlah_tersedia: total,
+      stok_minimum: obat.stok_minimum,
+      jumlah_kekurangan: kekurangan,
+      usulan_pesanan: usulan,
+      harga_satuan: Number(obat.harga_beli),
+    });
+  }
+
+  return Object.values(groups);
+}
+
 // GET /api/logistic/defekta?faskes_id=
 export async function getDefekta(req: Request, res: Response) {
   try {
     const faskesId = req.query.faskes_id as string | undefined;
-
-    const stokWhere: any = {};
-    if (faskesId) stokWhere.faskes_id = faskesId;
-
-    const stok = await Stok.findAll({
-      where: stokWhere,
-      include: [{ model: Obat, as: 'obat', include: [{ model: Pbf, as: 'pbf' }] }],
-    });
-
-    const trenMap = await getTrenHarianMap(faskesId);
-
-    const perObat: Record<string, { obat: any; total: number }> = {};
-    for (const s of stok) {
-      const obat = (s as any).obat;
-      if (!obat) continue;
-      if (!perObat[obat.id]) perObat[obat.id] = { obat, total: 0 };
-      perObat[obat.id].total += s.jumlah_tersedia;
-    }
-
-    const defektaObat = Object.values(perObat).filter((e) => e.total < e.obat.stok_minimum);
-
-    // Cek SP aktif per (PBF, jenis), supaya UI bisa kunci grup yang sedang berjalan.
-    const activeSpWhere: any = { status: { [Op.in]: AKTIF_SP_STATUS } };
-    if (faskesId) activeSpWhere.faskes_id = faskesId;
-    const activeSp = await SuratPesanan.findAll({ where: activeSpWhere, attributes: ['pbf_id', 'jenis'], raw: true });
-    const lockedKeys = new Set(activeSp.map((sp: any) => `${sp.pbf_id}::${sp.jenis}`));
-
-    const groups: Record<string, { pbf: any; tipe: 'reguler' | 'npp'; locked: boolean; items: any[] }> = {};
-    for (const { obat, total } of defektaObat) {
-      const pbf = obat.pbf;
-      // Item npp WAJIB di SP terpisah (satu PBF bisa memasok reguler & npp sekaligus) —
-      // grup dipisah per (pbf, tipe), bukan cuma per pbf, supaya "Buat Pesanan" per grup
-      // selalu valid dikirim sebagai satu SP.
-      const tipe: 'reguler' | 'npp' = obat.golongan === 'npp' ? 'npp' : 'reguler';
-      const groupKey = `${pbf?.id || 'tanpa-pbf'}::${tipe}`;
-      if (!groups[groupKey]) {
-        groups[groupKey] = {
-          pbf: pbf ? { id: pbf.id, nama: pbf.nama } : { id: null, nama: 'Belum ada PBF' },
-          tipe,
-          locked: pbf ? lockedKeys.has(`${pbf.id}::${tipe}`) : false,
-          items: [],
-        };
-      }
-
-      const trenHarian = (faskesId ? trenMap[obat.id] : trenMap[`${obat.id}::_`]) || 0;
-      const kebutuhan30Hari = Math.round(trenHarian * 30);
-      const kekurangan = Math.max(0, obat.stok_minimum - total);
-      const usulan = Math.max(kekurangan, kebutuhan30Hari - total);
-
-      groups[groupKey].items.push({
-        obat_id: obat.id,
-        nama: obat.nama,
-        jenis: obat.jenis,
-        satuan: obat.satuan,
-        ketahanan_hari: trenHarian > 0 ? Math.floor(total / trenHarian) : null,
-        tren_harian: Math.round(trenHarian * 10) / 10,
-        jumlah_tersedia: total,
-        stok_minimum: obat.stok_minimum,
-        jumlah_kekurangan: kekurangan,
-        usulan_pesanan: usulan,
-        harga_satuan: Number(obat.harga_beli),
-      });
-    }
-
-    res.json({ success: true, data: Object.values(groups) });
+    const data = await computeDefekta(faskesId);
+    res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
+}
+
+// Logika inti F28 (slow-moving) — dipakai handler HTTP di bawah maupun predictDrugNeeds (FA7, ai.ts).
+export async function computeSlowMoving(faskesId?: string, days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  const stokWhere: any = { jumlah_tersedia: { [Op.gt]: 0 } };
+  if (faskesId) stokWhere.faskes_id = faskesId;
+
+  const stok = await Stok.findAll({
+    where: stokWhere,
+    include: [
+      { model: Obat, as: 'obat', attributes: ['id', 'nama', 'stok_minimum', 'harga_beli'] },
+      { model: FasilitasKesehatan, as: 'faskes', attributes: ['id', 'nama'] },
+    ],
+  });
+
+  const recentMovement = (await PergerakanStok.findAll({
+    where: { tipe: 'keluar', tanggal: { [Op.gte]: since } },
+    attributes: ['obat_id', 'faskes_asal'],
+    group: ['obat_id', 'faskes_asal'],
+    raw: true,
+  })) as any[];
+  const movedSet = new Set(recentMovement.map((r) => `${r.obat_id}::${r.faskes_asal}`));
+
+  const lastMovementRows = (await PergerakanStok.findAll({
+    where: { tipe: 'keluar' },
+    attributes: ['obat_id', 'faskes_asal', [sequelize.fn('MAX', sequelize.col('tanggal')), 'terakhir']],
+    group: ['obat_id', 'faskes_asal'],
+    raw: true,
+  })) as any[];
+  const lastMovementMap = new Map(lastMovementRows.map((r) => [`${r.obat_id}::${r.faskes_asal}`, r.terakhir]));
+
+  // Semua stok per obat (lintas faskes) untuk cek faskes lain yang benar-benar defisit.
+  const allStok = await Stok.findAll({ include: [{ model: Obat, as: 'obat', attributes: ['id', 'stok_minimum'] }] });
+
+  const data: any[] = [];
+  for (const s of stok) {
+    const obat = (s as any).obat;
+    const faskes = (s as any).faskes;
+    if (!obat) continue;
+    const key = `${obat.id}::${s.faskes_id}`;
+    if (movedSet.has(key)) continue; // ada pergerakan baru-baru ini, bukan slow-moving
+
+    const lastMoved = lastMovementMap.get(key);
+    const hariTidakBergerak = lastMoved
+      ? Math.floor((Date.now() - new Date(lastMoved).getTime()) / (1000 * 60 * 60 * 24))
+      : null; // tidak pernah tercatat bergerak sama sekali
+
+    const deficitElsewhere = allStok.find((other) => {
+      const otherObat = (other as any).obat;
+      return otherObat?.id === obat.id && other.faskes_id !== s.faskes_id && other.jumlah_tersedia < otherObat.stok_minimum;
+    });
+
+    data.push({
+      stok_id: s.id,
+      obat: { id: obat.id, nama: obat.nama },
+      faskes: faskes ? { id: faskes.id, nama: faskes.nama } : null,
+      jumlah_tersedia: s.jumlah_tersedia,
+      hari_tidak_bergerak: hariTidakBergerak,
+      nilai_modal_rp: s.jumlah_tersedia * Number(obat.harga_beli),
+      saran: deficitElsewhere ? 'realokasi' : 'retur',
+      faskes_tujuan_realokasi: deficitElsewhere
+        ? { id: (deficitElsewhere as any).faskes.id, nama: (deficitElsewhere as any).faskes?.nama }
+        : null,
+    });
+  }
+
+  return data;
 }
 
 // GET /api/logistic/slow-moving?faskes_id=&days=30
@@ -320,71 +396,7 @@ export async function getSlowMoving(req: Request, res: Response) {
   try {
     const faskesId = req.query.faskes_id as string | undefined;
     const days = req.query.days ? parseInt(req.query.days as string, 10) : 30;
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-
-    const stokWhere: any = { jumlah_tersedia: { [Op.gt]: 0 } };
-    if (faskesId) stokWhere.faskes_id = faskesId;
-
-    const stok = await Stok.findAll({
-      where: stokWhere,
-      include: [
-        { model: Obat, as: 'obat', attributes: ['id', 'nama', 'stok_minimum', 'harga_beli'] },
-        { model: FasilitasKesehatan, as: 'faskes', attributes: ['id', 'nama'] },
-      ],
-    });
-
-    const recentMovement = (await PergerakanStok.findAll({
-      where: { tipe: 'keluar', tanggal: { [Op.gte]: since } },
-      attributes: ['obat_id', 'faskes_asal'],
-      group: ['obat_id', 'faskes_asal'],
-      raw: true,
-    })) as any[];
-    const movedSet = new Set(recentMovement.map((r) => `${r.obat_id}::${r.faskes_asal}`));
-
-    const lastMovementRows = (await PergerakanStok.findAll({
-      where: { tipe: 'keluar' },
-      attributes: ['obat_id', 'faskes_asal', [sequelize.fn('MAX', sequelize.col('tanggal')), 'terakhir']],
-      group: ['obat_id', 'faskes_asal'],
-      raw: true,
-    })) as any[];
-    const lastMovementMap = new Map(lastMovementRows.map((r) => [`${r.obat_id}::${r.faskes_asal}`, r.terakhir]));
-
-    // Semua stok per obat (lintas faskes) untuk cek faskes lain yang benar-benar defisit.
-    const allStok = await Stok.findAll({ include: [{ model: Obat, as: 'obat', attributes: ['id', 'stok_minimum'] }] });
-
-    const data: any[] = [];
-    for (const s of stok) {
-      const obat = (s as any).obat;
-      const faskes = (s as any).faskes;
-      if (!obat) continue;
-      const key = `${obat.id}::${s.faskes_id}`;
-      if (movedSet.has(key)) continue; // ada pergerakan baru-baru ini, bukan slow-moving
-
-      const lastMoved = lastMovementMap.get(key);
-      const hariTidakBergerak = lastMoved
-        ? Math.floor((Date.now() - new Date(lastMoved).getTime()) / (1000 * 60 * 60 * 24))
-        : null; // tidak pernah tercatat bergerak sama sekali
-
-      const deficitElsewhere = allStok.find((other) => {
-        const otherObat = (other as any).obat;
-        return otherObat?.id === obat.id && other.faskes_id !== s.faskes_id && other.jumlah_tersedia < otherObat.stok_minimum;
-      });
-
-      data.push({
-        stok_id: s.id,
-        obat: { id: obat.id, nama: obat.nama },
-        faskes: faskes ? { id: faskes.id, nama: faskes.nama } : null,
-        jumlah_tersedia: s.jumlah_tersedia,
-        hari_tidak_bergerak: hariTidakBergerak,
-        nilai_modal_rp: s.jumlah_tersedia * Number(obat.harga_beli),
-        saran: deficitElsewhere ? 'realokasi' : 'retur',
-        faskes_tujuan_realokasi: deficitElsewhere
-          ? { id: (deficitElsewhere as any).faskes.id, nama: (deficitElsewhere as any).faskes?.nama }
-          : null,
-      });
-    }
-
+    const data = await computeSlowMoving(faskesId, days);
     res.json({ success: true, data });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
