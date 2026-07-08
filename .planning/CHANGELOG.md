@@ -13,6 +13,69 @@ tags:
 
 ---
 
+## 2026-07-08 — Session: CRUD Master Obat (FA5) + resetDb bootstrap lengkap
+
+### ✅ Diselesaikan (FA5)
+
+CRUD master obat dari admin panel — sebelumnya sengaja di-exclude dari merge 2026-07-06
+(lihat catatan FA5–FA7 di [[FEATURES-MAP]]). Diambil & diadaptasi dari kode referensi branch lama
+`feat/admin-system-and-ai-update`, commit `6adaa31` (`createObat`/`updateObat`/`deleteObat`/`getObat`),
+disesuaikan ke skema sekarang (field `pbf_id` yang belum ada di commit lama itu).
+
+**Backend:**
+- `backend/src/controllers/admin.ts` — tambah `getObat`, `createObat`, `updateObat`, `deleteObat`.
+- `backend/src/routes/admin.ts` — tambah `GET/POST /api/admin/obat`, `PUT/DELETE /api/admin/obat/:id`,
+  dengan Swagger JSDoc (endpoint admin lama — users/faskes — ternyata belum pernah didokumentasikan
+  Swagger sama sekali; obat jadi yang pertama, tidak retrofit yang lama di sesi ini). Semua endpoint
+  otomatis kena guard `requireAuth` + `requireAdmin` yang sudah ada di top-level router.
+
+**Bug ditemukan & diperbaiki saat verifikasi (bukan cuma typecheck — full curl end-to-end):**
+Percobaan pertama `deleteObat` pakai pola `try { destroy() } catch (SequelizeForeignKeyConstraintError)`
+seperti kode referensi lama. Saat ditest nyata dengan `obat` yang punya baris `stok` terkait,
+**delete tetap sukses dan stok ikut hilang** — bukan gagal seperti yang diharapkan. Root cause:
+asosiasi `Obat.hasMany(Stok/PergerakanStok/...)` di `models/index.ts` tidak set `onDelete` eksplisit,
+dan default Sequelize untuk FK `allowNull:false` adalah **`ON DELETE CASCADE`**, bukan RESTRICT —
+beda dari yang ditulis di `SCHEMA.md` (`REFERENCES obat(id)` polos, tanpa cascade). Constraint error
+yang di-catch tidak pernah muncul karena Postgres memang tidak pernah menolaknya. Diperbaiki dengan
+guard eksplisit di level aplikasi: `deleteObat` sekarang cek `COUNT` ke `stok`, `pergerakan_stok`,
+`resep_item`, `sp_item`, `prediksi_kebutuhan`, `formula_komponen` sebelum `destroy()` — 409 kalau ada
+yang mereferensikan. Diverifikasi: obat dengan stok aktif → 409 + obat tidak terhapus; setelah stok
+dihapus manual → 200 + obat terhapus beneran.
+
+**Lanjutan sesi yang sama — FK constraint DB-level ikut diperbaiki:** `models/index.ts` sekarang
+set `onDelete: 'RESTRICT'` eksplisit di 6 asosiasi `Obat.hasMany(...)` (`Stok`, `PergerakanStok`,
+`ResepItem`, `SpItem`, `PrediksiKebutuhan`, `FormulaKomponen`) — tidak lagi mengandalkan default
+Sequelize. Constraint yang sudah terlanjur `CASCADE` di DB dev diubah manual lewat
+`ALTER TABLE ... DROP CONSTRAINT` + `ADD CONSTRAINT ... ON DELETE RESTRICT` (bukan
+`sync({alter:true})`, yang tidak reliable untuk mengubah referential action FK yang sudah ada).
+Diverifikasi dengan `DELETE FROM obat` mentah lewat `psql` — bypass total lapisan aplikasi — pada
+obat yang masih punya baris `stok`: Postgres sendiri sekarang menolak
+(`violates foreign key constraint "stok_obat_id_fkey"`), bukan cuma diblokir guard aplikasi. Guard
+`deleteObat` di atas tetap dipertahankan sebagai lapisan pertama (409 + pesan ramah, bukan raw 500).
+`alert_ews_obat_terdampak_id_fkey` sengaja tidak diubah — tetap `SET NULL` (kolom nullable, alert
+memang valid tanpa referensi obat).
+
+**Bug ke-2 ditemukan saat user coba sendiri via Swagger UI:** `POST /api/admin/obat` dengan `pbf_id`
+tidak valid (Swagger auto-fill placeholder literal `"string"` karena field itu tidak punya `example`
+di JSDoc) menghasilkan raw error 500 dari Postgres (`violates foreign key constraint
+"obat_pbf_id_fkey"`), bukan validasi 400 yang jelas. Diperbaiki: `createObat`/`updateObat` sekarang
+validasi `pbf_id` dua tahap sebelum insert/update — format UUID (regex) dulu, baru `Pbf.findByPk()`
+kalau formatnya valid — masing-masing balikin pesan 400 spesifik. Swagger JSDoc `pbf_id` juga
+ditambah `description` eksplisit: "JANGAN isi placeholder seperti 'string'". Diverifikasi 3 kasus:
+`pbf_id:"string"` → 400 "bukan UUID yang valid"; UUID valid tapi tidak ada di tabel `pbf` → 400
+"tidak ditemukan"; UUID PBF asli → 201 sukses.
+
+### ✅ Bootstrap data lengkap (`resetDb.ts`, belum resmi masuk fitur numbered)
+
+`backend/src/resetDb.ts` (baru, belum pernah di-commit sebelumnya) awalnya cuma seed 2 faskes +
+4 pengguna setelah `force sync` — tidak cukup untuk simulasi "sistem baru pertama kali dijalankan"
+karena `faskes.wilayah_id` jadi selalu `null` (wilayah belum ada) dan tidak ada `obat`/`pbf` sama
+sekali. Dilengkapi jadi seed berurutan sesuai FK dependency: **wilayah (17 kecamatan Sleman) → pbf
+(3) → obat (14, ditautkan `pbf_id`) → fasilitas_kesehatan (2, ditautkan `wilayah_id`) → pengguna (4)**
+— data sama persis dengan `seedAll.ts` supaya konsisten dengan GeoJSON & referensi lain.
+
+---
+
 ## 2026-07-08 — Session: Phase 10 (Profile & Settings)
 
 ### ✅ Diselesaikan (F04, F35, F36)

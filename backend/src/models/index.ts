@@ -36,7 +36,7 @@ RekamMedis.belongsTo(Pengguna, { foreignKey: 'dicatat_oleh', as: 'pencatat' });
 // ── Racikan ───────────────────────────────────────────────────────────────────
 FormulaRacikan.hasMany(FormulaKomponen, { foreignKey: 'formula_id', as: 'komponen', onDelete: 'CASCADE' });
 FormulaKomponen.belongsTo(FormulaRacikan, { foreignKey: 'formula_id', as: 'formula' });
-Obat.hasMany(FormulaKomponen, { foreignKey: 'obat_id', as: 'digunakan_di_formula' });
+Obat.hasMany(FormulaKomponen, { foreignKey: 'obat_id', as: 'digunakan_di_formula', onDelete: 'RESTRICT' });
 FormulaKomponen.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 
 // ── TPS: Resep ────────────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ Resep.belongsTo(Pengguna, { foreignKey: 'dibuat_oleh', as: 'pembuat' });
 
 Resep.hasMany(ResepItem, { foreignKey: 'resep_id', as: 'items', onDelete: 'CASCADE' });
 ResepItem.belongsTo(Resep, { foreignKey: 'resep_id', as: 'resep' });
-Obat.hasMany(ResepItem, { foreignKey: 'obat_id', as: 'resep_items' });
+Obat.hasMany(ResepItem, { foreignKey: 'obat_id', as: 'resep_items', onDelete: 'RESTRICT' });
 ResepItem.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 FormulaRacikan.hasMany(ResepItem, { foreignKey: 'formula_id', as: 'resep_items' });
 ResepItem.belongsTo(FormulaRacikan, { foreignKey: 'formula_id', as: 'formula' });
@@ -55,11 +55,11 @@ ResepItem.belongsTo(FormulaRacikan, { foreignKey: 'formula_id', as: 'formula' })
 // ── TPS: Stok ─────────────────────────────────────────────────────────────────
 FasilitasKesehatan.hasMany(Stok, { foreignKey: 'faskes_id', as: 'stok' });
 Stok.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' });
-Obat.hasMany(Stok, { foreignKey: 'obat_id', as: 'stok' });
+Obat.hasMany(Stok, { foreignKey: 'obat_id', as: 'stok', onDelete: 'RESTRICT' });
 Stok.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 
 // ── TPS: PergerakanStok ───────────────────────────────────────────────────────
-Obat.hasMany(PergerakanStok, { foreignKey: 'obat_id', as: 'pergerakan' });
+Obat.hasMany(PergerakanStok, { foreignKey: 'obat_id', as: 'pergerakan', onDelete: 'RESTRICT' });
 PergerakanStok.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 FasilitasKesehatan.hasMany(PergerakanStok, { foreignKey: 'faskes_asal', as: 'pergerakan_keluar' });
 FasilitasKesehatan.hasMany(PergerakanStok, { foreignKey: 'faskes_tujuan', as: 'pergerakan_masuk' });
@@ -75,7 +75,7 @@ Pengguna.hasMany(AlertEws, { foreignKey: 'ditangani_oleh', as: 'alerts_ditangani
 AlertEws.belongsTo(Pengguna, { foreignKey: 'ditangani_oleh', as: 'penangan' });
 
 // ── MIS: PrediksiKebutuhan ────────────────────────────────────────────────────
-Obat.hasMany(PrediksiKebutuhan, { foreignKey: 'obat_id', as: 'prediksi' });
+Obat.hasMany(PrediksiKebutuhan, { foreignKey: 'obat_id', as: 'prediksi', onDelete: 'RESTRICT' });
 PrediksiKebutuhan.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 FasilitasKesehatan.hasMany(PrediksiKebutuhan, { foreignKey: 'faskes_id', as: 'prediksi' });
 PrediksiKebutuhan.belongsTo(FasilitasKesehatan, { foreignKey: 'faskes_id', as: 'faskes' });
@@ -96,7 +96,7 @@ SuratPesanan.belongsTo(AlertEws, { foreignKey: 'alert_id', as: 'alert' });
 
 SuratPesanan.hasMany(SpItem, { foreignKey: 'sp_id', as: 'items', onDelete: 'CASCADE' });
 SpItem.belongsTo(SuratPesanan, { foreignKey: 'sp_id', as: 'surat_pesanan' });
-Obat.hasMany(SpItem, { foreignKey: 'obat_id', as: 'sp_items' });
+Obat.hasMany(SpItem, { foreignKey: 'obat_id', as: 'sp_items', onDelete: 'RESTRICT' });
 SpItem.belongsTo(Obat, { foreignKey: 'obat_id', as: 'obat' });
 
 export {
