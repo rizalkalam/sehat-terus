@@ -173,3 +173,14 @@ export async function getFaskes(req: Request, res: Response) {
     res.status(500).json({ error: err.message });
   }
 }
+
+// ── PBF ───────────────────────────────────────────────────────────────────────
+
+export async function getPbf(req: Request, res: Response) {
+  try {
+    const pbf = await Pbf.findAll({ order: [['nama', 'ASC']] });
+    res.json({ success: true, data: pbf });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}

@@ -13,6 +13,31 @@ tags:
 
 ---
 
+## 2026-07-08 — Session: Halaman FE Kelola Obat (FA5 selesai penuh)
+
+### ✅ Diselesaikan (FA5 — FE)
+
+Backend CRUD obat sudah ada dari sesi sebelumnya di hari yang sama; sesi ini menyambungkan FE.
+
+- `frontend/src/app/admin/obat/page.tsx` (baru) — halaman `/admin/obat`, pola sama persis dengan
+  `/admin/users` (fetch inline, modal tambah/edit inline, tanpa komponen shared). Tabel: nama, jenis,
+  golongan, satuan, harga beli, stok minimum, kode ATC, PBF pemasok.
+- `frontend/src/components/AdminSidebar.tsx` — tambah link nav "Obat" (ikon `Pill`) ke `/admin/obat`.
+- `backend/src/controllers/admin.ts` + `routes/admin.ts` — tambah `GET /api/admin/pbf` (mengikuti
+  pola `getFaskes`) karena dropdown PBF di form obat butuh daftar PBF dan endpoint itu belum ada.
+
+**Keputusan implementasi:** `deleteObat` backend itu hard delete (bukan nonaktifkan seperti user),
+jadi tombol hapus di FE pakai ikon `Trash2` (bukan `PowerOff` seperti `/admin/users`) dan pesan error
+409 dari server (obat masih dipakai di stok/resep/dll.) ditampilkan di banner di atas tabel, bukan
+diabaikan — beda pola dari delete pengguna yang selalu sukses (soft-delete).
+
+**Verifikasi:** `npx tsc --noEmit` bersih di FE & BE, docker image backend+frontend di-rebuild, curl
+end-to-end penuh (login admin → create → update → delete obat) dengan payload persis sama seperti
+yang dikirim form React, dan halaman `/admin/obat` di-fetch dengan cookie sesi admin — render 200
+dengan judul "Kelola Obat" + link sidebar "Obat" muncul di HTML.
+
+---
+
 ## 2026-07-08 — Session: CRUD Master Obat (FA5) + resetDb bootstrap lengkap
 
 ### ✅ Diselesaikan (FA5)

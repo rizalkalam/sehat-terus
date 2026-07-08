@@ -3,7 +3,7 @@ import { requireAuth, requireAdmin } from '../middleware/auth';
 import {
   getUsers, createUser, updateUser, deleteUser,
   getObat, createObat, updateObat, deleteObat,
-  getFaskes,
+  getFaskes, getPbf,
 } from '../controllers/admin';
 
 const router = Router();
@@ -129,5 +129,21 @@ router.delete('/obat/:id', deleteObat);
 
 // Faskes
 router.get('/faskes', getFaskes);
+
+/**
+ * @openapi
+ * /api/admin/pbf:
+ *   get:
+ *     tags: [Admin]
+ *     summary: List semua PBF (pemasok) — untuk dropdown pbf_id di form obat
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Daftar PBF
+ *       403:
+ *         description: Bukan admin
+ */
+router.get('/pbf', getPbf);
 
 export default router;

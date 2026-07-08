@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, LayoutDashboard, LogOut } from "lucide-react";
+import { Users, LayoutDashboard, LogOut, Pill } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -14,6 +14,7 @@ export default function AdminSidebar() {
   const menuItems = [
     { name: "Overview", path: "/admin", icon: LayoutDashboard },
     { name: "Pengguna", path: "/admin/users", icon: Users },
+    { name: "Obat", path: "/admin/obat", icon: Pill },
   ];
 
   return (

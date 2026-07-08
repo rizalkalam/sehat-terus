@@ -399,7 +399,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | FA2 | Guard peran admin — FE (`middleware.ts`) + BE (`requireAdmin`) | ✅ | `pengguna` | `/admin/*` (redirect non-admin), admin diblokir total dari semua halaman MIS |
 | FA3 | CRUD pengguna (tambah/edit/nonaktifkan akun) | ✅ (diverifikasi browser 2026-07-07, 1 bug diperbaiki — lihat [[CHANGELOG]]) | `pengguna`, `fasilitas_kesehatan` | `/admin/users` |
 | FA4 | Registrasi mandiri dinonaktifkan, akun baru cuma lewat admin | ✅ (sudah ada sebelum merge ini) | `pengguna` | `/register` (pesan error tetap), `/admin/users` (jalur resmi buat akun) |
-| FA5 | CRUD master obat dari admin panel | ✅ (2026-07-08) | `obat` | Belum ada halaman FE — endpoint backend saja untuk sekarang |
+| FA5 | CRUD master obat dari admin panel | ✅ (2026-07-08) | `obat` | `/admin/obat` |
 | FA6 | CRUD stok dari admin panel | ❌ | `stok` | Belum ada — sama seperti FA5 sebelumnya, phase berikutnya |
 | FA8 | Landing per peran setelah login (`middleware.ts`) | ✅ | `pengguna` | admin → `/admin`; manajer → `/` (dashboard MIS); apoteker & staf_logistik → **Swagger UI backend** (`/api/docs`), karena belum ada halaman FE untuk peran itu (lihat [[CHANGELOG]] 2026-07-06) |
 | FA7 | Prediksi kebutuhan obat via AI (Groq) dari admin panel | ❌ | `stok`, `pergerakan_stok`, `alert_ews` | Belum ada — sama seperti FA6, phase berikutnya |
@@ -426,6 +426,21 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 > dipertahankan (pesan error 409 yang lebih ramah ke user daripada raw DB error 500).
 > `alert_ews_obat_terdampak_id_fkey` sengaja tidak disentuh — tetap `SET NULL` karena kolomnya
 > nullable dan alert memang boleh tetap ada tanpa referensi obat.
+
+> [!success] FA5 Selesai Penuh — FE (2026-07-08, sesi lanjutan)
+> Halaman `/admin/obat` dibuat (`frontend/src/app/admin/obat/page.tsx`), pola persis mengikuti
+> `/admin/users` (fetch inline + modal form inline, bukan komponen shared) — tabel obat (nama,
+> jenis, golongan, satuan, harga beli, stok minimum, kode ATC, PBF) + modal tambah/edit. Beda dari
+> `/admin/users`: `deleteObat` di backend itu **hard delete** (bukan nonaktifkan), jadi tombol hapus
+> pakai `Trash2` (bukan `PowerOff`) dan menampilkan pesan 409 dari server (obat masih dipakai) di
+> banner error di atas tabel, bukan diabaikan begitu saja.
+> Endpoint baru `GET /api/admin/pbf` ditambahkan (mengikuti pola `getFaskes`) karena dropdown PBF di
+> form obat butuh daftar PBF, dan sebelumnya belum ada endpoint admin untuk itu.
+> Link "Obat" ditambah ke `AdminSidebar.tsx` (ikon `Pill` dari lucide-react).
+> Diverifikasi: `npx tsc --noEmit` bersih di FE & BE, docker image di-rebuild, curl end-to-end
+> penuh (create → update → delete) dengan payload persis sama seperti yang dikirim form React,
+> serta halaman di-fetch dengan cookie sesi admin — render 200 dengan judul "Kelola Obat" dan link
+> sidebar "Obat" muncul di HTML.
 
 > [!note] Kenapa FA6–FA7 masih exclude, bukan cuma "belum sempat"
 > Source branch punya `routes/admin.ts`+`controllers/admin.ts` yang menggabungkan CRUD user +
@@ -464,6 +479,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | `/api/admin/faskes` | GET | ✅ (2026-07-06 merge) | FA3 |
 | `/api/admin/obat` | GET/POST | ✅ (2026-07-08 — baru) | FA5 |
 | `/api/admin/obat/:id` | PUT/DELETE | ✅ (2026-07-08 — baru) | FA5 |
+| `/api/admin/pbf` | GET | ✅ (2026-07-08 — baru) | FA5 (dropdown PBF di form obat) |
 | `/api/forecasting/projection` | GET | ✅ (2026-07-07) | F21 |
 | `/api/forecasting/stats` | GET | ✅ (2026-07-07) | F22 |
 | `/api/forecasting/alerts` | GET | ✅ (2026-07-07) | F23 |
