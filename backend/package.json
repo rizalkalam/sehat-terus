@@ -10,6 +10,7 @@
     "seed": "tsx src/seed.ts",
     "seed:auth": "tsx src/seedAuth.ts",
     "seed:all": "tsx src/seedAll.ts",
+    "seed:flu-spike": "tsx src/seedFluSpike.ts",
     "db:reset": "tsx src/resetDb.ts"
   },
   "dependencies": {
