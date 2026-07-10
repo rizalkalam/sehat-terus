@@ -128,13 +128,16 @@ interface ChartPoint {
 interface SlowMovingItem {
   stok_id: string;
   obat: { id: string; nama: string };
-  faskes: { id: string; nama: string } | null;
+  faskes: { id: string; nama: string; tipe: string; kecamatan: string | null; alamat: string | null } | null;
   jumlah_tersedia: number;
   nilai_modal_rp: number;
   saran: "realokasi" | "retur";
   faskes_tujuan_realokasi: {
     id: string;
     nama: string;
+    tipe: string | null;
+    kecamatan: string | null;
+    alamat: string | null;
     stok_tersedia: number;
     stok_minimum: number;
     kekurangan: number;
@@ -512,9 +515,19 @@ export default function EarlyWarningPage() {
                             <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
                               {item.obat.nama}
                             </span>
-                            <span className="font-josefin text-[20px] text-black leading-none">{item.faskes?.nama}</span>
+                            <span className="font-josefin text-[20px] text-black leading-none">
+                              {item.faskes?.nama}
+                              {item.faskes?.kecamatan && (
+                                <span className="text-black/50"> (Kec. {item.faskes.kecamatan})</span>
+                              )}
+                            </span>
                             <span className="text-black">→</span>
-                            <span className="font-josefin text-[20px] text-black leading-none">{item.faskes_tujuan_realokasi?.nama}</span>
+                            <span className="font-josefin text-[20px] text-black leading-none">
+                              {item.faskes_tujuan_realokasi?.nama}
+                              {item.faskes_tujuan_realokasi?.kecamatan && (
+                                <span className="text-black/50"> (Kec. {item.faskes_tujuan_realokasi.kecamatan})</span>
+                              )}
+                            </span>
                           </div>
                           <span className="font-josefin text-[16px] text-black leading-none">
                             Pindah {item.jumlah_tersedia} unit stok yang tidak bergerak
@@ -524,6 +537,7 @@ export default function EarlyWarningPage() {
                               {item.faskes_tujuan_realokasi.nama} hanya punya {item.faskes_tujuan_realokasi.stok_tersedia}
                               {" "}dari minimum {item.faskes_tujuan_realokasi.stok_minimum} unit (kurang{" "}
                               {item.faskes_tujuan_realokasi.kekurangan})
+                              {item.faskes_tujuan_realokasi.alamat && ` — ${item.faskes_tujuan_realokasi.alamat}`}
                             </span>
                           )}
                         </>

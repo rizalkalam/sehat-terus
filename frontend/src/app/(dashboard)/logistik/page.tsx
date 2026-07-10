@@ -67,7 +67,7 @@ interface NearExpiryItem {
 interface SlowMovingItem {
   stok_id: string;
   obat: { id: string; nama: string };
-  faskes: { id: string; nama: string } | null;
+  faskes: { id: string; nama: string; tipe: string; kecamatan: string | null; alamat: string | null } | null;
   jumlah_tersedia: number;
   hari_tidak_bergerak: number | null;
   nilai_modal_rp: number;
@@ -75,6 +75,9 @@ interface SlowMovingItem {
   faskes_tujuan_realokasi: {
     id: string;
     nama: string;
+    tipe: string | null;
+    kecamatan: string | null;
+    alamat: string | null;
     stok_tersedia: number;
     stok_minimum: number;
     kekurangan: number;
@@ -454,7 +457,10 @@ export default function LogisticPage() {
                       {item.obat.nama}
                     </span>
                     <div className="flex items-center gap-[8px] font-josefin text-[16px] text-black">
-                      <span>{item.faskes?.nama ?? "—"}</span>
+                      <span>
+                        {item.faskes?.nama ?? "—"}
+                        {item.faskes?.kecamatan && <span className="text-black/50"> (Kec. {item.faskes.kecamatan})</span>}
+                      </span>
                       <span>|</span>
                       <span>{rupiah(item.nilai_modal_rp)} tertahan</span>
                     </div>
@@ -492,9 +498,19 @@ export default function LogisticPage() {
                         <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
                           {item.obat.nama}
                         </span>
-                        <span className="font-josefin text-[20px] text-black leading-none">{item.faskes?.nama}</span>
+                        <span className="font-josefin text-[20px] text-black leading-none whitespace-nowrap">
+                          {item.faskes?.nama}
+                          {item.faskes?.kecamatan && (
+                            <span className="text-black/50"> (Kec. {item.faskes.kecamatan})</span>
+                          )}
+                        </span>
                         <span className="text-black">→</span>
-                        <span className="font-josefin text-[20px] text-black leading-none">{item.faskes_tujuan_realokasi?.nama}</span>
+                        <span className="font-josefin text-[20px] text-black leading-none whitespace-nowrap">
+                          {item.faskes_tujuan_realokasi?.nama}
+                          {item.faskes_tujuan_realokasi?.kecamatan && (
+                            <span className="text-black/50"> (Kec. {item.faskes_tujuan_realokasi.kecamatan})</span>
+                          )}
+                        </span>
                       </div>
                       <span className="font-josefin text-[16px] text-black leading-none">
                         Pindah {item.jumlah_tersedia} unit dari stok yang tidak bergerak
@@ -504,6 +520,7 @@ export default function LogisticPage() {
                           {item.faskes_tujuan_realokasi.nama} hanya punya {item.faskes_tujuan_realokasi.stok_tersedia}
                           {" "}dari minimum {item.faskes_tujuan_realokasi.stok_minimum} unit (kurang{" "}
                           {item.faskes_tujuan_realokasi.kekurangan})
+                          {item.faskes_tujuan_realokasi.alamat && ` — ${item.faskes_tujuan_realokasi.alamat}`}
                         </span>
                       )}
                     </div>
