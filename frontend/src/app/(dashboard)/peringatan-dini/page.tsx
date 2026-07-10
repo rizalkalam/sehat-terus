@@ -511,35 +511,23 @@ export default function EarlyWarningPage() {
                     <div className="flex flex-col gap-[4px] min-w-0">
                       {item.saran === "realokasi" ? (
                         <>
-                          <div className="flex items-center gap-[12px] flex-wrap">
-                            <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
-                              {item.obat.nama}
-                            </span>
-                            <span className="font-josefin text-[20px] text-black leading-none">
-                              {item.faskes?.nama}
-                              {item.faskes?.kecamatan && (
-                                <span className="text-black/50"> (Kec. {item.faskes.kecamatan})</span>
-                              )}
-                            </span>
-                            <span className="text-black">→</span>
-                            <span className="font-josefin text-[20px] text-black leading-none">
-                              {item.faskes_tujuan_realokasi?.nama}
-                              {item.faskes_tujuan_realokasi?.kecamatan && (
-                                <span className="text-black/50"> (Kec. {item.faskes_tujuan_realokasi.kecamatan})</span>
-                              )}
-                            </span>
-                          </div>
-                          <span className="font-josefin text-[16px] text-black leading-none">
-                            Pindah {item.jumlah_tersedia} unit stok yang tidak bergerak
+                          <span className="font-josefin font-bold text-[18px] text-[#0c818a] leading-tight">
+                            {item.obat.nama}
                           </span>
-                          {item.faskes_tujuan_realokasi && (
-                            <span className="font-josefin text-[14px] text-black/60 leading-none">
-                              {item.faskes_tujuan_realokasi.nama} hanya punya {item.faskes_tujuan_realokasi.stok_tersedia}
-                              {" "}dari minimum {item.faskes_tujuan_realokasi.stok_minimum} unit (kurang{" "}
-                              {item.faskes_tujuan_realokasi.kekurangan})
-                              {item.faskes_tujuan_realokasi.alamat && ` — ${item.faskes_tujuan_realokasi.alamat}`}
-                            </span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-x-[6px] gap-y-[2px] font-josefin text-[15px] text-black leading-tight">
+                            <span>{item.faskes?.nama}</span>
+                            {item.faskes?.kecamatan && <span className="text-black/50">({item.faskes.kecamatan})</span>}
+                            <span className="text-black/60">→</span>
+                            <span>{item.faskes_tujuan_realokasi?.nama}</span>
+                            {item.faskes_tujuan_realokasi?.kecamatan && (
+                              <span className="text-black/50">({item.faskes_tujuan_realokasi.kecamatan})</span>
+                            )}
+                          </div>
+                          <span className="font-josefin text-[14px] text-black/70 leading-tight">
+                            Pindah {item.jumlah_tersedia} unit stok tak bergerak — tujuan kekurangan{" "}
+                            {item.faskes_tujuan_realokasi?.kekurangan} unit ({item.faskes_tujuan_realokasi?.stok_tersedia}/
+                            {item.faskes_tujuan_realokasi?.stok_minimum})
+                          </span>
                         </>
                       ) : (
                         <>

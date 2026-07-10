@@ -456,12 +456,10 @@ export default function LogisticPage() {
                     <span className="font-josefin font-semibold text-[24px] text-black leading-tight">
                       {item.obat.nama}
                     </span>
-                    <div className="flex items-center gap-[8px] font-josefin text-[16px] text-black">
-                      <span>
-                        {item.faskes?.nama ?? "—"}
-                        {item.faskes?.kecamatan && <span className="text-black/50"> (Kec. {item.faskes.kecamatan})</span>}
-                      </span>
-                      <span>|</span>
+                    <div className="flex flex-wrap items-center gap-x-[6px] gap-y-[2px] font-josefin text-[16px] text-black">
+                      <span>{item.faskes?.nama ?? "—"}</span>
+                      {item.faskes?.kecamatan && <span className="text-black/50">· {item.faskes.kecamatan}</span>}
+                      <span className="text-black/40">|</span>
                       <span>{rupiah(item.nilai_modal_rp)} tertahan</span>
                     </div>
                   </div>
@@ -489,45 +487,33 @@ export default function LogisticPage() {
               {slowMovingItems.filter((i) => i.saran === "realokasi").map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded-[12px] px-[20px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)]"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-[12px] rounded-[12px] px-[20px] py-[14px] bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md shadow-[0px_0px_8px_0px_rgba(0,0,0,0.06)]"
                 >
-                  <div className="flex items-center gap-[16px]">
-                    <ArrowLeftRight className="size-[28px] text-[#0c818a] shrink-0" />
-                    <div className="flex flex-col gap-[4px]">
-                      <div className="flex items-center gap-[12px]">
-                        <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
-                          {item.obat.nama}
-                        </span>
-                        <span className="font-josefin text-[20px] text-black leading-none whitespace-nowrap">
-                          {item.faskes?.nama}
-                          {item.faskes?.kecamatan && (
-                            <span className="text-black/50"> (Kec. {item.faskes.kecamatan})</span>
-                          )}
-                        </span>
-                        <span className="text-black">→</span>
-                        <span className="font-josefin text-[20px] text-black leading-none whitespace-nowrap">
-                          {item.faskes_tujuan_realokasi?.nama}
-                          {item.faskes_tujuan_realokasi?.kecamatan && (
-                            <span className="text-black/50"> (Kec. {item.faskes_tujuan_realokasi.kecamatan})</span>
-                          )}
-                        </span>
-                      </div>
-                      <span className="font-josefin text-[16px] text-black leading-none">
-                        Pindah {item.jumlah_tersedia} unit dari stok yang tidak bergerak
+                  <div className="flex items-start gap-[16px] min-w-0">
+                    <ArrowLeftRight className="size-[24px] text-[#0c818a] shrink-0 mt-[2px]" />
+                    <div className="flex flex-col gap-[4px] min-w-0">
+                      <span className="font-josefin font-bold text-[18px] text-[#0c818a] leading-tight">
+                        {item.obat.nama}
                       </span>
-                      {item.faskes_tujuan_realokasi && (
-                        <span className="font-josefin text-[14px] text-black/60 leading-none">
-                          {item.faskes_tujuan_realokasi.nama} hanya punya {item.faskes_tujuan_realokasi.stok_tersedia}
-                          {" "}dari minimum {item.faskes_tujuan_realokasi.stok_minimum} unit (kurang{" "}
-                          {item.faskes_tujuan_realokasi.kekurangan})
-                          {item.faskes_tujuan_realokasi.alamat && ` — ${item.faskes_tujuan_realokasi.alamat}`}
-                        </span>
-                      )}
+                      <div className="flex flex-wrap items-center gap-x-[6px] gap-y-[2px] font-josefin text-[15px] text-black leading-tight">
+                        <span>{item.faskes?.nama}</span>
+                        {item.faskes?.kecamatan && <span className="text-black/50">({item.faskes.kecamatan})</span>}
+                        <span className="text-black/60">→</span>
+                        <span>{item.faskes_tujuan_realokasi?.nama}</span>
+                        {item.faskes_tujuan_realokasi?.kecamatan && (
+                          <span className="text-black/50">({item.faskes_tujuan_realokasi.kecamatan})</span>
+                        )}
+                      </div>
+                      <span className="font-josefin text-[14px] text-black/70 leading-tight">
+                        Pindah {item.jumlah_tersedia} unit stok tak bergerak — tujuan kekurangan{" "}
+                        {item.faskes_tujuan_realokasi?.kekurangan} unit ({item.faskes_tujuan_realokasi?.stok_tersedia}/
+                        {item.faskes_tujuan_realokasi?.stok_minimum})
+                      </span>
                     </div>
                   </div>
                   <button
                     onClick={() => handleRealokasi(item)}
-                    className="font-josefin font-medium text-[18px] text-white rounded-[8px] px-[20px] py-[10px] transition-opacity hover:opacity-80 cursor-pointer shrink-0"
+                    className="font-josefin font-medium text-[16px] text-white rounded-[8px] px-[18px] py-[9px] transition-opacity hover:opacity-80 cursor-pointer shrink-0 self-end sm:self-auto"
                     style={{ backgroundColor: "#0c818a" }}
                   >
                     Pindahkan
