@@ -13,6 +13,34 @@ tags:
 
 ---
 
+## 2026-07-10 — Session: Transparansi info realokasi stok (F17, F28/F29) — persiapan demo pitching
+
+### ✅ Diperbaiki (bukan fitur baru — memperjelas data yang sudah ada)
+
+Masukan dari dosen saat sesi pitching: keputusan "realokasi stok" belum kelihatan jelas sebagai
+*informasi* — kartu di `/logistik` dan `/peringatan-dini` cuma menampilkan tombol aksi
+("Pindahkan"), tanpa bukti data kenapa faskes tujuan direkomendasikan.
+
+- **`backend/src/controllers/logistic.ts` (`computeSlowMoving`)** — `faskes_tujuan_realokasi`
+  sekarang menyertakan `stok_tersedia`/`stok_minimum`/`kekurangan` milik faskes tujuan, bukan cuma
+  `id`+`nama`. Sekalian perbaiki bug laten: query pembanding (`allStok`) tidak pernah `include`
+  asosiasi `faskes`, jadi akses `.faskes.id` akan **crash 500** begitu skenario realokasi nyata
+  terpicu — belum pernah ketahuan karena data seed sebelumnya juga tidak pernah menghasilkan
+  skenario itu (lihat poin berikutnya).
+- **`backend/src/seedAll.ts`** — tambah 1 baris stok Vitamin C di Apotek Depok (10 unit, di bawah
+  minimum 60) + 1 riwayat `pergerakan_stok` 'keluar' supaya baris itu sendiri tidak ikut terdaftar
+  slow-moving. Sebelumnya **tidak ada satupun** obat yang sama-sama ada di 2 faskes dengan salah
+  satu defisit, jadi `saran: "realokasi"` tidak pernah bisa didemokan — semua item selalu jatuh ke
+  `"retur"`.
+- **FE (`/logistik` "Relokasi Antar-Cabang", `/peringatan-dini` "Tindakan Darurat")** — tambah baris
+  teks "*<faskes tujuan> hanya punya X dari minimum Y unit (kurang Z)*" di kartu realokasi.
+
+Diverifikasi: curl endpoint (angka defisit benar, tidak crash saat skenario realokasi terpicu),
+`npm run test:tps` (100% lulus, tidak ada regresi), Playwright screenshot kedua halaman.
+Branch: `feat/realokasi-info-transparan`.
+
+---
+
 ## 2026-07-08 — Session: Prediksi Kebutuhan Obat via AI (FA7) — domain Admin selesai
 
 ### ✅ Diselesaikan (FA7 — terakhir dari Domain 8 Admin Panel)
