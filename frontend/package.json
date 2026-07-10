@@ -3,9 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "supportedArchitectures": {
-    "os": ["current", "linux"],
-    "cpu": ["current", "x64"],
-    "libc": ["current", "musl"]
+    "os": [
+      "current",
+      "linux"
+    ],
+    "cpu": [
+      "current",
+      "x64"
+    ],
+    "libc": [
+      "current",
+      "musl"
+    ]
   },
   "scripts": {
     "dev": "next dev --turbopack",
@@ -34,6 +43,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.2.9",
+    "playwright": "^1.61.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

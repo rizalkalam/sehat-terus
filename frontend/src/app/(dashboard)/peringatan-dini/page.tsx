@@ -132,7 +132,13 @@ interface SlowMovingItem {
   jumlah_tersedia: number;
   nilai_modal_rp: number;
   saran: "realokasi" | "retur";
-  faskes_tujuan_realokasi: { id: string; nama: string } | null;
+  faskes_tujuan_realokasi: {
+    id: string;
+    nama: string;
+    stok_tersedia: number;
+    stok_minimum: number;
+    kekurangan: number;
+  } | null;
 }
 
 // --- Modal state type ---
@@ -513,6 +519,13 @@ export default function EarlyWarningPage() {
                           <span className="font-josefin text-[16px] text-black leading-none">
                             Pindah {item.jumlah_tersedia} unit stok yang tidak bergerak
                           </span>
+                          {item.faskes_tujuan_realokasi && (
+                            <span className="font-josefin text-[14px] text-black/60 leading-none">
+                              {item.faskes_tujuan_realokasi.nama} hanya punya {item.faskes_tujuan_realokasi.stok_tersedia}
+                              {" "}dari minimum {item.faskes_tujuan_realokasi.stok_minimum} unit (kurang{" "}
+                              {item.faskes_tujuan_realokasi.kekurangan})
+                            </span>
+                          )}
                         </>
                       ) : (
                         <>

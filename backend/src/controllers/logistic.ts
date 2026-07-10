@@ -354,7 +354,12 @@ export async function computeSlowMoving(faskesId?: string, days = 30) {
   const lastMovementMap = new Map(lastMovementRows.map((r) => [`${r.obat_id}::${r.faskes_asal}`, r.terakhir]));
 
   // Semua stok per obat (lintas faskes) untuk cek faskes lain yang benar-benar defisit.
-  const allStok = await Stok.findAll({ include: [{ model: Obat, as: 'obat', attributes: ['id', 'stok_minimum'] }] });
+  const allStok = await Stok.findAll({
+    include: [
+      { model: Obat, as: 'obat', attributes: ['id', 'stok_minimum'] },
+      { model: FasilitasKesehatan, as: 'faskes', attributes: ['id', 'nama'] },
+    ],
+  });
 
   const data: any[] = [];
   for (const s of stok) {
@@ -383,7 +388,13 @@ export async function computeSlowMoving(faskesId?: string, days = 30) {
       nilai_modal_rp: s.jumlah_tersedia * Number(obat.harga_beli),
       saran: deficitElsewhere ? 'realokasi' : 'retur',
       faskes_tujuan_realokasi: deficitElsewhere
-        ? { id: (deficitElsewhere as any).faskes.id, nama: (deficitElsewhere as any).faskes?.nama }
+        ? {
+            id: (deficitElsewhere as any).faskes?.id ?? null,
+            nama: (deficitElsewhere as any).faskes?.nama ?? null,
+            stok_tersedia: deficitElsewhere.jumlah_tersedia,
+            stok_minimum: (deficitElsewhere as any).obat.stok_minimum,
+            kekurangan: (deficitElsewhere as any).obat.stok_minimum - deficitElsewhere.jumlah_tersedia,
+          }
         : null,
     });
   }
