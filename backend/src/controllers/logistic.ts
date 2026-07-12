@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database';
-import { Stok, Obat, FasilitasKesehatan, SuratPesanan, SpItem, PergerakanStok, Pbf, Pengguna } from '../models';
+import { Stok, Obat, FasilitasKesehatan, SuratPesanan, SpItem, PergerakanStok, Pbf, Pengguna, Wilayah } from '../models';
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const AKTIF_SP_STATUS = ['disetujui', 'dikirim', 'diterima'];
@@ -333,7 +333,12 @@ export async function computeSlowMoving(faskesId?: string, days = 30) {
     where: stokWhere,
     include: [
       { model: Obat, as: 'obat', attributes: ['id', 'nama', 'stok_minimum', 'harga_beli'] },
-      { model: FasilitasKesehatan, as: 'faskes', attributes: ['id', 'nama'] },
+      {
+        model: FasilitasKesehatan,
+        as: 'faskes',
+        attributes: ['id', 'nama', 'tipe', 'alamat'],
+        include: [{ model: Wilayah, as: 'wilayah', attributes: ['nama_kecamatan'] }],
+      },
     ],
   });
 
@@ -354,7 +359,17 @@ export async function computeSlowMoving(faskesId?: string, days = 30) {
   const lastMovementMap = new Map(lastMovementRows.map((r) => [`${r.obat_id}::${r.faskes_asal}`, r.terakhir]));
 
   // Semua stok per obat (lintas faskes) untuk cek faskes lain yang benar-benar defisit.
-  const allStok = await Stok.findAll({ include: [{ model: Obat, as: 'obat', attributes: ['id', 'stok_minimum'] }] });
+  const allStok = await Stok.findAll({
+    include: [
+      { model: Obat, as: 'obat', attributes: ['id', 'stok_minimum'] },
+      {
+        model: FasilitasKesehatan,
+        as: 'faskes',
+        attributes: ['id', 'nama', 'tipe', 'alamat'],
+        include: [{ model: Wilayah, as: 'wilayah', attributes: ['nama_kecamatan'] }],
+      },
+    ],
+  });
 
   const data: any[] = [];
   for (const s of stok) {
@@ -377,13 +392,30 @@ export async function computeSlowMoving(faskesId?: string, days = 30) {
     data.push({
       stok_id: s.id,
       obat: { id: obat.id, nama: obat.nama },
-      faskes: faskes ? { id: faskes.id, nama: faskes.nama } : null,
+      faskes: faskes
+        ? {
+            id: faskes.id,
+            nama: faskes.nama,
+            tipe: faskes.tipe,
+            kecamatan: faskes.wilayah?.nama_kecamatan ?? null,
+            alamat: faskes.alamat,
+          }
+        : null,
       jumlah_tersedia: s.jumlah_tersedia,
       hari_tidak_bergerak: hariTidakBergerak,
       nilai_modal_rp: s.jumlah_tersedia * Number(obat.harga_beli),
       saran: deficitElsewhere ? 'realokasi' : 'retur',
       faskes_tujuan_realokasi: deficitElsewhere
-        ? { id: (deficitElsewhere as any).faskes.id, nama: (deficitElsewhere as any).faskes?.nama }
+        ? {
+            id: (deficitElsewhere as any).faskes?.id ?? null,
+            nama: (deficitElsewhere as any).faskes?.nama ?? null,
+            tipe: (deficitElsewhere as any).faskes?.tipe ?? null,
+            kecamatan: (deficitElsewhere as any).faskes?.wilayah?.nama_kecamatan ?? null,
+            alamat: (deficitElsewhere as any).faskes?.alamat ?? null,
+            stok_tersedia: deficitElsewhere.jumlah_tersedia,
+            stok_minimum: (deficitElsewhere as any).obat.stok_minimum,
+            kekurangan: (deficitElsewhere as any).obat.stok_minimum - deficitElsewhere.jumlah_tersedia,
+          }
         : null,
     });
   }

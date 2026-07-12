@@ -13,6 +13,88 @@ tags:
 
 ---
 
+## 2026-07-12 — Session: Rapikan overlay peta kecamatan/cabang & tabel top penyakit (F06, F11)
+
+### ✅ Diperbaiki
+
+Lanjutan langsung dari entri F06 di bawah (popover cabang faskes) — setelah kartu cabang
+ditambahkan, ditemukan 3 masalah UX: info kasus/status bercampur jadi satu kartu dengan daftar
+cabang, kartu cabang hilang total kalau kecamatan tidak punya cabang (layout "meloncat"), nama/
+alamat cabang panjang ke-truncate jadi "...", dan kartu overlay ini menutupi polygon peta di
+baliknya sehingga kecamatan yang ketutupan tidak bisa di-klik. Tabel top penyakit di bawah peta
+juga terlihat tidak proporsional (nempel di atas dengan gap kosong) kalau datanya kurang dari 4
+baris.
+
+- **`frontend/src/app/(dashboard)/page.tsx`** — popover "Kecamatan Detail" dipecah jadi 2 kartu
+  berdampingan (kasus/status vs cabang), sama lebar (`w-[194px]`) supaya tetap proporsional.
+- Kartu Cabang sekarang **selalu tampil** (termasuk badge "0" + teks "Tidak ada cabang di
+  kecamatan ini") alih-alih hilang total saat kecamatan tidak punya cabang, supaya tinggi overlay
+  konsisten antar kecamatan.
+- Nama & alamat cabang tidak lagi `truncate` (potong + "...") — diganti wrap 2 baris (`break-words`)
+  supaya nama/alamat panjang tetap terbaca penuh.
+- **Bug ditemukan saat verifikasi:** overlay kartu (meski sudah dipisah) tetap memblokir klik ke
+  polygon peta Leaflet di baliknya — kecamatan yang posisinya ketutupan kartu tidak bisa dipilih
+  sama sekali. Diperbaiki dengan `pointer-events-none` di container overlay, dan
+  `pointer-events-auto` khusus di daftar cabang yang bisa di-scroll (supaya scroll tetap jalan).
+  Diverifikasi via Playwright: klik pada titik yang ketutupan overlay sekarang mengenai `<path>`
+  Leaflet di baliknya (bukan div kartu), dan berhasil ganti kecamatan terpilih.
+- Tabel top penyakit (F11) — tambah baris pengisi kosong (kalau data < 4 baris) + `h-full` pada
+  `<table>` supaya sisa ruang kartu (294px) ikut terdistribusi ke baris alih-alih menyisakan gap
+  warna beda di bawah baris terakhir.
+
+Diverifikasi: rebuild `docker compose up -d --build frontend` tiap perubahan, dicek langsung lewat
+Playwright headless (klik kecamatan dengan & tanpa cabang, ukur bounding box tabel vs kartu,
+`elementFromPoint` untuk pastikan klik tembus ke peta). Branch: `feat/realokasi-info-transparan`.
+
+---
+
+## 2026-07-10 — Session: Popover peta Dashboard tampilkan cabang faskes, bukan populasi (F06)
+
+### ✅ Diperbaiki
+
+Lanjutan tema transparansi info (lihat entri di bawah) — popover "Kecamatan Detail" di peta
+Dashboard (`/`) sebelumnya cuma menampilkan `Populasi` + `Insidensi` per kecamatan, tidak ada
+kaitan dengan cabang faskes yang sebenarnya melayani wilayah itu.
+
+- **`backend/src/controllers/cases.ts` (`getRegionDetail`)** — response `/api/cases/region/:name`
+  sekarang menyertakan `cabang_count` + `cabang[]` (nama, tipe, alamat) hasil query
+  `FasilitasKesehatan` via `Wilayah.nama_kecamatan`. Field `population` tetap dikirim (tidak
+  dihapus dari API) supaya kompatibel bila dipakai bagian lain, hanya tidak lagi ditampilkan FE.
+- **`frontend/src/app/(dashboard)/page.tsx`** — baris `Populasi:` dan `Insidensi:` di popover peta
+  diganti dengan daftar cabang (`nama — alamat`) + jumlah cabang di kecamatan yang dipilih.
+
+Branch: `feat/realokasi-info-transparan`.
+
+---
+
+## 2026-07-10 — Session: Transparansi info realokasi stok (F17, F28/F29) — persiapan demo pitching
+
+### ✅ Diperbaiki (bukan fitur baru — memperjelas data yang sudah ada)
+
+Masukan dari dosen saat sesi pitching: keputusan "realokasi stok" belum kelihatan jelas sebagai
+*informasi* — kartu di `/logistik` dan `/peringatan-dini` cuma menampilkan tombol aksi
+("Pindahkan"), tanpa bukti data kenapa faskes tujuan direkomendasikan.
+
+- **`backend/src/controllers/logistic.ts` (`computeSlowMoving`)** — `faskes_tujuan_realokasi`
+  sekarang menyertakan `stok_tersedia`/`stok_minimum`/`kekurangan` milik faskes tujuan, bukan cuma
+  `id`+`nama`. Sekalian perbaiki bug laten: query pembanding (`allStok`) tidak pernah `include`
+  asosiasi `faskes`, jadi akses `.faskes.id` akan **crash 500** begitu skenario realokasi nyata
+  terpicu — belum pernah ketahuan karena data seed sebelumnya juga tidak pernah menghasilkan
+  skenario itu (lihat poin berikutnya).
+- **`backend/src/seedAll.ts`** — tambah 1 baris stok Vitamin C di Apotek Depok (10 unit, di bawah
+  minimum 60) + 1 riwayat `pergerakan_stok` 'keluar' supaya baris itu sendiri tidak ikut terdaftar
+  slow-moving. Sebelumnya **tidak ada satupun** obat yang sama-sama ada di 2 faskes dengan salah
+  satu defisit, jadi `saran: "realokasi"` tidak pernah bisa didemokan — semua item selalu jatuh ke
+  `"retur"`.
+- **FE (`/logistik` "Relokasi Antar-Cabang", `/peringatan-dini` "Tindakan Darurat")** — tambah baris
+  teks "*<faskes tujuan> hanya punya X dari minimum Y unit (kurang Z)*" di kartu realokasi.
+
+Diverifikasi: curl endpoint (angka defisit benar, tidak crash saat skenario realokasi terpicu),
+`npm run test:tps` (100% lulus, tidak ada regresi), Playwright screenshot kedua halaman.
+Branch: `feat/realokasi-info-transparan`.
+
+---
+
 ## 2026-07-08 — Session: Prediksi Kebutuhan Obat via AI (FA7) — domain Admin selesai
 
 ### ✅ Diselesaikan (FA7 — terakhir dari Domain 8 Admin Panel)

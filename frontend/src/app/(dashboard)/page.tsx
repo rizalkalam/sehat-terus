@@ -4,7 +4,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, Bell, MapPin, ChevronDown, Activity, Heart } from "lucide-react";
+import { Search, Bell, MapPin, ChevronDown, Activity, Heart, Building2 } from "lucide-react";
 import ActivePatientsCard from "@/components/ActivePatientsCard";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/contexts/AuthContext";
@@ -102,6 +102,8 @@ export default function Dashboard() {
     name: string;
     population: number;
     cases: number;
+    cabang_count: number;
+    cabang: { id: string; nama: string; tipe: string; alamat: string | null }[];
   } | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -301,45 +303,78 @@ export default function Dashboard() {
             </div>
 
             {/* Overlays inside Map Card */}
-            {/* Bottom Left: Location & Kecamatan Detail popover */}
-            <div className="absolute bottom-4 left-4 flex flex-col gap-2.5 z-10 items-start">
-              {/* Location Badge */}
-              <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[17px] py-[8px] flex items-center gap-3 text-white w-[194px] shadow-md">
-                <MapPin className="size-[18px] text-white fill-white/20" />
-                <span className="text-[14px] font-josefin font-normal">D.I. Yogyakarta</span>
+            {/* Bottom Left: Location & Kecamatan Detail popover — kasus/status dan cabang dipisah
+                jadi dua kartu berdampingan supaya tidak bercampur, tapi tetap sama lebar & sejajar.
+                pointer-events-none supaya kecamatan di peta yang ketutupan kartu ini tetap bisa
+                di-klik/select — cuma daftar cabang yang bisa di-scroll (pointer-events-auto) yang
+                perlu tetap menerima klik/wheel. */}
+            <div className="absolute bottom-4 left-4 flex flex-row items-end gap-2.5 z-10 pointer-events-none">
+              <div className="flex flex-col gap-2.5 items-start">
+                {/* Location Badge */}
+                <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[17px] py-[8px] flex items-center gap-3 text-white w-[194px] shadow-md">
+                  <MapPin className="size-[18px] text-white fill-white/20" />
+                  <span className="text-[14px] font-josefin font-normal">D.I. Yogyakarta</span>
+                </div>
+
+                {/* Kecamatan & Status Popover */}
+                <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[12px] py-[11px] text-white w-[194px] shadow-md flex flex-col gap-1 relative min-h-[64px]">
+                  {loadingDetail && (
+                    <div className="absolute inset-0 bg-black/25 backdrop-blur-sm flex items-center justify-center rounded-[8px]">
+                      <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                  <p className="text-[14px] font-josefin leading-normal">
+                    <span className="font-bold">Kecamatan:</span> {selectedKecamatan.name}
+                  </p>
+                  <p className="text-[14px] font-josefin leading-normal">
+                    <span className="font-bold">Total Kasus:</span> {selectedKecamatan.cases}
+                  </p>
+                  <p className="text-[14px] font-josefin leading-normal flex items-center gap-1.5">
+                    <span className="font-bold">Status:</span>
+                    <span className={`size-2.5 rounded-full inline-block ${
+                      selectedKecamatan.status === "Tinggi" ? "bg-rose-500" :
+                      selectedKecamatan.status === "Sedang" ? "bg-amber-400" : "bg-emerald-400"
+                    }`} />
+                    <span>{selectedKecamatan.status}</span>
+                  </p>
+                </div>
               </div>
 
-              {/* Kecamatan Detail Popover */}
-              <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[12px] py-[11px] text-white w-[173px] shadow-md flex flex-col gap-1 relative min-h-[64px]">
+              {/* Kartu Cabang — terpisah dari info kasus/status, selalu tampil (termasuk saat 0)
+                  supaya tinggi kartu konsisten dan layout tidak "meloncat" saat ganti kecamatan */}
+              <div className="bg-[rgba(105,126,128,0.3)] backdrop-blur-md border border-white/10 rounded-[8px] px-[12px] py-[11px] text-white w-[194px] shadow-md flex flex-col gap-1.5 relative min-h-[64px]">
                 {loadingDetail && (
                   <div className="absolute inset-0 bg-black/25 backdrop-blur-sm flex items-center justify-center rounded-[8px]">
                     <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
-                <p className="text-[14px] font-josefin leading-normal">
-                  <span className="font-bold">Kecamatan:</span> {selectedKecamatan.name}
-                </p>
-                <p className="text-[14px] font-josefin leading-normal">
-                  <span className="font-bold">Total Kasus:</span> {selectedKecamatan.cases}
-                </p>
-                {selectedDetail && (
-                  <>
-                    <p className="text-[14px] font-josefin leading-normal">
-                      <span className="font-bold">Populasi:</span> {selectedDetail.population.toLocaleString("id-ID")}
-                    </p>
-                    <p className="text-[14px] font-josefin leading-normal">
-                      <span className="font-bold">Insidensi:</span> {((selectedDetail.cases / selectedDetail.population) * 10000).toFixed(1)} /10k
-                    </p>
-                  </>
-                )}
                 <p className="text-[14px] font-josefin leading-normal flex items-center gap-1.5">
-                  <span className="font-bold">Status:</span>
-                  <span className={`size-2.5 rounded-full inline-block ${
-                    selectedKecamatan.status === "Tinggi" ? "bg-rose-500" :
-                    selectedKecamatan.status === "Sedang" ? "bg-amber-400" : "bg-emerald-400"
-                  }`} />
-                  <span>{selectedKecamatan.status}</span>
+                  <Building2 className="size-[14px] text-white/85 shrink-0" />
+                  <span className="font-bold">Cabang</span>
+                  <span className="text-[11px] font-josefin bg-white/15 rounded-full px-[8px] py-[1px] leading-normal">
+                    {selectedDetail?.cabang_count ?? 0}
+                  </span>
                 </p>
+                <div className="flex flex-col gap-1.5 max-h-[110px] overflow-y-auto pr-0.5 pointer-events-auto">
+                  {!selectedDetail || selectedDetail.cabang.length === 0 ? (
+                    <p className="text-[12px] font-josefin italic leading-tight text-white/60">
+                      Tidak ada cabang di kecamatan ini
+                    </p>
+                  ) : (
+                    selectedDetail.cabang.map((c) => (
+                      <div key={c.id} className="flex flex-col gap-0.5 min-w-0">
+                        <p className="text-[12px] font-josefin font-semibold leading-tight text-white break-words">
+                          {c.nama}
+                        </p>
+                        {c.alamat && (
+                          <p className="text-[11px] font-josefin leading-tight text-white/70 break-words">
+                            {c.alamat}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
 
@@ -396,7 +431,7 @@ export default function Dashboard() {
 
           {/* Disease Table */}
           <div className="bg-[rgba(195,247,255,0.2)] border border-white/20 backdrop-blur-md rounded-[16px] shadow-[0px_0px_12px_0px_rgba(0,0,0,0.16)] overflow-y-auto h-[294px] shrink-0">
-            <table className="w-full border-collapse font-montserrat">
+            <table className="w-full h-full border-collapse font-montserrat">
               <thead>
                 <tr className="bg-white">
                   <th className="p-4 text-[#0c818a] font-bold text-[14px] text-center">
@@ -419,18 +454,32 @@ export default function Dashboard() {
               <tbody className="text-[#0c818a]">
                 {topDiseases.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="p-4 text-center text-[14px] font-medium">
+                    <td colSpan={3} className="align-middle text-center text-[14px] font-medium">
                       Tidak ada data penyakit pada periode ini
                     </td>
                   </tr>
                 ) : (
-                  topDiseases.map((d, i) => (
-                    <tr key={d.kode_icd10} className={i % 2 === 0 ? "bg-[#f7f6fe]" : "bg-white"}>
-                      <td className="p-4 font-medium text-[14px] text-center">{d.kode_icd10}</td>
-                      <td className="p-4 font-medium text-[14px]">{d.nama_penyakit}</td>
-                      <td className="p-4 font-medium text-[14px]">{d.jumlah}</td>
-                    </tr>
-                  ))
+                  <>
+                    {topDiseases.map((d, i) => (
+                      <tr key={d.kode_icd10} className={i % 2 === 0 ? "bg-[#f7f6fe]" : "bg-white"}>
+                        <td className="p-4 font-medium text-[14px] text-center">{d.kode_icd10}</td>
+                        <td className="p-4 font-medium text-[14px]">{d.nama_penyakit}</td>
+                        <td className="p-4 font-medium text-[14px]">{d.jumlah}</td>
+                      </tr>
+                    ))}
+                    {/* Baris pengisi kosong — supaya tabel tetap terlihat penuh & proporsional
+                        (bukan cuma 1-3 baris nempel di atas) saat data kurang dari 4 baris */}
+                    {Array.from({ length: Math.max(0, 4 - topDiseases.length) }).map((_, i) => {
+                      const rowIndex = topDiseases.length + i;
+                      return (
+                        <tr key={`filler-${i}`} className={rowIndex % 2 === 0 ? "bg-[#f7f6fe]" : "bg-white"} aria-hidden="true">
+                          <td className="p-4">&nbsp;</td>
+                          <td className="p-4">&nbsp;</td>
+                          <td className="p-4">&nbsp;</td>
+                        </tr>
+                      );
+                    })}
+                  </>
                 )}
               </tbody>
             </table>

@@ -182,8 +182,8 @@ tags:
 ### ✅ GET `/api/cases/region/:name`
 
 **Controller:** `src/controllers/cases.ts → getRegionDetail()`
-**Tabel:** `RekamMedis`
-**FE:** `/` → popup detail kecamatan saat klik peta (F06)
+**Tabel:** `RekamMedis`, `Wilayah`, `FasilitasKesehatan`
+**FE:** `/` → popup detail kecamatan saat klik peta (F06) — menampilkan cabang faskes, bukan populasi
 
 **URL Params:** `name` = nama kecamatan (e.g. `Depok`, `Mlati`)
 
@@ -194,9 +194,16 @@ tags:
 {
   "name": "Depok",
   "population": 123456,
-  "cases": 143
+  "cases": 143,
+  "cabang_count": 2,
+  "cabang": [
+    { "id": "uuid", "nama": "Apotek Sehat Depok", "tipe": "apotek", "alamat": "Jl. Kaliurang KM 5" }
+  ]
 }
 ```
+
+> `population` tetap dikirim (dipakai untuk hitung insidensi bila diperlukan), namun popover peta FE
+> tidak lagi menampilkan angka populasi — diganti dengan daftar cabang faskes di kecamatan tsb.
 
 ---
 

@@ -128,11 +128,20 @@ interface ChartPoint {
 interface SlowMovingItem {
   stok_id: string;
   obat: { id: string; nama: string };
-  faskes: { id: string; nama: string } | null;
+  faskes: { id: string; nama: string; tipe: string; kecamatan: string | null; alamat: string | null } | null;
   jumlah_tersedia: number;
   nilai_modal_rp: number;
   saran: "realokasi" | "retur";
-  faskes_tujuan_realokasi: { id: string; nama: string } | null;
+  faskes_tujuan_realokasi: {
+    id: string;
+    nama: string;
+    tipe: string | null;
+    kecamatan: string | null;
+    alamat: string | null;
+    stok_tersedia: number;
+    stok_minimum: number;
+    kekurangan: number;
+  } | null;
 }
 
 // --- Modal state type ---
@@ -502,16 +511,22 @@ export default function EarlyWarningPage() {
                     <div className="flex flex-col gap-[4px] min-w-0">
                       {item.saran === "realokasi" ? (
                         <>
-                          <div className="flex items-center gap-[12px] flex-wrap">
-                            <span className="font-josefin font-bold text-[20px] text-[#0c818a] leading-none">
-                              {item.obat.nama}
-                            </span>
-                            <span className="font-josefin text-[20px] text-black leading-none">{item.faskes?.nama}</span>
-                            <span className="text-black">→</span>
-                            <span className="font-josefin text-[20px] text-black leading-none">{item.faskes_tujuan_realokasi?.nama}</span>
+                          <span className="font-josefin font-bold text-[18px] text-[#0c818a] leading-tight">
+                            {item.obat.nama}
+                          </span>
+                          <div className="flex flex-wrap items-center gap-x-[6px] gap-y-[2px] font-josefin text-[15px] text-black leading-tight">
+                            <span>{item.faskes?.nama}</span>
+                            {item.faskes?.kecamatan && <span className="text-black/50">({item.faskes.kecamatan})</span>}
+                            <span className="text-black/60">→</span>
+                            <span>{item.faskes_tujuan_realokasi?.nama}</span>
+                            {item.faskes_tujuan_realokasi?.kecamatan && (
+                              <span className="text-black/50">({item.faskes_tujuan_realokasi.kecamatan})</span>
+                            )}
                           </div>
-                          <span className="font-josefin text-[16px] text-black leading-none">
-                            Pindah {item.jumlah_tersedia} unit stok yang tidak bergerak
+                          <span className="font-josefin text-[14px] text-black/70 leading-tight">
+                            Pindah {item.jumlah_tersedia} unit stok tak bergerak — tujuan kekurangan{" "}
+                            {item.faskes_tujuan_realokasi?.kekurangan} unit ({item.faskes_tujuan_realokasi?.stok_tersedia}/
+                            {item.faskes_tujuan_realokasi?.stok_minimum})
                           </span>
                         </>
                       ) : (

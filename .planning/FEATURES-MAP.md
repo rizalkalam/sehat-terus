@@ -1,6 +1,6 @@
 ---
 title: Feature Map — SehatTerus
-updated: 2026-07-02
+updated: 2026-07-12
 project: SehatTerus
 tags:
   - feature-map
@@ -118,7 +118,7 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 | ID | Fitur | Status | Tabel DB | Halaman FE |
 |----|-------|--------|----------|------------|
 | F05 | Peta choropleth kasus per kecamatan | ✅ | `RekamMedis`, `wilayah` | `/` |
-| F06 | Detail kecamatan (kasus, insiden rate, klik peta) | ✅ | `RekamMedis`, `wilayah` | `/` |
+| F06 | Detail kecamatan (kasus, cabang faskes, klik peta) | ✅ | `RekamMedis`, `wilayah`, `fasilitas_kesehatan` | `/` |
 | F07 | Filter peta by rentang waktu & jenis penyakit | ✅ | `RekamMedis` | `/` |
 | F08 | Tren temporal time-series chart (multi-penyakit) | ✅ | `RekamMedis` | `/proyeksi-tren` |
 | F09 | Dashboard stat cards (total kasus, kecamatan aktif) | ✅ | `RekamMedis`, `wilayah` | `/` |
@@ -128,11 +128,21 @@ Belum Ada        █░░░░░░░░░░░░░░░░░░░░
 > [!success] F05–F07 Selesai
 > Endpoint `GET /api/cases/spatial`, `/api/cases/temporal`, `/api/cases/region/:name` sudah jalan
 > dan dashboard sudah memanggil API ini.
+>
+> **Update 2026-07-12:** Popover F06 dipecah jadi 2 kartu (kasus/status vs cabang) supaya tidak
+> bercampur, kartu cabang selalu tampil termasuk saat "0", dan nama/alamat cabang wrap alih-alih
+> ke-truncate. Sekalian perbaiki bug overlay yang memblokir klik ke kecamatan di peta yang
+> ketutupan kartu (`pointer-events-none` + `pointer-events-auto` khusus daftar cabang yang
+> scrollable). Lihat [[CHANGELOG]] 2026-07-12.
 
 > [!success] F09–F11 Selesai (Phase 6, Plan 06-01)
 > Dashboard (`/`) sekarang memanggil `GET /api/cases/summary`: tabel penyakit, donut chart,
 > dan stat card "Total Pasien Aktif" pakai data real (`top_diseases`, `active_patients`).
 > Legend donut pakai alias singkat (`shortDiseaseLabel`) supaya nama panjang tidak overflow.
+>
+> **Update 2026-07-12:** Tabel F11 tambah baris pengisi kosong + `h-full` supaya tetap
+> proporsional (mengisi penuh kartu 294px) saat data kurang dari 4 baris, bukan nempel di atas
+> dengan gap warna kosong di bawahnya.
 
 > [!success] F08 Selesai (Phase 6, Plan 06-02)
 > Halaman `/proyeksi-tren` sekarang fetch `GET /api/cases/temporal?diseases=J06.9,A90` (6 bulan

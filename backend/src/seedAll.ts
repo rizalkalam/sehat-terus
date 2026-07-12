@@ -247,6 +247,10 @@ async function seedAll() {
       { faskes: faskes2, obat: obatMap['Antasida DOEN Tablet'], jumlah: 100, batch: 'ANT-2025-A', exp: '2026-12-31' }, // near-expiry
       { faskes: faskes2, obat: obatMap['Talkum Venetum'], jumlah: 1000, batch: 'TLK-2025-A', exp: '2028-01-01' },
       { faskes: faskes2, obat: obatMap['Asam Salisilat Serbuk'], jumlah: 300, batch: 'SAL-2025-A', exp: '2028-01-01' },
+      // Vitamin C juga ada di Depok tapi di bawah stok minimum (60) — sengaja dibuat defisit
+      // supaya F28 (slow-moving) punya skenario "realokasi" nyata untuk didemokan, bukan cuma
+      // "retur" terus. Klinik Sleman (250 unit, tidak bergerak) jadi sumber realokasi ke sini.
+      { faskes: faskes2, obat: obatMap['Vitamin C 250mg'], jumlah: 10, batch: 'VTC-2025-B', exp: '2027-12-31' },
     ];
 
     let stokCreated = 0;
@@ -335,6 +339,30 @@ async function seedAll() {
       log('pergerakan_stok', `${histBatch.length} riwayat 'keluar' sintetis ditambahkan (${HARI_RIWAYAT} hari, fast+medium movers)`);
     } else {
       log('pergerakan_stok', `Riwayat 'keluar' sintetis EXISTS (${existingHist} baris)`);
+    }
+
+    // Vitamin C di Depok (VTC-2025-B) sengaja diberi 1 riwayat 'keluar' baru-baru ini supaya baris
+    // itu SENDIRI tidak ikut terdaftar slow-moving (movedSet) — perannya di sini murni sebagai
+    // faskes defisit untuk skenario realokasi dari Klinik Sleman, lihat komentar di stokSeed.
+    const DEPOK_VTC_MARKER = 'SEED-KELUAR-DEPOK-VTC';
+    const existingDepokVtc = await PergerakanStok.count({ where: { referensi: DEPOK_VTC_MARKER } });
+    if (existingDepokVtc === 0) {
+      const vitaminC = obatMap['Vitamin C 250mg'];
+      const tanggalKeluar = new Date();
+      tanggalKeluar.setDate(tanggalKeluar.getDate() - 3);
+      await PergerakanStok.create({
+        obat_id: vitaminC.id,
+        faskes_asal: faskes2.id,
+        faskes_tujuan: null,
+        tipe: 'keluar',
+        jumlah: 2,
+        tanggal: tanggalKeluar,
+        referensi: DEPOK_VTC_MARKER,
+        dicatat_oleh: penggunaMap['logistik@sehatterus.id']?.id ?? null,
+      });
+      log('pergerakan_stok', `1 riwayat 'keluar' Vitamin C Depok ditambahkan (exclude dari slow-moving)`);
+    } else {
+      log('pergerakan_stok', `Riwayat 'keluar' Vitamin C Depok EXISTS`);
     }
 
     // ── 8. ALERT EWS ─────────────────────────────────────────────────────────
