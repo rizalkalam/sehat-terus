@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import RekamMedis from '../models/RekamMedis';
+import Wilayah from '../models/Wilayah';
+import FasilitasKesehatan from '../models/FasilitasKesehatan';
 import { KECAMATAN_POPULATIONS } from '../config/kecamatan';
 import sequelize from '../config/database';
 
@@ -130,10 +132,27 @@ export const getRegionDetail = async (req: Request, res: Response): Promise<void
 
     const cases = await RekamMedis.count({ where });
 
+    const wilayah = await Wilayah.findOne({ where: { nama_kecamatan: name } });
+    let cabang: { id: string; nama: string; tipe: string; alamat: string | null }[] = [];
+    if (wilayah) {
+      const faskesList = await FasilitasKesehatan.findAll({
+        where: { wilayah_id: wilayah.id },
+        attributes: ['id', 'nama', 'tipe', 'alamat'],
+      });
+      cabang = faskesList.map((f: any) => ({
+        id: f.id,
+        nama: f.nama,
+        tipe: f.tipe,
+        alamat: f.alamat,
+      }));
+    }
+
     res.status(200).json({
       name,
       population,
-      cases
+      cases,
+      cabang_count: cabang.length,
+      cabang
     });
   } catch (error: any) {
     console.error('Error in getRegionDetail:', error);
